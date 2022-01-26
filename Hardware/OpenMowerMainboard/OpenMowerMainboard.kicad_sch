@@ -776,7 +776,7 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 5fddebe3-26dc-43a3-9abd-0cc12ded5aeb)
   )
-  (text "TODO\npinouts pruefen\nstecker pinout pruefen\nregensensor\nled platine connector\nladestrom\nsicherungen\noriginal stecker recherchieren\nadd testpads"
+  (text "TODO\npinouts pruefen\nstecker pinout pruefen\nregensensor\nladestrom\nsicherungen\noriginal stecker recherchieren\nadd testpads"
     (at 288.29 66.675 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid ad7fd39c-2ba4-4f5d-93a3-cf73f20e2b26)

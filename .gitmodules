@@ -1,0 +1,3 @@
+[submodule "Hardware/OpenMower3d"]
+	path = Hardware/OpenMower3d
+	url = https://github.com/ClemensElflein/OpenMower3d.git
