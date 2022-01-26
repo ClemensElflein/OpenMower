@@ -211,7 +211,6 @@
     )
   )
 
-
   (junction (at 73.66 93.98) (diameter 0) (color 0 0 0 0)
     (uuid 09550ded-5a25-4877-96b6-f470849fc0d4)
   )
@@ -777,7 +776,7 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 5fddebe3-26dc-43a3-9abd-0cc12ded5aeb)
   )
-  (text "TODO\nstecker checken\nregensensor\nled platine connector\nlade und systemspannung\nlade und entladestrom\npi <--> pico programmer?\nIMU?\nsound?\nTVS schutzdioden\nsicherungen\noriginal stecker recherchieren\nmany testpads\nspeaker connector"
+  (text "TODO\npinouts pruefen\nstecker pinout pruefen\nregensensor\nled platine connector\nladestrom\nsicherungen\noriginal stecker recherchieren\nadd testpads"
     (at 288.29 66.675 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid ad7fd39c-2ba4-4f5d-93a3-cf73f20e2b26)
@@ -1954,6 +1953,45 @@
     (path "/00000000-0000-0000-0000-000061040c60/4ad7c2b8-02b1-48b3-be84-50d1297ce997"
       (reference "D3") (unit 1) (value "D_Schottky") (footprint "")
     )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/4ebdc7ab-25b0-4467-9229-087b84fdf66f"
+      (reference "D4") (unit 1) (value "D_TVS") (footprint "Diode_SMD:D_SMB")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/55b8a13b-6894-4208-a000-86cbaab261aa"
+      (reference "D5") (unit 1) (value "D_TVS") (footprint "Diode_SMD:D_SMB")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/37a9969b-e03a-4c0a-94f9-c1bfb2bcb429"
+      (reference "D6") (unit 1) (value "D_TVS") (footprint "Diode_SMD:D_SMB")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/56203402-79b1-40a1-97ad-4c42312e0916"
+      (reference "D7") (unit 1) (value "D_TVS") (footprint "Diode_SMD:D_SMB")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/dcbf07c1-fd83-46b4-9cb8-68d7fd77aad4"
+      (reference "D8") (unit 1) (value "D_TVS") (footprint "Diode_SMD:D_SMB")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/8d636e49-195d-4662-8b69-230d986a3b72"
+      (reference "D9") (unit 1) (value "D_TVS") (footprint "Diode_SMD:D_SMB")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/2bebeb4d-3b78-44b1-9d84-649cd389bb68"
+      (reference "D10") (unit 1) (value "D_TVS") (footprint "Diode_SMD:D_SMB")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/20b8b1d3-3d67-4311-99ca-ce5363c0cad0"
+      (reference "D11") (unit 1) (value "D_TVS") (footprint "Diode_SMD:D_SMB")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/a6025457-ad02-406e-ac1d-03834a754964"
+      (reference "D12") (unit 1) (value "D_TVS") (footprint "Diode_SMD:D_SMB")
+    )
+    (path "/00000000-0000-0000-0000-000061040c60/520089b0-4442-4713-ae1b-87d63d51b467"
+      (reference "F1") (unit 1) (value "Fuse") (footprint "MyModules:Fuseholder5x20_horiz_open_inline_Type-I")
+    )
+    (path "/00000000-0000-0000-0000-000061040c60/b9168f77-b5a5-4161-8a9b-951a2e8475d3"
+      (reference "F2") (unit 1) (value "Fuse") (footprint "MyModules:Fuseholder5x20_horiz_open_inline_Type-I")
+    )
+    (path "/00000000-0000-0000-0000-000061040c60/89a9550d-36a5-40f8-a465-c83bb62d834f"
+      (reference "F3") (unit 1) (value "Fuse") (footprint "MyModules:Fuseholder5x20_horiz_open_inline_Type-I")
+    )
+    (path "/00000000-0000-0000-0000-000061040c60/58391851-bdb9-4e0a-bc80-50f6a07fc993"
+      (reference "F4") (unit 1) (value "Fuse") (footprint "MyModules:Fuseholder5x20_horiz_open_inline_Type-I")
+    )
     (path "/00000000-0000-0000-0000-000060ffea54"
       (reference "H1") (unit 1) (value "MountingHole_Pad") (footprint "MountingHole:MountingHole_5mm_Pad")
     )
@@ -1996,9 +2034,6 @@
     (path "/00000000-0000-0000-0000-000061040c60/00000000-0000-0000-0000-0000612326ab"
       (reference "J10") (unit 1) (value "Conn_01x05") (footprint "Connector_JST:JST_PH_B5B-PH-K_1x05_P2.00mm_Vertical")
     )
-    (path "/df7e4e30-b8d5-4f4b-a24f-39298e982d26/00000000-0000-0000-0000-00006130130c"
-      (reference "J11") (unit 1) (value "Conn_01x10_Female") (footprint "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical")
-    )
     (path "/00000000-0000-0000-0000-000061040c60/b1812e93-6d07-48bc-8440-4307c7b13cf3"
       (reference "J11") (unit 1) (value "Conn_01x03_Male") (footprint "Connector_JST:JST_XH_B3B-XH-A_1x03_P2.50mm_Vertical")
     )
@@ -2025,6 +2060,9 @@
     )
     (path "/00000000-0000-0000-0000-000061040c60/35bcee65-9ed5-400f-bb9e-ff7446612f99"
       (reference "J19") (unit 1) (value "Conn_01x04") (footprint "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical")
+    )
+    (path "/df7e4e30-b8d5-4f4b-a24f-39298e982d26/00000000-0000-0000-0000-00006130130c"
+      (reference "J20") (unit 1) (value "Conn_01x10_Female") (footprint "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical")
     )
     (path "/00000000-0000-0000-0000-00006109dce5/06715042-9807-4840-bc8e-1cf593cdbcdf"
       (reference "JP1") (unit 1) (value "SolderJumper_3_Bridged12") (footprint "")
@@ -2218,6 +2256,9 @@
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/dbf14eee-9bd3-48b0-b95d-04ca5ba7a41d"
       (reference "R50") (unit 1) (value "10k") (footprint "Resistor_THT:R_Axial_DIN0309_L9.0mm_D3.2mm_P12.70mm_Horizontal")
     )
+    (path "/00000000-0000-0000-0000-000061040c60/f11b3e3a-7b08-49d8-b4b1-92030ffe70c2"
+      (reference "R51") (unit 1) (value "R") (footprint "Resistor_SMD:R_Shunt_Vishay_WSK2512_6332Metric_T2.66mm")
+    )
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/b948dd43-413f-4002-adce-e082c45a5179"
       (reference "R53") (unit 1) (value "1k5") (footprint "Resistor_THT:R_Axial_DIN0309_L9.0mm_D3.2mm_P12.70mm_Horizontal")
     )
@@ -2226,9 +2267,6 @@
     )
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/e0839d1a-07e9-4222-b11a-28d6f0df6c0c"
       (reference "R57") (unit 1) (value "27k") (footprint "Resistor_THT:R_Axial_DIN0309_L9.0mm_D3.2mm_P12.70mm_Horizontal")
-    )
-    (path "/00000000-0000-0000-0000-000061040c60/f11b3e3a-7b08-49d8-b4b1-92030ffe70c2"
-      (reference "R?") (unit 1) (value "R") (footprint "Resistor_SMD:R_Shunt_Vishay_WSK2512_6332Metric_T2.66mm")
     )
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/88528529-64b3-4d79-b2db-e04c4b468443"
       (reference "TP1") (unit 1) (value "TestPoint") (footprint "")

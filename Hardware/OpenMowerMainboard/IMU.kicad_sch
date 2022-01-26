@@ -285,11 +285,10 @@
   )
 
 
-
   (no_connect (at 157.48 78.74) (uuid 57a762d4-1a7c-46c8-9ff8-3756d3021a0f))
-  (no_connect (at 157.48 66.04) (uuid 57a762d4-1a7c-46c8-9ff8-3756d3021a0f))
-  (no_connect (at 157.48 68.58) (uuid 57a762d4-1a7c-46c8-9ff8-3756d3021a0f))
-  (no_connect (at 157.48 73.66) (uuid 57a762d4-1a7c-46c8-9ff8-3756d3021a0f))
+  (no_connect (at 157.48 66.04) (uuid 57a762d4-1a7c-46c8-9ff8-3756d3021a10))
+  (no_connect (at 157.48 68.58) (uuid 57a762d4-1a7c-46c8-9ff8-3756d3021a11))
+  (no_connect (at 157.48 73.66) (uuid 57a762d4-1a7c-46c8-9ff8-3756d3021a12))
 
   (wire (pts (xy 129.54 71.12) (xy 157.48 71.12))
     (stroke (width 0) (type default) (color 0 0 0 0))
@@ -344,7 +343,7 @@
   (symbol (lib_id "Connector:Conn_01x10_Female") (at 162.56 66.04 0) (unit 1)
     (in_bom yes) (on_board yes)
     (uuid 00000000-0000-0000-0000-00006130130c)
-    (property "Reference" "J11" (id 0) (at 163.2712 66.6496 0)
+    (property "Reference" "J20" (id 0) (at 163.2712 66.6496 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
     (property "Value" "Conn_01x10_Female" (id 1) (at 163.2712 68.961 0)
