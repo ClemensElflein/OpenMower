@@ -1,0 +1,35 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#SamacSys ECAD Model TXS0104EPWR
+#/182924/101608/2.49/14/3/Integrated Circuit
+DEF TXS0104EPWR IC 0 30 Y Y 1 F N
+F0 "IC" 950 300 50 H V L CNN
+F1 "TXS0104EPWR" 950 200 50 H V L CNN
+F2 "SOP65P640X120-14N" 950 100 50 H I L CNN
+F3 "http://www.ti.com/lit/ds/symlink/txs0104e.pdf" 950 0 50 H I L CNN
+F4 "TXS0104EPWR, Voltage Level Translator, Open Drain 1.65  3.6 V, 2.3  5.5 V 14-Pin TSSOP" 950 -100 50 H I L CNN "Description"
+F5 "1.2" 950 -200 50 H I L CNN "Height"
+F6 "595-TXS0104EPWR" 950 -300 50 H I L CNN "Mouser Part Number"
+F7 "https://www.mouser.co.uk/ProductDetail/Texas-Instruments/TXS0104EPWR?qs=7kv20MEVUlglsv2MH6ZndA%3D%3D" 950 -400 50 H I L CNN "Mouser Price/Stock"
+F8 "Texas Instruments" 950 -500 50 H I L CNN "Manufacturer_Name"
+F9 "TXS0104EPWR" 950 -600 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+X VCCA 1 0 0 200 R 50 50 0 0 P
+X A1 2 0 -100 200 R 50 50 0 0 P
+X A2 3 0 -200 200 R 50 50 0 0 P
+X A3 4 0 -300 200 R 50 50 0 0 P
+X A4 5 0 -400 200 R 50 50 0 0 P
+X NC_1 6 0 -500 200 R 50 50 0 0 P
+X GND 7 0 -600 200 R 50 50 0 0 P
+X VCCB 14 1100 0 200 L 50 50 0 0 P
+X B1 13 1100 -100 200 L 50 50 0 0 P
+X B2 12 1100 -200 200 L 50 50 0 0 P
+X B3 11 1100 -300 200 L 50 50 0 0 P
+X B4 10 1100 -400 200 L 50 50 0 0 P
+X NC_2 9 1100 -500 200 L 50 50 0 0 P
+X OE 8 1100 -600 200 L 50 50 0 0 P
+P 5 0 1 6 200 100 900 100 900 -700 200 -700 200 100 N
+ENDDRAW
+ENDDEF
+#
+#End Library

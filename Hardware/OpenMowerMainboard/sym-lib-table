@@ -1,0 +1,9 @@
+(sym_lib_table
+  (lib (name "arduino")(type "Legacy")(uri "${KIPRJMOD}/arduino.lib")(options "")(descr ""))
+  (lib (name "MyModules")(type "Legacy")(uri "${KIPRJMOD}/MyModules.lib")(options "")(descr ""))
+  (lib (name "MCU_RaspberryPi_and_Boards")(type "Legacy")(uri "${KIPRJMOD}/RP-Pico Libraries/MCU_RaspberryPi_and_Boards.lib")(options "")(descr ""))
+  (lib (name "OpenMowerMainboardLib")(type "KiCad")(uri "${KIPRJMOD}/OpenMowerMainboardLib.kicad_sym")(options "")(descr ""))
+  (lib (name "xESC2")(type "KiCad")(uri "${KIPRJMOD}/xESC2.kicad_sym")(options "")(descr ""))
+  (lib (name "TXS0104EPWR")(type "Legacy")(uri "${KIPRJMOD}/TXS0104EPWR/TXS0104EPWR.lib")(options "")(descr ""))
+  (lib (name "MCP23S08-E_SS")(type "Legacy")(uri "${KIPRJMOD}/MCP23S08-E_SS/MCP23S08-E_SS.lib")(options "")(descr ""))
+)

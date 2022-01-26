@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP TXS0104EPWR
+D TXS0104EPWR, Voltage Level Translator, Open Drain 1.65  3.6 V, 2.3  5.5 V 14-Pin TSSOP
+K
+F http://www.ti.com/lit/ds/symlink/txs0104e.pdf
+$ENDCMP
+#
+#End Doc Library
