@@ -468,6 +468,10 @@
       "LevelShifter4"
     ],
     [
+      "aed623f3-2609-4f47-a425-7e40052494e1",
+      "LevelShifter5"
+    ],
+    [
       "c4934db8-1638-4ac4-bd06-84d03b3fc106",
       "pico"
     ],
@@ -482,6 +486,18 @@
     [
       "df7e4e30-b8d5-4f4b-a24f-39298e982d26",
       "IMU"
+    ],
+    [
+      "ca1240da-e4ee-4725-a235-78dd450aab15",
+      "LevelShifter6"
+    ],
+    [
+      "a8bfe435-ed69-44cd-900a-618dba71e373",
+      "LevelShifter7"
+    ],
+    [
+      "56c06ad4-9018-41a2-8c33-e3dd788003de",
+      "LevelShifter8"
     ]
   ],
   "text_variables": {}

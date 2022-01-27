@@ -632,6 +632,7 @@
     )
   )
 
+
   (junction (at 157.48 142.24) (diameter 0) (color 0 0 0 0)
     (uuid 685c0694-c48c-409f-b9e1-da2e29cb1d94)
   )
@@ -873,7 +874,7 @@
     (uuid 06715042-9807-4840-bc8e-1cf593cdbcdf)
     (property "Reference" "JP1" (id 0) (at 212.09 113.03 0))
     (property "Value" "SolderJumper_3_Bridged12" (id 1) (at 212.09 115.57 0))
-    (property "Footprint" "" (id 2) (at 212.09 109.22 0)
+    (property "Footprint" "Jumper:SolderJumper-3_P1.3mm_Bridged12_Pad1.0x1.5mm" (id 2) (at 212.09 109.22 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "~" (id 3) (at 212.09 109.22 0)

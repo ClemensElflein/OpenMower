@@ -1,8 +1,7 @@
 (fp_lib_table
   (lib (name "Arduino")(type "KiCad")(uri "${KIPRJMOD}/Arduino.pretty")(options "")(descr ""))
   (lib (name "MyModules")(type "KiCad")(uri "${KIPRJMOD}/MyModules.pretty")(options "")(descr ""))
-  (lib (name "MCU_RaspberryPi_and_Boards")(type "KiCad")(uri "${KIPRJMOD}/RP-Pico Libraries/MCU_RaspberryPi_and_Boards.pretty")(options "")(descr ""))
   (lib (name "xESC2")(type "KiCad")(uri "${KIPRJMOD}/xESC2.pretty")(options "")(descr ""))
-  (lib (name "MCP23S08-E_SS")(type "KiCad")(uri "${KIPRJMOD}/MCP23S08-E_SS")(options "")(descr ""))
   (lib (name "WTV020")(type "KiCad")(uri "${KIPRJMOD}/WTV020.pretty")(options "")(descr ""))
+  (lib (name "MCU_RaspberryPi_and_Boards")(type "KiCad")(uri "${KIPRJMOD}/RP-Pico Libraries/MCU_RaspberryPi_and_Boards.pretty")(options "")(descr ""))
 )
