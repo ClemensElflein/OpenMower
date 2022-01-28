@@ -4,4 +4,6 @@
   (lib (name "xESC2")(type "KiCad")(uri "${KIPRJMOD}/xESC2.pretty")(options "")(descr ""))
   (lib (name "WTV020")(type "KiCad")(uri "${KIPRJMOD}/WTV020.pretty")(options "")(descr ""))
   (lib (name "MCU_RaspberryPi_and_Boards")(type "KiCad")(uri "${KIPRJMOD}/RP-Pico Libraries/MCU_RaspberryPi_and_Boards.pretty")(options "")(descr ""))
+  (lib (name "74ALVC164245DGG")(type "KiCad")(uri "${KIPRJMOD}/74ALVC164245DGG")(options "")(descr ""))
+  (lib (name "TSC101CILT")(type "KiCad")(uri "${KIPRJMOD}/TSC101CILT")(options "")(descr ""))
 )

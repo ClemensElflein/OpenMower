@@ -1,0 +1,26 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#SamacSys ECAD Model TSC101CILT
+#/154176/101608/2.49/5/3/Integrated Circuit
+DEF TSC101CILT IC 0 30 Y Y 1 F N
+F0 "IC" 850 300 50 H V L CNN
+F1 "TSC101CILT" 850 200 50 H V L CNN
+F2 "SOT95P280X145-5N" 850 100 50 H I L CNN
+F3 "http://www.st.com/st-web-ui/static/active/en/resource/technical/document/datasheet/CD00153725.pdf" 850 0 50 H I L CNN
+F4 "TSC101CILT, Current Sensing Amplifier Single 5-Pin SOT-23" 850 -100 50 H I L CNN "Description"
+F5 "1.45" 850 -200 50 H I L CNN "Height"
+F6 "" 850 -300 50 H I L CNN "Mouser2 Part Number"
+F7 "" 850 -400 50 H I L CNN "Mouser2 Price/Stock"
+F8 "STMicroelectronics" 850 -500 50 H I L CNN "Manufacturer_Name"
+F9 "TSC101CILT" 850 -600 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+X OUT 1 0 0 200 R 50 50 0 0 O
+X GND 2 0 -100 200 R 50 50 0 0 W
+X VP 3 0 -200 200 R 50 50 0 0 P
+X VM 4 1000 0 200 L 50 50 0 0 P
+X VCC 5 1000 -100 200 L 50 50 0 0 W
+P 5 0 1 6 200 100 800 100 800 -300 200 -300 200 100 N
+ENDDRAW
+ENDDEF
+#
+#End Library
