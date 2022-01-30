@@ -1863,9 +1863,6 @@
     (path "/00000000-0000-0000-0000-00006109dce5/6ee16e40-2ec2-436c-891f-4f0111e8ba95"
       (reference "#PWR0134") (unit 1) (value "+5V") (footprint "")
     )
-    (path "/00000000-0000-0000-0000-000061040c60/da55b63f-77d6-4bae-b013-495a49ef2db1"
-      (reference "#PWR0135") (unit 1) (value "GND") (footprint "")
-    )
     (path "/df7e4e30-b8d5-4f4b-a24f-39298e982d26/00000000-0000-0000-0000-0000613098df"
       (reference "#PWR0136") (unit 1) (value "GND") (footprint "")
     )
@@ -1945,22 +1942,46 @@
       (reference "#PWR0161") (unit 1) (value "GND") (footprint "")
     )
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/2d457f07-5787-4bea-a05e-c5a50f3ef84f"
-      (reference "#PWR?") (unit 1) (value "GND") (footprint "")
+      (reference "#PWR0162") (unit 1) (value "GND") (footprint "")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/369e96f6-93ab-469d-9300-29cf92f5f4a5"
+      (reference "#PWR0163") (unit 1) (value "GND") (footprint "")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/f9d619fb-3cdc-4fb7-bd11-a279341b41e2"
+      (reference "#PWR0164") (unit 1) (value "GND") (footprint "")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/e945adf0-31f5-44b5-a034-ad50572d6789"
+      (reference "#PWR0165") (unit 1) (value "GND") (footprint "")
     )
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/e63a8013-6cf4-4d9b-bd93-9a34f164f50f"
       (reference "C1") (unit 1) (value "100n") (footprint "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder")
     )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/e762f29c-fc9d-40f2-9ddc-b6e257149ed9"
+      (reference "C2") (unit 1) (value "C_Polarized") (footprint "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/a64d2e79-d1d5-4db4-9282-90d9ebe246b2"
+      (reference "C3") (unit 1) (value "C_Polarized") (footprint "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/ae36bef6-b767-4161-a262-b1f32727900c"
+      (reference "C4") (unit 1) (value "C_Polarized") (footprint "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+    )
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/0e80fadf-4e70-489f-a264-82dee55f36d9"
       (reference "C5") (unit 1) (value "100n") (footprint "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/b5d95917-2f91-4754-a8a8-b3d06a111c04"
+      (reference "C6") (unit 1) (value "C_Polarized") (footprint "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/d750896b-e550-4864-80e1-b9ee6c32e4cf"
+      (reference "C7") (unit 1) (value "C_Polarized") (footprint "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
+    )
+    (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/40805699-f33c-40d4-b221-576bb2526f54"
+      (reference "C8") (unit 1) (value "C_Polarized") (footprint "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")
     )
     (path "/00000000-0000-0000-0000-000061080954/47b1530b-7efd-46ab-a99d-5993738e03b6"
       (reference "D1") (unit 1) (value "D_Schottky") (footprint "Diode_SMD:D_SOD-123F")
     )
     (path "/00000000-0000-0000-0000-000061040c60/96c131c7-617c-4f06-a5c5-334c2af9164d"
       (reference "D2") (unit 1) (value "D_Schottky") (footprint "Diode_SMD:D_SMA_Handsoldering")
-    )
-    (path "/00000000-0000-0000-0000-000061040c60/4ad7c2b8-02b1-48b3-be84-50d1297ce997"
-      (reference "D3") (unit 1) (value "D_Schottky") (footprint "Diode_SMD:D_SMA_Handsoldering")
     )
     (path "/a66eb396-0410-43f5-a37d-ef2abb980a3a/4ebdc7ab-25b0-4467-9229-087b84fdf66f"
       (reference "D4") (unit 1) (value "D_TVS") (footprint "Diode_SMD:D_SMB")
@@ -1997,9 +2018,6 @@
     )
     (path "/00000000-0000-0000-0000-000061040c60/b9168f77-b5a5-4161-8a9b-951a2e8475d3"
       (reference "F2") (unit 1) (value "Fuse") (footprint "MyModules:Fuseholder5x20_horiz_open_inline_Type-I")
-    )
-    (path "/00000000-0000-0000-0000-000061040c60/89a9550d-36a5-40f8-a465-c83bb62d834f"
-      (reference "F3") (unit 1) (value "Fuse") (footprint "MyModules:Fuseholder5x20_horiz_open_inline_Type-I")
     )
     (path "/00000000-0000-0000-0000-000061040c60/58391851-bdb9-4e0a-bc80-50f6a07fc993"
       (reference "F4") (unit 1) (value "Fuse") (footprint "MyModules:Fuseholder5x20_horiz_open_inline_Type-I")
@@ -2232,6 +2250,21 @@
     (path "/00000000-0000-0000-0000-00006107bce5"
       (reference "U1") (unit 1) (value "LM2596S_MODULE") (footprint "MyModules:LM2596S_MODULE")
     )
+    (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/6ea01d83-d7f6-4dbf-a272-c95bedd03712"
+      (reference "U2") (unit 1) (value "MCP604") (footprint "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm")
+    )
+    (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/76993eea-cfc0-4f80-b043-d9c3da6cb540"
+      (reference "U2") (unit 2) (value "MCP604") (footprint "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm")
+    )
+    (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/b1771bd2-433f-4700-b2fe-1eebe517d0e6"
+      (reference "U2") (unit 3) (value "MCP604") (footprint "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm")
+    )
+    (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/5c05efe6-a2e8-4e42-9ad1-4bd5c10a3be1"
+      (reference "U2") (unit 4) (value "MCP604") (footprint "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm")
+    )
+    (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/c455a65a-0169-4d1e-ad05-773fa642a2ef"
+      (reference "U2") (unit 5) (value "MCP604") (footprint "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm")
+    )
     (path "/00000000-0000-0000-0000-000061080954/cdfd63fe-2884-407e-923b-f6c82611f649"
       (reference "U3") (unit 1) (value "SIP32509DT") (footprint "Package_TO_SOT_SMD:SOT-23-6_Handsoldering")
     )
@@ -2258,21 +2291,6 @@
     )
     (path "/7936fd08-09c5-4aba-8422-c848060d3b9f/afc98042-5cc0-4829-ba17-7f0b84724d85"
       (reference "U13") (unit 1) (value "WTV020") (footprint "WTV020:WTV020")
-    )
-    (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/6ea01d83-d7f6-4dbf-a272-c95bedd03712"
-      (reference "U?") (unit 1) (value "MCP604") (footprint "")
-    )
-    (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/76993eea-cfc0-4f80-b043-d9c3da6cb540"
-      (reference "U?") (unit 2) (value "MCP604") (footprint "")
-    )
-    (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/b1771bd2-433f-4700-b2fe-1eebe517d0e6"
-      (reference "U?") (unit 3) (value "MCP604") (footprint "")
-    )
-    (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/5c05efe6-a2e8-4e42-9ad1-4bd5c10a3be1"
-      (reference "U?") (unit 4) (value "MCP604") (footprint "")
-    )
-    (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/c455a65a-0169-4d1e-ad05-773fa642a2ef"
-      (reference "U?") (unit 5) (value "MCP604") (footprint "")
     )
     (path "/00000000-0000-0000-0000-00006109dce5/00000000-0000-0000-0000-00006109e04c"
       (reference "XA1") (unit 1) (value "Arduino_Uno_Shield") (footprint "Arduino:Arduino_Uno_Shield")

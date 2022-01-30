@@ -33,9 +33,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 5.0,
-          "height": 5.0,
-          "width": 5.0
+          "drill": 0.8,
+          "height": 2.5,
+          "width": 1.6764
         },
         "silk_line_width": 0.12,
         "silk_text_italic": false,
@@ -124,6 +124,7 @@
         0.2,
         0.3,
         0.5,
+        1.0,
         2.5,
         3.0
       ],
@@ -370,6 +371,65 @@
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.2,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6.0
+      },
+      {
+        "bus_width": 12.0,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.5,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.5,
+        "line_style": 0,
+        "microvia_diameter": 0.5,
+        "microvia_drill": 0.2,
+        "name": "3V3",
+        "nets": [
+          "+3V3",
+          "+5V"
+        ],
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 1.0,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6.0
+      },
+      {
+        "bus_width": 12.0,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.5,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.5,
+        "line_style": 0,
+        "microvia_diameter": 0.5,
+        "microvia_drill": 0.2,
+        "name": "5V",
+        "nets": [],
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 2.0,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6.0
+      },
+      {
+        "bus_width": 12.0,
+        "clearance": 0.3,
+        "diff_pair_gap": 0.5,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.5,
+        "line_style": 0,
+        "microvia_diameter": 0.5,
+        "microvia_drill": 0.2,
+        "name": "Power",
+        "nets": [
+          "V_BATT"
+        ],
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 5.0,
         "via_diameter": 0.6,
         "via_drill": 0.3,
         "wire_width": 6.0
