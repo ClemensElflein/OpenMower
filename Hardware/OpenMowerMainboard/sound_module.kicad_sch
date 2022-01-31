@@ -236,7 +236,7 @@
     (uuid efcb0093-7d77-4747-814c-f861eb496cf6)
   )
 
-  (hierarchical_label "SPEAKER-" (shape output) (at 115.57 92.71 180)
+  (hierarchical_label "SPEAKER_MINUS" (shape output) (at 115.57 92.71 180)
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid 20b60dc9-31fa-4c39-bd24-fd6018796717)
   )
@@ -248,7 +248,7 @@
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid 8be8b8d3-bec1-49d2-be7c-c04f85d09738)
   )
-  (hierarchical_label "SPEAKER+" (shape output) (at 115.57 90.17 180)
+  (hierarchical_label "SPEAKER_PLUS" (shape output) (at 115.57 90.17 180)
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid 90d539aa-5942-47ea-a924-c8682e173937)
   )

@@ -652,7 +652,7 @@
   )
 
   (no_connect (at 95.25 111.125) (uuid 8a26549e-0245-408c-8f2b-e10b394aebb3))
-  (no_connect (at 95.25 127) (uuid 8a26549e-0245-408c-8f2b-e10b394aebb3))
+  (no_connect (at 95.25 127) (uuid 8a26549e-0245-408c-8f2b-e10b394aebb4))
 
   (wire (pts (xy 209.55 116.84) (xy 213.995 116.84))
     (stroke (width 0) (type default) (color 0 0 0 0))
@@ -896,11 +896,11 @@
     (effects (font (size 1.27 1.27)) (justify left))
     (uuid 812a565c-9c3d-43f1-ac44-733a240dfac6)
   )
-  (hierarchical_label "SHUNT_CHARGE_CURRENT+" (shape input) (at 176.53 119.38 180)
+  (hierarchical_label "SHUNT_CHARGE_CURRENT_PLUS" (shape input) (at 176.53 119.38 180)
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid a7a2cfcd-1de3-4741-83fb-25e8fad1b0a3)
   )
-  (hierarchical_label "SHUNT_CHARGE_CURRENT-" (shape input) (at 226.06 114.3 0)
+  (hierarchical_label "SHUNT_CHARGE_CURRENT_MINUS" (shape input) (at 226.06 114.3 0)
     (effects (font (size 1.27 1.27)) (justify left))
     (uuid d60eabe6-18cc-41e9-8131-7cb1d9276225)
   )
