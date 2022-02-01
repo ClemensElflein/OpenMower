@@ -1,6 +1,6 @@
 # OpenMower
 
-![OpenMower the DIY smart robot mower](img\open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+![OpenMower the DIY smart robot mower](./img/open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 **:warning: DISCLAIMER:**
 
