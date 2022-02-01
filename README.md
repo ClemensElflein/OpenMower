@@ -41,6 +41,14 @@ Here is a quick overview of this project's goals:
 
 
 
+# How You Can Help
+
+The project is currently much more advanced than it might currently look on this page. The prototype below is able to mow our lawn without problems. **But the documentation is missing.**
+
+Therefore, at the current state, you can only wait until I have uploaded all code and documentation to this repository. **Star this repository in order to get updates!**
+
+
+
 ## Challenges
 It's not really *that easy* to upgrade the robot, since unfortunately the mainboard used by those bots is proprietary. Therefore the first step is to create a mainboard which then can be used to deploy some better software later on. This is what we are currently working on.
 
