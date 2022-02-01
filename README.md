@@ -1,12 +1,10 @@
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+# OpenMower
+
+![OpenMower the DIY smart robot mower](img\open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 **:warning: DISCLAIMER:**
 
 **IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME!**
-
-
-
-# OpenMower
 
 Let's be honest: The current generation of robotic lawn mowers sucks. Basically all of these bots drive in a random direction until they hit the border of the lawn, rotate for a randomized duration and repeat. **I think we can do better!**
 
@@ -20,7 +18,28 @@ Therefore, we have disassembled the cheapest off-the-shelf robotic mower  we cou
 The bottom line is: The bot itself is surprisingly high quality and doesn't need to be changed at all. **We just need some better software in there**.
 
 
-## 
+
+# Project Goals
+
+Here is a quick overview of this project's goals:
+
+:heavy_check_mark: **Autonomous Lawn Mowing:** Obviously, the device should be able to mow the lawn automatically.
+
+:heavy_check_mark: **Good Safety:** The device must be safe, e.g. emergency stop if lifted or crashed.
+
+:heavy_check_mark: **No Perimeter Wire Needed:** We want to be flexible and support multiple mowing areas.
+
+:heavy_check_mark: **Low Cost:** It should be cheaper than a mid range off-the-shelf product
+
+:heavy_check_mark: **Open Source:** I want to share knowledge and enable others to build an OpenMower as well.
+
+:heavy_check_mark: **Nice to Look At:** You should not be ashamed to have an OpenMower mowing your lawn.
+
+:heavy_check_mark: **Avoid Obstacles:** The mower should detect obstacles and avoid them during mowing.
+
+:heavy_check_mark: **Rain Detection:** The device should be able to detect bad weather conditions and pause mowing until they improve.
+
+
 
 ## Challenges
 It's not really *that easy* to upgrade the robot, since unfortunately the mainboard used by those bots is proprietary. Therefore the first step is to create a mainboard which then can be used to deploy some better software later on. This is what we are currently working on.
@@ -55,6 +74,12 @@ While disassembling the bot, I wondered about its mainboard: Instead of "YardFor
 It is therefore quite safe to assume that many robot mowers are **basically the same device in a different case**. This would be a huge win for the community, since this would mean that by making one of those robots smarter, we could upgrade **A LOT OF ROBOTS!**
 
 Therefore it might be a good idea to start a list of compatible devices. So if you have a cheap robotic lawn mower, it would be nice of you to check, if it contains the same mainboard as ours and send me some pictures / model numbers.
+
+
+
+# More Infos
+
+This page only contains the basic overview of the project. To follow my current development state, check out my [Blog](https://x-tech.online/).
 
 
 
