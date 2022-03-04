@@ -766,7 +766,7 @@
     (uuid fce8ed09-60fa-4b3c-b615-829d2bab544b)
   )
 
-  (text "TODO\nchange sound pinout and footprint to match DFPlayer\nadd pull downs for ultrasonic triggers (not sure, they seem to have pull-ups, wtf)\nraspberry pi power override\norange power connector should bypass the charging fuse and diode\ncheck mower hall connector\nadd 2mm connectors as options"
+  (text "TODO\nchange sound pinout and footprint to match DFPlayer\nadd pull downs for ultrasonic triggers (not sure, they seem to have pull-ups, wtf)\nraspberry pi power override (schematic done)\norange power connector should bypass the charging fuse and diode\ncheck if removing ESC power is a good idea. Maybe implement shutdown pin instead (firmware support is ready)\ncheck mower hall connector (pin spacing of original board, electric is OK)\nadd 2mm connectors as options (for default hall switches, USS are fine with 2.54 only)\nmaybe some TVS diodes or something to suppress voltage spikes on vin?\nadd a gnd pin to the pico SWD header"
     (at 282.575 113.665 0)
     (effects (font (size 3 3)) (justify left bottom))
     (uuid 05c95e20-b8ce-45a0-abe6-40ea1ba1906f)
@@ -2242,6 +2242,15 @@
     )
     (path "/00000000-0000-0000-0000-000061040c60/f11b3e3a-7b08-49d8-b4b1-92030ffe70c2"
       (reference "R51") (unit 1) (value "R") (footprint "Resistor_SMD:R_2512_6332Metric_Pad1.40x3.35mm_HandSolder")
+    )
+    (path "/00000000-0000-0000-0000-00006109dce5/1e0378df-4eb5-4433-998b-5f346ec4a88e"
+      (reference "R?") (unit 1) (value "10k") (footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder")
+    )
+    (path "/00000000-0000-0000-0000-000061080954/524cc440-f69b-4e5c-95c8-45fc44a5eb8a"
+      (reference "R?") (unit 1) (value "10k") (footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder")
+    )
+    (path "/00000000-0000-0000-0000-000061080954/faeb18f8-c222-4c98-a19d-ced7efa28a99"
+      (reference "R?") (unit 1) (value "10k") (footprint "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder")
     )
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/88528529-64b3-4d79-b2db-e04c4b468443"
       (reference "TP1") (unit 1) (value "TestPoint") (footprint "TestPoint:TestPoint_Pad_D2.0mm")
