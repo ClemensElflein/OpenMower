@@ -6,6 +6,10 @@
 
 **IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME!**
 
+**This repo is still WIP. The robot works though, I just need to make hardware and software pretty, so just :star: star the repository if you want updates!**
+
+
+
 Let's be honest: The current generation of robotic lawn mowers sucks. Basically all of these bots drive in a random direction until they hit the border of the lawn, rotate for a randomized duration and repeat. **I think we can do better!**
 
 
@@ -38,6 +42,20 @@ Here is a quick overview of this project's goals:
 :heavy_check_mark: **Avoid Obstacles:** The mower should detect obstacles and avoid them during mowing.
 
 :heavy_check_mark: **Rain Detection:** The device should be able to detect bad weather conditions and pause mowing until they improve.
+
+
+
+# Hardware
+
+The first mainboard PCB is almost done. It currently looks like this:
+
+![Current State of the Robot](./img/open_mower_mainboard.jpg)
+
+
+
+# Software
+
+The software for the robot can be found in a separate repository: https://github.com/ClemensElflein/open_mower_ros
 
 
 

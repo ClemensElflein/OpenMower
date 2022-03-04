@@ -766,6 +766,11 @@
     (uuid fce8ed09-60fa-4b3c-b615-829d2bab544b)
   )
 
+  (text "TODO\nchange sound pinout and footprint to match DFPlayer\nadd pull downs for ultrasonic triggers (not sure, they seem to have pull-ups, wtf)\nraspberry pi power override\norange power connector should bypass the charging fuse and diode\ncheck mower hall connector\nadd 2mm connectors as options"
+    (at 282.575 113.665 0)
+    (effects (font (size 3 3)) (justify left bottom))
+    (uuid 05c95e20-b8ce-45a0-abe6-40ea1ba1906f)
+  )
   (text "Sensor Connectors" (at 50.165 166.37 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 5fddebe3-26dc-43a3-9abd-0cc12ded5aeb)
