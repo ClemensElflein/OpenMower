@@ -20,40 +20,21 @@
 #include <FastCRC.h>
 #include <PacketSerial.h>
 
-
 #include "datatypes.h"
 #include "pins.h"
 
 // Define to stream debugging messages via USB
 #define USB_DEBUG
-#define DEBUG_IMU
+// #define DEBUG_IMU
 #define DEBUG_SERIAL Serial
 
-#define PIN_ANALOG_VOLTAGE 27
-#define PIN_ANALOG_CHARGE_VOLTAGE 26
-#define PIN_ANALOG_CHARGE_CURRENT 28
-
-#define PIN_GPS_POWER 22
-#define PIN_ESC_POWER 20
-#define PIN_RASPI_POWER 21
-
-#define PIN_EMERGENCY_1 7
-#define PIN_EMERGENCY_2 6
-#define PIN_EMERGENCY_3 3
-#define PIN_EMERGENCY_4 2
-
-#define PIN_MUX_IN 11
-#define PIN_MUX_OUT 12
-#define PIN_MUX_ADDRESS_0 13
-#define PIN_MUX_ADDRESS_1 14
-#define PIN_MUX_ADDRESS_2 15
-
+/**
+ * @brief Some hardware parameters
+ */
 #define VIN_R1 10000.0f
 #define VIN_R2 1000.0f
 #define R_SHUNT 0.033f
 #define CURRENT_SENSE_GAIN 100.0f
-
-
 
 PacketSerial packetSerial;
 FastCRC16 CRC16;
@@ -63,14 +44,18 @@ MPU9250 IMU(SPI, PIN_IMU_CS);
 size_t fifoSize;
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
-unsigned long last_mux_change = 0;
 
 // Predefined message buffers, so that we don't need to allocate new ones later.
 struct ll_imu imu_message = {0};
 struct ll_status status_message = {0};
+// A mutex which is used by core1 each time status_message is modified.
+// We can lock it during message transmission to prevent core1 to modify data in this time.
+auto_init_mutex(mtx_status_message);
 
-uint8_t mux_address = 0;
 bool emergency_latch = false;
+
+// the queue for passing data from core 1 to core 0
+queue_t ipc_queue;
 
 void sendMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
@@ -84,57 +69,80 @@ void setPower(uint8_t power)
   digitalWrite(PIN_ESC_POWER, power & 0b100);
 }
 
-
-void updateEmergency() {
-  uint8_t current_emergency = status_message.emergency_bitmask&1;
+void updateEmergency()
+{
+  uint8_t current_emergency = status_message.emergency_bitmask & 1;
   uint8_t pin_states = gpio_get_all() & (0b11001100);
-  uint8_t emergency_state = ((pin_states>>2)&0b11) | ((pin_states >>4)&0b1100);
-  emergency_state <<=1;
-  if(emergency_state || emergency_latch) {
+  uint8_t emergency_state = ((pin_states >> 2) & 0b11) | ((pin_states >> 4) & 0b1100);
+  emergency_state <<= 1;
+  if (emergency_state || emergency_latch)
+  {
     emergency_latch |= 1;
     emergency_state |= 1;
   }
   status_message.emergency_bitmask = emergency_state;
-  if(current_emergency != (emergency_state&1)) {
+  if (current_emergency != (emergency_state & 1))
+  {
     sendMessage(&status_message, sizeof(struct ll_status));
   }
 }
 
-void queryNextMux()
+void setup1()
 {
-  mux_address = (mux_address + 1) & 0b111;
-  gpio_put_masked(0b111 << 13, mux_address << 13);
-  delay(1);
-  bool state = gpio_get(PIN_MUX_IN);
-  switch (mux_address)
+  // Core
+  digitalWrite(LED_BUILTIN, HIGH);
+}
+
+void loop1()
+{
+  // Loop through the mux and query actions. Store the result in the multicore fifo
+  for (uint8_t mux_address = 0; mux_address < 7; mux_address++)
   {
-  case 5:
-    if (state)
+    gpio_put_masked(0b111 << 13, mux_address << 13);
+    delay(1);
+    bool state = gpio_get(PIN_MUX_IN);
+    switch (mux_address)
     {
-      status_message.status_bitmask |= 0b00010000;
+    case 5:
+      mutex_enter_blocking(&mtx_status_message);
+
+      if (state)
+      {
+        status_message.status_bitmask |= 0b00010000;
+      }
+      else
+      {
+        status_message.status_bitmask &= 0b11101111;
+      }
+      mutex_exit(&mtx_status_message);
+
+      break;
+    case 6:
+      mutex_enter_blocking(&mtx_status_message);
+      if (state)
+      {
+        status_message.status_bitmask |= 0b00100000;
+      }
+      else
+      {
+        status_message.status_bitmask &= 0b11011111;
+      }
+      mutex_exit(&mtx_status_message);
+      break;
+    default:
+      break;
     }
-    else
-    {
-      status_message.status_bitmask &= 0b11101111;
-    }
-    break;
-  case 6:
-    if (state)
-    {
-      status_message.status_bitmask |= 0b00100000;
-    }
-    else
-    {
-      status_message.status_bitmask &= 0b11011111;
-    }
-    break;
-  default:
-    break;
   }
+
+  delay(100);
 }
 
 void setup()
 {
+  // We do hardware init in this core, so that we don't get invalid states.
+  // Therefore, we pause the other core until setup() was a success
+  rp2040.idleOtherCore();
+
   emergency_latch = false;
   // Initialize messages
   imu_message = {0};
@@ -156,8 +164,6 @@ void setup()
   pinMode(PIN_EMERGENCY_2, INPUT);
   pinMode(PIN_EMERGENCY_3, INPUT);
   pinMode(PIN_EMERGENCY_4, INPUT);
-  
-
 
   analogReadResolution(16);
 
@@ -189,6 +195,7 @@ void setup()
 #ifdef USB_DEBUG
       DEBUG_SERIAL.println("Error: Imu init failed");
 #endif
+      // We don't need to lock the mutex here, since core 1 is sleeping anyways
       sendMessage(&status_message, sizeof(struct ll_status));
       delay(1000);
     }
@@ -205,9 +212,9 @@ void setup()
    * /IMU INITIALIZATION
    */
 
-
-  digitalWrite(LED_BUILTIN, HIGH);
   status_message.status_bitmask |= 1;
+
+  rp2040.resumeOtherCore();
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size)
@@ -216,7 +223,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size)
 
 void loop()
 {
-      updateEmergency();
+  updateEmergency();
 
   unsigned long now = millis();
   if (now - last_imu_millis > 20)
@@ -261,18 +268,20 @@ void loop()
     DEBUG_SERIAL.print(IMU.getMagZ_uT(), 6);
     DEBUG_SERIAL.print("\t");
     DEBUG_SERIAL.println(IMU.getTemperature_C(), 6);
-    #endif
+#endif
 #endif
   }
 
   if (now - last_status_update_millis > 100)
   {
-    status_message.v_system = (float)analogRead(PIN_ANALOG_VOLTAGE)*(3.3f/65536.0f)*((VIN_R1+VIN_R2)/VIN_R2);
-    status_message.v_charge = (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE)*(3.3f/65536.0f)*((VIN_R1+VIN_R2)/VIN_R2);
-    status_message.charging_current = (float)analogRead(PIN_ANALOG_CHARGE_CURRENT)*(3.3f/65536.0f)/(CURRENT_SENSE_GAIN*R_SHUNT);
+    status_message.v_system = (float)analogRead(PIN_ANALOG_VOLTAGE) * (3.3f / 65536.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
+    status_message.v_charge = (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 65536.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
+    status_message.charging_current = (float)analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 65536.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
 
-
+    mutex_enter_blocking(&mtx_status_message);
     sendMessage(&status_message, sizeof(struct ll_status));
+    mutex_exit(&mtx_status_message);
+
     last_status_update_millis = now;
 #ifdef USB_DEBUG
     DEBUG_SERIAL.print("status: 0b");
@@ -293,12 +302,6 @@ void loop()
     DEBUG_SERIAL.println();
 #endif
   }
-
-  if (now - last_mux_change > 10)
-  {
-    queryNextMux();
-    last_mux_change = now;
-  }
 }
 
 void sendMessage(void *message, size_t size)
@@ -311,12 +314,4 @@ void sendMessage(void *message, size_t size)
   // calculate the CRC
   *((uint8_t *)message + size - 2) = CRC16.ccitt((uint8_t *)message, size - 2);
   packetSerial.send((uint8_t *)message, size);
-}
-
-void muxThread()
-{
-  gpio_put(LED_BUILTIN, HIGH);
-  sleep_ms(100);
-  gpio_put(LED_BUILTIN, LOW);
-  sleep_ms(100);
 }

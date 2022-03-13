@@ -71,6 +71,9 @@ struct ll_imu {
 #pragma pack(pop)
 
 
-
+struct ipc_mux_data {
+    float uss_ranges_m[5];
+    uint8_t rain_and_sound;
+};
 
 #endif
