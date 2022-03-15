@@ -45,7 +45,13 @@ Here is a quick overview of this project's goals:
 
 
 
-# Hardware
+# Current State
+
+It's not really *that easy* to upgrade the robot, since unfortunately the mainboard used by those bots is proprietary. Therefore the first step is to create a mainboard which then can be used to deploy some better software later on. This is what we are currently working on.
+
+
+
+## Hardware
 
 The first mainboard PCB is almost done. It currently looks like this:
 
@@ -53,9 +59,39 @@ The first mainboard PCB is almost done. It currently looks like this:
 
 
 
+### Hardware To-Do:
+
+- [ ] Low Level Firmware Implementation
+  - [x] Voltage / Current Sense
+  - [x] Emergency Stop Button tracking
+  - [x] IMU Communication
+  - [x] Rain Sensor
+  - [x] Charging State
+  - [ ] Sound Module
+  - [ ] UI Board Communication
+  - [ ] Low Power Mode
+- [ ] ROS Hardware Interface
+- [ ] Hardware Redesign (bugs / enhancements):
+  - [ ] Digial Emergency Stop Signal from Pico to xESC
+  - [ ] Sound Module Pinout needs to be adapted to DFPlayer
+  - [ ] XT60 Power Connector needs to be connected to main power instead of charging input
+
+
+
 # Software
 
+The basic software is basically done; Our prototype works as intended (but is not able to avoid obstacles yet).
+
 The software for the robot can be found in a separate repository: https://github.com/ClemensElflein/open_mower_ros
+
+### Software To-Do:
+
+- [x] Mowing State Machine (Docking / Mowing, ...)
+- [x] Path Planning
+- [ ] Obstacle Avoidance
+- [ ] App / Visualization
+
+
 
 
 
@@ -64,24 +100,6 @@ The software for the robot can be found in a separate repository: https://github
 The project is currently much more advanced than it might currently look on this page. The prototype below is able to mow our lawn without problems. **But the documentation is missing.**
 
 Therefore, at the current state, you can only wait until I have uploaded all code and documentation to this repository. **Star this repository in order to get updates!**
-
-
-
-## Challenges
-It's not really *that easy* to upgrade the robot, since unfortunately the mainboard used by those bots is proprietary. Therefore the first step is to create a mainboard which then can be used to deploy some better software later on. This is what we are currently working on.
-
-
-
-## Current State
-Currently, we are working on a mainboard which enables us to drive all actuators and read some sensor data from the bot:
-
-
-
-![Current State of the Robot](./img/robot_current_state.jpg)
-
-
-
-Yes it's messy and therefore not yet published in this repository. Don't worry, I am currently working on creating a cleaner, functional version of this board.
 
 
 
