@@ -22,6 +22,8 @@
 
 #define PACKET_ID_LL_STATUS 1
 #define PACKET_ID_LL_IMU 2
+#define PACKET_ID_LL_HEARTBEAT 0x42
+
 
 #pragma pack(push, 1)
 struct ll_status {
@@ -70,10 +72,21 @@ struct ll_imu {
 } __attribute__((packed));
 #pragma pack(pop)
 
+#pragma pack(push, 1)
+struct ll_heartbeat {
+    // Type of this message. Has to be PACKET_ID_LL_HEARTBEAT.
+    uint8_t type;
+    // True, if emergency should be engaged (e.g. navigation error, ...)
+    // False to not change the latch
+    uint8_t emergency_requested;
+    // True, if emergency condition should be reset
+    // False to not change the latch
+    uint8_t emergency_release_requested;
+    uint16_t crc;
+} __attribute__((packed));
+#pragma pack(pop)
 
-struct ipc_mux_data {
-    float uss_ranges_m[5];
-    uint8_t rain_and_sound;
-};
+
+
 
 #endif

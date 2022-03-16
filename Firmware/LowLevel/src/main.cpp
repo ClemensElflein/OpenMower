@@ -24,9 +24,10 @@
 #include "pins.h"
 
 // Define to stream debugging messages via USB
-#define USB_DEBUG
+// #define USB_DEBUG
 // #define DEBUG_IMU
 #define DEBUG_SERIAL Serial
+#define PACKET_SERIAL Serial
 
 /**
  * @brief Some hardware parameters
@@ -36,6 +37,9 @@
 #define R_SHUNT 0.033f
 #define CURRENT_SENSE_GAIN 100.0f
 
+// Emergency will be engaged, if no heartbeat was received in this time frame.
+#define HEARTBEAT_MILLIS 500
+
 PacketSerial packetSerial;
 FastCRC16 CRC16;
 
@@ -44,6 +48,7 @@ MPU9250 IMU(SPI, PIN_IMU_CS);
 size_t fifoSize;
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
+unsigned long last_heartbeat_millis = 0;
 
 // Predefined message buffers, so that we don't need to allocate new ones later.
 struct ll_imu imu_message = {0};
@@ -52,7 +57,7 @@ struct ll_status status_message = {0};
 // We can lock it during message transmission to prevent core1 to modify data in this time.
 auto_init_mutex(mtx_status_message);
 
-bool emergency_latch = false;
+bool emergency_latch = true;
 
 // the queue for passing data from core 1 to core 0
 queue_t ipc_queue;
@@ -71,6 +76,9 @@ void setPower(uint8_t power)
 
 void updateEmergency()
 {
+  if(millis() - last_heartbeat_millis > HEARTBEAT_MILLIS) {
+    emergency_latch = true;
+  }
   uint8_t current_emergency = status_message.emergency_bitmask & 1;
   uint8_t pin_states = gpio_get_all() & (0b11001100);
   uint8_t emergency_state = ((pin_states >> 2) & 0b11) | ((pin_states >> 4) & 0b1100);
@@ -174,8 +182,8 @@ void setup()
   DEBUG_SERIAL.begin(115200);
 #endif
 
-  Serial1.begin(500000);
-  packetSerial.setStream(&Serial1);
+  PACKET_SERIAL.begin(500000);
+  packetSerial.setStream(&PACKET_SERIAL);
   packetSerial.setPacketHandler(&onPacketReceived);
 
   /*
@@ -219,10 +227,34 @@ void setup()
 
 void onPacketReceived(const uint8_t *buffer, size_t size)
 {
+  // we currently only support heartbeats
+  if (size != sizeof(struct ll_heartbeat))
+    return;
+  if (buffer[0] != PACKET_ID_LL_HEARTBEAT)
+    return;
+
+  // check the CRC
+  uint16_t crc = CRC16.ccitt(buffer, size - 2);
+
+  if (buffer[size - 1] != ((crc >> 8) & 0xFF) ||
+          buffer[size - 2] != (crc & 0xFF))
+    return;
+  
+  // CRC and packet is OK, reset watchdog
+  last_heartbeat_millis = millis();
+  struct ll_heartbeat* heartbeat = (struct ll_heartbeat*)buffer;
+  if(heartbeat->emergency_release_requested) {
+    emergency_latch = false;
+  }
+  // Check in this order, so we can set it again in the same packet if required.
+  if(heartbeat->emergency_requested) {
+    emergency_latch = true;
+  }
 }
 
 void loop()
 {
+  packetSerial.update();
   updateEmergency();
 
   unsigned long now = millis();
@@ -311,7 +343,12 @@ void sendMessage(void *message, size_t size)
   {
     return;
   }
+  uint8_t *data_pointer = (uint8_t *)message;
+  uint16_t *crc_pointer = (uint16_t *)(data_pointer + (size - 3));
   // calculate the CRC
-  *((uint8_t *)message + size - 2) = CRC16.ccitt((uint8_t *)message, size - 2);
+  uint16_t crc = CRC16.ccitt((uint8_t *)message, size - 2);
+  data_pointer[size - 1] = (crc >> 8) & 0xFF;
+  data_pointer[size - 2] = crc & 0xFF;
+
   packetSerial.send((uint8_t *)message, size);
 }
