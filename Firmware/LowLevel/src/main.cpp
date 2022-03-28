@@ -27,7 +27,7 @@
 // #define USB_DEBUG
 // #define DEBUG_IMU
 #define DEBUG_SERIAL Serial
-#define PACKET_SERIAL Serial
+#define PACKET_SERIAL Serial1
 
 /**
  * @brief Some hardware parameters
@@ -59,8 +59,6 @@ auto_init_mutex(mtx_status_message);
 
 bool emergency_latch = true;
 
-// the queue for passing data from core 1 to core 0
-queue_t ipc_queue;
 
 void sendMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
@@ -81,7 +79,7 @@ void updateEmergency()
   }
   uint8_t current_emergency = status_message.emergency_bitmask & 1;
   uint8_t pin_states = gpio_get_all() & (0b11001100);
-  uint8_t emergency_state = ((pin_states >> 2) & 0b11) | ((pin_states >> 4) & 0b1100);
+  uint8_t emergency_state = ((~pin_states >> 2) & 0b11) | ((~pin_states >> 4) & 0b1100);
   emergency_state <<= 1;
   if (emergency_state || emergency_latch)
   {
@@ -182,7 +180,7 @@ void setup()
   DEBUG_SERIAL.begin(115200);
 #endif
 
-  PACKET_SERIAL.begin(500000);
+  PACKET_SERIAL.begin(115200);
   packetSerial.setStream(&PACKET_SERIAL);
   packetSerial.setPacketHandler(&onPacketReceived);
 
