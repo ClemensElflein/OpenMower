@@ -6,7 +6,7 @@
 
 **IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME!**
 
-**This repo is still WIP. The robot works though, I just need to make hardware and software pretty, so just :star: star the repository if you want updates!**
+**This repo is still WIP. The robot works though, I just need to make hardware and software pretty, so just :star: star and 👀 watch the repository if you want updates!**
 
 
 
