@@ -26,7 +26,7 @@ Currently, I am doing it in the following way:
 
 ## Example
 
-![example_dataset](/home/clemens/Dev/OpenMower/utils/mag_calibration/example_dataset.png)
+![example_dataset](./example_dataset.png)
 
 
 
