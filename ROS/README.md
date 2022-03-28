@@ -13,6 +13,18 @@ Currently, the following repositories are included:
 - **xesc_ros**: The ROS interface for the xESC motor controllers.
 
 
+# Fetch Dependencies 
+Before building, you need to fetch this project's dependencies. The best way to do this is by using rosdep:
+
+```bash
+sudo apt install python3-rosdep
+sudo rosdep init
+rosdep update
+
+# run this in the ROS directory
+rosdep install --from-paths src --ignore-src
+```
+
 
 # How to Build
 
