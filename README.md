@@ -1,14 +1,14 @@
 # OpenMower
 
-![OpenMower the DIY smart robot mower](./img/open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/RNYBpwBkZ3)
+![OpenMower the DIY smart robot mower](./img/open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/jE7QNaSxW7)
 
-## Join the Discord server for OpenMower discussion: ![HERE](https://discord.gg/RNYBpwBkZ3)
+## Join the Discord server for OpenMower discussion: ![HERE](https://discord.gg/jE7QNaSxW7)
 
 
 # About the Project
 **:warning: DISCLAIMER:**
 
-**IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME! ASK IN ![DISCORD](https://discord.gg/RNYBpwBkZ3), IF YOU HAVE ANY QUESTIONS!**
+**IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME! ASK IN ![DISCORD](https://discord.gg/jE7QNaSxW7), IF YOU HAVE ANY QUESTIONS!**
 
 
 ## Project Intro Video
