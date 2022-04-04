@@ -2,16 +2,21 @@
 
 ![OpenMower the DIY smart robot mower](./img/open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/RNYBpwBkZ3)
 
-
 ## Join the Discord server for OpenMower discussion: ![HERE](https://discord.gg/RNYBpwBkZ3)
 
 
 # About the Project
 **:warning: DISCLAIMER:**
 
-**IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME!**
+**IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME! ASK IN ![DISCORD](https://discord.gg/RNYBpwBkZ3), IF YOU HAVE ANY QUESTIONS!**
 
-**This repo is still WIP. The robot works though, I just need to make hardware and software pretty, so just :star: star and 👀 watch the repository if you want updates!**
+
+## Project Intro Video
+
+If you want to see a quick overview, you can check out this video:
+
+
+<a href="https://www.youtube.com/watch?v=BSF04i3zNGw" target="_blank"><img src="https://user-images.githubusercontent.com/2864655/161540069-f4263fa7-a47b-49d2-a7bc-d1cdc3a47704.jpg" /></a>
 
 
 
