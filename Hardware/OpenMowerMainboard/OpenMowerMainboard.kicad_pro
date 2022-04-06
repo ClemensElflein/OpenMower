@@ -45,7 +45,7 @@
         "silk_text_upright": false,
         "zones": {
           "45_degree_only": false,
-          "min_clearance": 0.508
+          "min_clearance": 0.19999999999999998
         }
       },
       "diff_pair_dimensions": [
@@ -106,7 +106,7 @@
         "allow_blind_buried_vias": false,
         "allow_microvias": false,
         "max_error": 0.005,
-        "min_clearance": 0.19999999999999998,
+        "min_clearance": 0.15,
         "min_copper_edge_clearance": 0.19999999999999998,
         "min_hole_clearance": 0.26,
         "min_hole_to_hole": 0.5,
@@ -114,13 +114,14 @@
         "min_microvia_drill": 0.09999999999999999,
         "min_silk_clearance": 0.0,
         "min_through_hole_diameter": 0.3,
-        "min_track_width": 0.19999999999999998,
+        "min_track_width": 0.15,
         "min_via_annular_width": 0.15,
         "min_via_diameter": 0.6,
         "use_height_for_length_calcs": true
       },
       "track_widths": [
         0.0,
+        0.15,
         0.2,
         0.3,
         0.5,
@@ -133,6 +134,10 @@
         {
           "diameter": 0.0,
           "drill": 0.0
+        },
+        {
+          "diameter": 0.6,
+          "drill": 0.3
         }
       ],
       "zones_allow_external_fillets": true,
@@ -417,7 +422,7 @@
       },
       {
         "bus_width": 12.0,
-        "clearance": 0.3,
+        "clearance": 0.2,
         "diff_pair_gap": 0.5,
         "diff_pair_via_gap": 0.25,
         "diff_pair_width": 0.5,
@@ -500,18 +505,6 @@
       "RobotConnectors"
     ],
     [
-      "56dc578a-7041-4626-b981-fad93140fa9c",
-      "MOSFET_SWITCH"
-    ],
-    [
-      "662cd261-1a8e-4e92-8d87-32fea74fac29",
-      "MOSFET_SWITCH1"
-    ],
-    [
-      "223c535a-815e-41c0-979f-1bf072052aae",
-      "MOSFET_SWITCH2"
-    ],
-    [
       "a66eb396-0410-43f5-a37d-ef2abb980a3a",
       "ESCs"
     ],
@@ -530,6 +523,14 @@
     [
       "c4934db8-1638-4ac4-bd06-84d03b3fc106",
       "pico"
+    ],
+    [
+      "ea926745-863d-461e-9df3-dbf32112727b",
+      "dcdc"
+    ],
+    [
+      "11fcb06f-d505-4900-aa16-1dc30de16d3d",
+      "MosfetSwitch"
     ],
     [
       "989a400d-9ce2-403e-a19e-ad0a758fe27c",
