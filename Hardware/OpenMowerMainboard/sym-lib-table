@@ -1,6 +1,6 @@
 (sym_lib_table
   (lib (name "arduino")(type "Legacy")(uri "${KIPRJMOD}/arduino.lib")(options "")(descr ""))
-  (lib (name "MyModules")(type "Legacy")(uri "${KIPRJMOD}/MyModules.lib")(options "")(descr ""))
+  (lib (name "MyModules")(type "KiCad")(uri "${KIPRJMOD}/MyModules.kicad_sym")(options "")(descr ""))
   (lib (name "MCU_RaspberryPi_and_Boards")(type "Legacy")(uri "${KIPRJMOD}/RP-Pico Libraries/MCU_RaspberryPi_and_Boards.lib")(options "")(descr ""))
   (lib (name "OpenMowerMainboardLib")(type "KiCad")(uri "${KIPRJMOD}/OpenMowerMainboardLib.kicad_sym")(options "")(descr ""))
   (lib (name "xESC2")(type "KiCad")(uri "${KIPRJMOD}/xESC2.kicad_sym")(options "")(descr ""))
