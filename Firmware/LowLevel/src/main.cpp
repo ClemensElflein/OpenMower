@@ -79,7 +79,7 @@ void updateEmergency()
   }
   uint8_t current_emergency = status_message.emergency_bitmask & 1;
   uint8_t pin_states = gpio_get_all() & (0b11001100);
-  uint8_t emergency_state = ((~pin_states >> 2) & 0b11) | ((~pin_states >> 4) & 0b1100);
+  uint8_t emergency_state = ((~pin_states >> 2) & 0b11);// TODO: reactivate | ((~pin_states >> 4) & 0b1100);
   emergency_state <<= 1;
   if (emergency_state || emergency_latch)
   {
