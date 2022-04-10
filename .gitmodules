@@ -1,6 +1,3 @@
-[submodule "Hardware/OpenMower3d"]
-	path = Hardware/OpenMower3d
-	url = https://github.com/ClemensElflein/OpenMower3d.git
 [submodule "ROS/src/open_mower_ros"]
 	path = ROS/src/open_mower_ros
 	url = https://github.com/ClemensElflein/open_mower_ros.git

@@ -482,7 +482,7 @@
     (uuid e2d7be9d-42f6-46e0-997d-a2546cb1c74c)
   )
 
-  (symbol (lib_id "Device:R") (at 107.95 97.79 0)
+  (symbol (lib_id "Device:R") (at 107.95 97.79 0) (unit 1)
     (in_bom yes) (on_board yes) (fields_autoplaced)
     (uuid 2ff759bd-7b8d-487f-bbe8-11169cee3781)
     (property "Reference" "R26" (id 0) (at 110.49 96.5199 0)
@@ -501,7 +501,7 @@
     (pin "2" (uuid 74e17752-c55d-41b0-8cab-69832d83d3ef))
   )
 
-  (symbol (lib_id "Device:R") (at 114.3 90.17 90)
+  (symbol (lib_id "Device:R") (at 114.3 90.17 90) (unit 1)
     (in_bom yes) (on_board yes) (fields_autoplaced)
     (uuid 53e95244-bb7f-4cfe-b242-08f8e7c08c9e)
     (property "Reference" "R27" (id 0) (at 114.3 83.82 90))
@@ -516,10 +516,10 @@
     (pin "2" (uuid 98b78fdb-608b-4db7-a3ce-1a416d1d2ad0))
   )
 
-  (symbol (lib_id "power:GND") (at 118.11 111.76 0)
+  (symbol (lib_id "power:GND") (at 118.11 111.76 0) (unit 1)
     (in_bom yes) (on_board yes)
     (uuid 70b4525d-65d6-4cdd-aae8-1bfccabd301e)
-    (property "Reference" "#PWR0125" (id 0) (at 118.11 118.11 0)
+    (property "Reference" "#PWR0171" (id 0) (at 118.11 118.11 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Value" "GND" (id 1) (at 118.237 116.1542 0))
@@ -532,7 +532,7 @@
     (pin "1" (uuid 516bc628-77ed-46e9-af36-999247095ceb))
   )
 
-  (symbol (lib_id "Device:Q_PMOS_GDS") (at 135.89 80.01 0)
+  (symbol (lib_id "Device:Q_PMOS_GDS") (at 135.89 80.01 0) (unit 1)
     (in_bom yes) (on_board yes) (fields_autoplaced)
     (uuid 848929cb-b94b-4114-9f13-4f960dc56fa5)
     (property "Reference" "Q6" (id 0) (at 142.24 78.7399 0)
@@ -552,7 +552,7 @@
     (pin "3" (uuid a23153fd-7d4f-4407-8fa9-5a408f98809f))
   )
 
-  (symbol (lib_id "Transistor_FET:BSS138") (at 125.73 90.17 0)
+  (symbol (lib_id "Transistor_FET:BSS138") (at 125.73 90.17 0) (unit 1)
     (in_bom yes) (on_board yes) (fields_autoplaced)
     (uuid 852dfb1b-e26e-48aa-aab5-6f2d32dacc1d)
     (property "Reference" "Q5" (id 0) (at 132.08 88.8999 0)
@@ -572,7 +572,7 @@
     (pin "3" (uuid 1fa43273-84a4-4b3b-9128-828312ed05ae))
   )
 
-  (symbol (lib_id "Device:R") (at 128.27 71.12 0)
+  (symbol (lib_id "Device:R") (at 128.27 71.12 0) (unit 1)
     (in_bom yes) (on_board yes) (fields_autoplaced)
     (uuid dec7ce14-d292-49ad-a5e5-ce2cfb35d6cc)
     (property "Reference" "R28" (id 0) (at 130.81 69.8499 0)

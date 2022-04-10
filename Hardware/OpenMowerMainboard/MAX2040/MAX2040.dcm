@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP MAX20405AFOF_VY+T
+D 36V 4A/5A/6A Sync Low Iq Buck Converter in P90
+K
+F http://www.maximintegrated.com/MAX20405
+$ENDCMP
+#
+#End Doc Library

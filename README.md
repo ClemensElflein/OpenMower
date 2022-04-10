@@ -1,12 +1,22 @@
 # OpenMower
 
-![OpenMower the DIY smart robot mower](./img/open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+![OpenMower the DIY smart robot mower](./img/open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/jE7QNaSxW7)
 
+## Join the Discord server for OpenMower discussion: [HERE](https://discord.gg/jE7QNaSxW7)
+
+
+# About the Project
 **:warning: DISCLAIMER:**
 
-**IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME!**
+**IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME! ASK IN [DISCORD](https://discord.gg/jE7QNaSxW7), IF YOU HAVE ANY QUESTIONS!**
 
-**This repo is still WIP. The robot works though, I just need to make hardware and software pretty, so just :star: star and 👀 watch the repository if you want updates!**
+
+## Project Intro Video
+
+If you want to see a quick overview, you can check out this video:
+
+
+<a href="https://www.youtube.com/watch?v=BSF04i3zNGw" target="_blank"><img src="https://user-images.githubusercontent.com/2864655/161540069-f4263fa7-a47b-49d2-a7bc-d1cdc3a47704.jpg" /></a>
 
 
 
@@ -47,7 +57,9 @@ Here is a quick overview of this project's goals:
 
 # Current State
 
-It's not really *that easy* to upgrade the robot, since unfortunately the mainboard used by those bots is proprietary. Therefore the first step is to create a mainboard which then can be used to deploy some better software later on. This is what we are currently working on.
+The basic mowing function finally works! As you can see in the video, map teaching and mowing work as expected. It even returns to the docking station automatically as soon as the battery gets low and continues once it's recharged.
+
+At this point I can recommend that brave tech savvy users can build one for themselves! Since it's quite an expensive and complex project, please don't be shy and ask if you have any questions. I'm glad to help 🙂
 
 
 
@@ -70,7 +82,7 @@ The first mainboard PCB is almost done. It currently looks like this:
   - [ ] Sound Module
   - [ ] UI Board Communication
   - [ ] Low Power Mode
-- [ ] ROS Hardware Interface
+- [X] ROS Hardware Interface
 - [ ] Hardware Redesign (bugs / enhancements):
   - [ ] Digial Emergency Stop Signal from Pico to xESC
   - [ ] Sound Module Pinout needs to be adapted to DFPlayer
@@ -97,11 +109,9 @@ The software for the robot can be found in a separate repository: https://github
 
 # How You Can Help
 
-The project is currently much more advanced than it might currently look on this page. The prototype below is able to mow our lawn without problems. **But the documentation is missing.**
+You can help by starting an OpenMower build of your own. This helps to validate the concept and helps to create useful documentation for new users.
 
-Therefore, at the current state, you can only wait until I have uploaded all code and documentation to this repository. **Star this repository in order to get updates!**
-
-
+Additionally, you can help by starring 🌟 and watching 👀 this repository, since it will help with visibility. You can also subscribe to my [YouTube channel](https://youtube.com/c/ClemensElflein).
 
 
 
@@ -125,7 +135,13 @@ Therefore it might be a good idea to start a list of compatible devices. So if y
 
 This page only contains the basic overview of the project. To follow my current development state, check out my [Blog](https://x-tech.online/).
 
+# Patents, Local Laws, Liability
+Before building a robot based on the designs published here, please make sure that you are allowed to do so in your specific regions.
+There may be patents and / or laws prohibiting you of doing so.
 
+The code/schematics/PCB files are distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+This basically means: I'm just documenting a project of mine here for free and I don't have the time and resources to check that devices built using this information will be safe to use, legal to use or even work as intended. You will need technical know-how to use this project and I'm not liable for any damages your devices do to anyone or anything.
 
 # License
 
