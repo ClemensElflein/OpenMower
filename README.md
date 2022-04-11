@@ -45,7 +45,7 @@ Here is a quick overview of this project's goals:
 
 :heavy_check_mark: **Low Cost:** It should be cheaper than a mid range off-the-shelf product
 
-:heavy_check_mark: **Open Source:** I want to share knowledge and enable others to build an OpenMower as well.
+:heavy_check_mark: **Open:** I want to share knowledge and enable others to build an OpenMower as well.
 
 :heavy_check_mark: **Nice to Look At:** You should not be ashamed to have an OpenMower mowing your lawn.
 
