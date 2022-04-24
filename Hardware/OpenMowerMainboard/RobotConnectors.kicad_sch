@@ -3568,7 +3568,7 @@
     (in_bom yes) (on_board yes) (fields_autoplaced)
     (uuid f11b3e3a-7b08-49d8-b4b1-92030ffe70c2)
     (property "Reference" "R51" (id 0) (at 119.38 21.59 90))
-    (property "Value" "R" (id 1) (at 119.38 24.13 90))
+    (property "Value" "0.003R" (id 1) (at 119.38 24.13 90))
     (property "Footprint" "Resistor_SMD:R_2512_6332Metric_Pad1.40x3.35mm_HandSolder" (id 2) (at 119.38 29.718 90)
       (effects (font (size 1.27 1.27)) hide)
     )
