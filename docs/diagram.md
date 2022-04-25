@@ -17,7 +17,7 @@ This diagram should help you to get an overview how to build this project. Note 
       id1-->id3[Get a naked Mainboard PCB];
       
       id1-->id4[Get 3 naked xESC2 mini PCBs];
-      id1-->id11[Gett all Parts from Github xESC2 mini BOM];
+      id1-->id11[Get all Parts from Github xESC2 mini BOM];
       id1-->id5[Get 2 ArduSimple RTK GPS board];
       id1-->id6[Get 2 Raspberry Pi 4];
       id1-->id7[Get a Raspberry Pico];
@@ -39,7 +39,7 @@ This diagram should help you to get an overview how to build this project. Note 
       id17-->id16;
       id18[Flash Mainboard]-->id16;
      
-      id19[Install ROS on Raspberry]-->id20[install OpenMower ROS package];
+      id19[Install ROS on Raspberry]-->id20[Install OpenMower ROS package];
       id21-->id19;
       id20-->id10;
       
