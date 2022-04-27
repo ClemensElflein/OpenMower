@@ -14,12 +14,12 @@
 // SOFTWARE.
 //
 //
-
+#include <NeoPixelConnect.h>
 #include <Arduino.h>
 #include <MPU9250.h>
 #include <FastCRC.h>
 #include <PacketSerial.h>
-
+#include <DFPlayerMini_Fast.h>
 #include "datatypes.h"
 #include "pins.h"
 
@@ -29,16 +29,21 @@
 #define DEBUG_SERIAL Serial
 #define PACKET_SERIAL Serial1
 
+// Millis after charging is retried
+#define CHARGING_RETRY_MILLIS 10000
+
 /**
  * @brief Some hardware parameters
  */
 #define VIN_R1 10000.0f
 #define VIN_R2 1000.0f
-#define R_SHUNT 0.033f
+#define R_SHUNT 0.003f
 #define CURRENT_SENSE_GAIN 100.0f
 
 // Emergency will be engaged, if no heartbeat was received in this time frame.
 #define HEARTBEAT_MILLIS 500
+
+NeoPixelConnect p(PIN_NEOPIXEL, 1);
 
 PacketSerial packetSerial;
 FastCRC16 CRC16;
@@ -58,28 +63,33 @@ struct ll_status status_message = {0};
 auto_init_mutex(mtx_status_message);
 
 bool emergency_latch = true;
+bool charging_allowed = false;
+unsigned long charging_disabled_time = 0;
 
+bool sound_available = false;
+SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX);
+DFPlayerMini_Fast myMP3;
 
 void sendMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
 
-void setPower(uint8_t power)
+void setRaspiPower(bool power)
 {
   // Update status bits in the status message
-  status_message.status_bitmask = (status_message.status_bitmask & 0b11110001) | ((power & 0b111) << 1);
-  digitalWrite(PIN_RASPI_POWER, power & 0b1);
-  digitalWrite(PIN_GPS_POWER, power & 0b10);
-  digitalWrite(PIN_ESC_POWER, power & 0b100);
+  status_message.status_bitmask = (status_message.status_bitmask & 0b11111101) | ((power & 0b1) << 1);
+  digitalWrite(PIN_RASPI_POWER, power);
 }
 
 void updateEmergency()
 {
-  if(millis() - last_heartbeat_millis > HEARTBEAT_MILLIS) {
+  if (millis() - last_heartbeat_millis > HEARTBEAT_MILLIS)
+  {
     emergency_latch = true;
   }
   uint8_t current_emergency = status_message.emergency_bitmask & 1;
   uint8_t pin_states = gpio_get_all() & (0b11001100);
-  uint8_t emergency_state = ((~pin_states >> 2) & 0b11);// TODO: reactivate | ((~pin_states >> 4) & 0b1100);
+  uint8_t emergency_state = ((~pin_states >> 2) & 0b11); // TODO: reactivate | ((~pin_states >> 4) & 0b1100);
+
   emergency_state <<= 1;
   if (emergency_state || emergency_latch)
   {
@@ -107,6 +117,7 @@ void loop1()
     gpio_put_masked(0b111 << 13, mux_address << 13);
     delay(1);
     bool state = gpio_get(PIN_MUX_IN);
+
     switch (mux_address)
     {
     case 5:
@@ -145,6 +156,7 @@ void loop1()
 
 void setup()
 {
+  p.neoPixelSetValue(0, 255, 0, 0, true);
   // We do hardware init in this core, so that we don't get invalid states.
   // Therefore, we pause the other core until setup() was a success
   rp2040.idleOtherCore();
@@ -158,9 +170,17 @@ void setup()
 
   // Setup pins
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(PIN_GPS_POWER, OUTPUT);
-  pinMode(PIN_ESC_POWER, OUTPUT);
-  pinMode(PIN_RASPI_POWER, OUTPUT);
+  pinMode(PIN_ENABLE_CHARGE, OUTPUT);
+  digitalWrite(PIN_ENABLE_CHARGE, charging_allowed);
+
+  gpio_init(PIN_RASPI_POWER);
+  gpio_put(PIN_RASPI_POWER, true);
+  gpio_set_dir(PIN_RASPI_POWER, true);
+  gpio_put(PIN_RASPI_POWER, true);
+
+  // Enable raspi power
+  setRaspiPower(true);
+
   pinMode(PIN_MUX_OUT, OUTPUT);
   pinMode(PIN_MUX_ADDRESS_0, OUTPUT);
   pinMode(PIN_MUX_ADDRESS_1, OUTPUT);
@@ -171,10 +191,7 @@ void setup()
   pinMode(PIN_EMERGENCY_3, INPUT);
   pinMode(PIN_EMERGENCY_4, INPUT);
 
-  analogReadResolution(16);
-
-  // Enable all power
-  setPower(0b111);
+  analogReadResolution(12);
 
 #ifdef USB_DEBUG
   DEBUG_SERIAL.begin(115200);
@@ -220,6 +237,32 @@ void setup()
 
   status_message.status_bitmask |= 1;
 
+  // sound init
+  soundSerial.begin(9600);
+  while (soundSerial.available())
+    soundSerial.read();
+  sound_available = myMP3.begin(soundSerial);
+
+  if (sound_available)
+  {
+    p.neoPixelSetValue(0, 0, 0, 255, true);
+    p.neoPixelShow();
+    myMP3.volume(30);
+    myMP3.play(1);
+  }
+  else
+  {
+    for (uint8_t b = 0; b < 3; b++)
+    {
+      p.neoPixelSetValue(0, 0, 0, 0, true);
+      p.neoPixelShow();
+      delay(100);
+      p.neoPixelSetValue(0, 0, 0, 255, true);
+      p.neoPixelShow();
+      delay(100);
+    }
+  }
+
   rp2040.resumeOtherCore();
 }
 
@@ -235,18 +278,57 @@ void onPacketReceived(const uint8_t *buffer, size_t size)
   uint16_t crc = CRC16.ccitt(buffer, size - 2);
 
   if (buffer[size - 1] != ((crc >> 8) & 0xFF) ||
-          buffer[size - 2] != (crc & 0xFF))
+      buffer[size - 2] != (crc & 0xFF))
     return;
-  
+
   // CRC and packet is OK, reset watchdog
   last_heartbeat_millis = millis();
-  struct ll_heartbeat* heartbeat = (struct ll_heartbeat*)buffer;
-  if(heartbeat->emergency_release_requested) {
+  struct ll_heartbeat *heartbeat = (struct ll_heartbeat *)buffer;
+  if (heartbeat->emergency_release_requested)
+  {
     emergency_latch = false;
   }
   // Check in this order, so we can set it again in the same packet if required.
-  if(heartbeat->emergency_requested) {
+  if (heartbeat->emergency_requested)
+  {
     emergency_latch = true;
+  }
+}
+
+// returns true, if it's a good idea to charge the battery (current, voltages, ...)
+bool checkShouldCharge()
+{
+  return status_message.v_charge < 29.4 && status_message.charging_current < 1.5 && status_message.v_battery < 29.0;
+}
+
+void updateChargingEnabled()
+{
+  if (charging_allowed)
+  {
+    if (!checkShouldCharge())
+    {
+      digitalWrite(PIN_ENABLE_CHARGE, false);
+      charging_allowed = false;
+      charging_disabled_time = millis();
+    }
+  }
+  else
+  {
+    // enable charging after CHARGING_RETRY_MILLIS
+    if (millis() - charging_disabled_time > CHARGING_RETRY_MILLIS)
+    {
+      if (!checkShouldCharge())
+      {
+        digitalWrite(PIN_ENABLE_CHARGE, false);
+        charging_allowed = false;
+        charging_disabled_time = millis();
+      }
+      else
+      {
+        digitalWrite(PIN_ENABLE_CHARGE, true);
+        charging_allowed = true;
+      }
+    }
   }
 }
 
@@ -254,6 +336,7 @@ void loop()
 {
   packetSerial.update();
   updateEmergency();
+  updateChargingEnabled();
 
   unsigned long now = millis();
   if (now - last_imu_millis > 20)
@@ -304,9 +387,11 @@ void loop()
 
   if (now - last_status_update_millis > 100)
   {
-    status_message.v_system = (float)analogRead(PIN_ANALOG_VOLTAGE) * (3.3f / 65536.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
-    status_message.v_charge = (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 65536.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
-    status_message.charging_current = (float)analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 65536.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
+    status_message.v_battery = (float)analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
+    status_message.v_charge = (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
+    status_message.charging_current = (float)analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
+    status_message.status_bitmask = (status_message.status_bitmask & 0b11111011) | ((charging_allowed & 0b1) << 2);
+    status_message.status_bitmask = (status_message.status_bitmask & 0b11011111) | ((sound_available & 0b1) << 5);
 
     mutex_enter_blocking(&mtx_status_message);
     sendMessage(&status_message, sizeof(struct ll_status));
@@ -319,7 +404,7 @@ void loop()
     DEBUG_SERIAL.print("\t");
 
     DEBUG_SERIAL.print("vin: ");
-    DEBUG_SERIAL.print(status_message.v_system, 3);
+    DEBUG_SERIAL.print(status_message.v_battery, 3);
     DEBUG_SERIAL.print(" V\t");
     DEBUG_SERIAL.print("vcharge: ");
     DEBUG_SERIAL.print(status_message.v_charge, 3);

@@ -32,8 +32,8 @@ struct ll_status {
     // Bitmask for rain, sound, powers etc
     // Bit 0: Initialized (i.e. setup() was a success). If this is 0, all other bits are meaningless.
     // Bit 1: Raspberry Power
-    // Bit 2: GPS Power
-    // Bit 3: ESC Power
+    // Bit 2: Charging enabled
+    // Bit 3: don't care
     // Bit 4: Rain detected
     // Bit 5: Sound available
     // Bit 6: Sound busy
@@ -51,7 +51,7 @@ struct ll_status {
     // Charge voltage
     float v_charge;
     // System voltage
-    float v_system;
+    float v_battery;
     // Charge current
     float charging_current;
     uint16_t crc;
