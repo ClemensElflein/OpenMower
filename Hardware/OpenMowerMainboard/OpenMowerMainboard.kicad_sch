@@ -2477,9 +2477,6 @@
     (path "/ea926745-863d-461e-9df3-dbf32112727b/5017618a-3028-4818-b382-40d730510d49"
       (reference "C23") (unit 1) (value "DNP") (footprint "Capacitor_SMD:CP_Elec_10x12.5")
     )
-    (path "/ea926745-863d-461e-9df3-dbf32112727b/dd5e715f-b254-406b-b948-900d8781a20f"
-      (reference "C24") (unit 1) (value "680uF") (footprint "Capacitor_SMD:CP_Elec_10x12.5")
-    )
     (path "/c4934db8-1638-4ac4-bd06-84d03b3fc106/2884b602-ea4b-4182-a4ff-ddb6a99ed5db"
       (reference "C25") (unit 1) (value "100nF") (footprint "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder")
     )
