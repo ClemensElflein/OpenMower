@@ -470,7 +470,7 @@
       "intersheets_ref_suffix": "",
       "junction_size_choice": 3,
       "label_size_ratio": 0.25,
-      "pin_symbol_size": 0.0,
+      "pin_symbol_size": 25.0,
       "text_offset_ratio": 0.08
     },
     "legacy_lib_dir": "",
@@ -521,12 +521,12 @@
       "LevelShifter5"
     ],
     [
-      "c4934db8-1638-4ac4-bd06-84d03b3fc106",
-      "pico"
-    ],
-    [
       "ea926745-863d-461e-9df3-dbf32112727b",
       "dcdc"
+    ],
+    [
+      "c4934db8-1638-4ac4-bd06-84d03b3fc106",
+      "pico"
     ],
     [
       "11fcb06f-d505-4900-aa16-1dc30de16d3d",
