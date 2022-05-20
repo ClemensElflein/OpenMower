@@ -2858,6 +2858,9 @@
     (path "/00000000-0000-0000-0000-000061080954/4ed5a4cb-42d2-4cd1-a2f4-be7f70116c48"
       (reference "JP8") (unit 1) (value "SolderJumper_2_Bridged") (footprint "Jumper:SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm")
     )
+    (path "/c4934db8-1638-4ac4-bd06-84d03b3fc106/2e0a1b74-c101-4700-a813-5fe3514b579d"
+      (reference "JP9") (unit 1) (value "SolderJumper_2_Open") (footprint "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm")
+    )
     (path "/ea926745-863d-461e-9df3-dbf32112727b/37b9c720-0c02-41f5-8880-c0bb97743a0d"
       (reference "L1") (unit 1) (value "4.7uH 5A") (footprint "Inductor_SMD:L_Vishay_IHLP-2525")
     )
