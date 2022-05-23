@@ -22,12 +22,25 @@
 #include <DFPlayerMini_Fast.h>
 #include "datatypes.h"
 #include "pins.h"
+#include "bttnctl.h"
+
+#define IMU_CYCLETIME                20   // cycletime for refresh IMU data
+#define STATUS_CYCLETIME            100   // cycletime for refresh analog and digital Statusvalues
+#define UI_SET_LED_CYCLETIME       1000    // cycletime for refresh UI status LEDs
+
+
+
+#define LIMIT_COUNT_LIFT_EMERGENCY 30  // number of cycles get wheel lift lifted signal before set emergency
+
+
+
 
 // Define to stream debugging messages via USB
 // #define USB_DEBUG
 // #define DEBUG_IMU
-#define DEBUG_SERIAL Serial
-#define PACKET_SERIAL Serial1
+#define DEBUG_SERIAL    Serial
+#define PACKET_SERIAL   Serial1
+#define UI1_SERIAL      Serial2
 
 // Millis after charging is retried
 #define CHARGING_RETRY_MILLIS 10000
@@ -40,38 +53,63 @@
 #define R_SHUNT 0.003f
 #define CURRENT_SENSE_GAIN 100.0f
 
+
+#define BATT_ABS_MAX 28.7f
+#define BATT_ABS_Min 21.7f
+
+#define BATT_FULL  BATT_ABS_MAX - 0.3f 
+#define BATT_EMPTY BATT_ABS_Min + 0.3f
+
+
+
+
 // Emergency will be engaged, if no heartbeat was received in this time frame.
 #define HEARTBEAT_MILLIS 500
 
 NeoPixelConnect p(PIN_NEOPIXEL, 1);
 
-PacketSerial packetSerial;
+PacketSerial packetSerial;        // COBS communication PICO <> Raspi
+PacketSerial UISerial;            // COBS communication PICO UI-Board
 FastCRC16 CRC16;
 
 // MbedSPI IMU_SPI(16, 19, 18);
 MPU9250 IMU(SPI, PIN_IMU_CS);
 size_t fifoSize;
-unsigned long last_imu_millis = 0;
+
+unsigned long last_imu_millis           = 0;
 unsigned long last_status_update_millis = 0;
-unsigned long last_heartbeat_millis = 0;
+unsigned long last_heartbeat_millis     = 0;
+unsigned long last_UILED_millis         = 0;
+
+
+uint16_t count_emergency_cycle = 0;
 
 // Predefined message buffers, so that we don't need to allocate new ones later.
 struct ll_imu imu_message = {0};
 struct ll_status status_message = {0};
+struct mower_com buttonComStruct = {0};
 // A mutex which is used by core1 each time status_message is modified.
 // We can lock it during message transmission to prevent core1 to modify data in this time.
 auto_init_mutex(mtx_status_message);
 
 bool emergency_latch = true;
+
+
+
 bool charging_allowed = false;
 unsigned long charging_disabled_time = 0;
+
+
+
 
 bool sound_available = false;
 SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX);
 DFPlayerMini_Fast myMP3;
 
 void sendMessage(void *message, size_t size);
+void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
+void onUIPacketReceived(const uint8_t *buffer, size_t size);
 
 void setRaspiPower(bool power)
 {
@@ -82,26 +120,142 @@ void setRaspiPower(bool power)
 
 void updateEmergency()
 {
+
+  
   if (millis() - last_heartbeat_millis > HEARTBEAT_MILLIS)
   {
     emergency_latch = true;
   }
   uint8_t current_emergency = status_message.emergency_bitmask & 1;
-  uint8_t pin_states = gpio_get_all() & (0b11001100);
-  uint8_t emergency_state = ((~pin_states >> 2) & 0b11); // TODO: reactivate | ((~pin_states >> 4) & 0b1100);
+  uint8_t pin_states = gpio_get_all() & (0b11001100);    
+  uint8_t emergency_state = 0;
 
-  emergency_state <<= 1;
+  if (~pin_states & 0b11000000) count_emergency_cycle += 1;
+  else count_emergency_cycle = 0;
+
+  
+  // Emergency bit 4 (stop button) set?
+  if (~pin_states & 0b00000100) 
+  {
+    emergency_state  |= 0b10000;
+  }  
+  // Emergency bit 3 (stop button)set?
+  if ( pin_states & 0b00001000) 
+  {
+    emergency_state  |= 0b01000;
+  }
+
+
+
+  if (count_emergency_cycle > LIMIT_COUNT_LIFT_EMERGENCY)
+  {
+    // Emergency bit 2 (lift wheel 1)set?
+    if (~pin_states & 0b01000000) emergency_state |= 0b00100;
+    // Emergency bit 1 (lift wheel 2)set?
+    if (~pin_states & 0b10000000) emergency_state |= 0b00010;
+  }
+
   if (emergency_state || emergency_latch)
   {
     emergency_latch |= 1;
     emergency_state |= 1;
   }
+
   status_message.emergency_bitmask = emergency_state;
   if (current_emergency != (emergency_state & 1))
   {
     sendMessage(&status_message, sizeof(struct ll_status));
   }
+
+
+  // Show Info mower lifted or stop button pressed
+  if (status_message.emergency_bitmask   & 0b00110)  buttonComStruct.cmd2    =   LED_blink_fast;
+  else
+    if (status_message.emergency_bitmask & 0b01000)  buttonComStruct.cmd2    =   LED_blink_slow;
+     
+
+  buttonComStruct.type    =   Set_LED;
+  buttonComStruct.cmd1    =   MOWER_LIFTED;              
+  sendUIMessage(&buttonComStruct, sizeof(struct mower_com));
+
+
+
+
+
+
 }
+
+
+// deals with the pyhsical information an control the UI-LEDs und buzzer in depency of voltage und current values
+void manageUILEDS()
+{
+    mower_com buttonComStruct = {0};
+
+  //status_message.charging_current
+
+  // Schow Info Docking LED
+  if ((status_message.charging_current > 1.00f) && (status_message.v_charge > 20.0f))  buttonComStruct.cmd2    =   LED_blink_fast;
+  else
+    if ((status_message.charging_current <= 1.00f) && (status_message.charging_current >= 0.10f) && (status_message.v_charge > 20.0f))  buttonComStruct.cmd2    =   LED_blink_slow;
+      else
+        if ((status_message.charging_current < 0.15f) && (status_message.v_charge > 20.0f))  buttonComStruct.cmd2    =   LED_on;
+          else buttonComStruct.cmd2    =   LED_off;
+  buttonComStruct.type    =   Set_LED;
+  buttonComStruct.cmd1    =   CHARGING;              
+  sendUIMessage(&buttonComStruct, sizeof(struct mower_com));
+
+  // Show Info Battery state 
+  if (status_message.v_battery >= (BATT_FULL - 0.5f)) buttonComStruct.cmd2    =   LED_on;
+  else
+    if (status_message.v_battery <= (BATT_EMPTY + 1.5f))  buttonComStruct.cmd2    =   LED_blink_fast;
+      else  buttonComStruct.cmd2    =   LED_blink_slow;
+  buttonComStruct.type    =   Set_LED;
+  buttonComStruct.cmd1    =   BATTERY_LOW;              
+  sendUIMessage(&buttonComStruct, sizeof(struct mower_com));
+
+
+
+  
+
+
+
+
+  // calculate and show percent value akkupower but only, if mower is not docked
+  buttonComStruct.type    =   Set_LED;
+  buttonComStruct.cmd1    =   LED_BAR;              
+  if (status_message.v_charge < 10.0f) // activat only whne undocked
+  {
+      float delta = BATT_FULL - BATT_EMPTY;
+      float vo = status_message.v_battery - BATT_EMPTY;
+      u_int16_t akku_percent_value = vo / delta   * 100;
+      // use the second LED row as bargraph 
+      buttonComStruct.cmd2    =   LED_on;           
+      buttonComStruct.cmd3    =   akku_percent_value;   
+      sendUIMessage(&buttonComStruct, sizeof(struct mower_com));
+  }
+  else
+   {
+      buttonComStruct.cmd2    =   LED_off;           
+      buttonComStruct.cmd3    =   0;   
+      sendUIMessage(&buttonComStruct, sizeof(struct mower_com));
+  }
+
+
+  if (emergency_latch)
+  {
+    // led off
+    buttonComStruct.cmd2    =   LED_off;
+    buttonComStruct.type    =   Set_LED;
+    buttonComStruct.cmd1    =   MOWER_LIFTED;              
+    sendUIMessage(&buttonComStruct, sizeof(struct mower_com));
+  }
+
+
+
+}
+
+
+
 
 void setup1()
 {
@@ -162,6 +316,7 @@ void setup()
   rp2040.idleOtherCore();
 
   emergency_latch = false;
+  count_emergency_cycle = 0;
   // Initialize messages
   imu_message = {0};
   status_message = {0};
@@ -200,6 +355,15 @@ void setup()
   PACKET_SERIAL.begin(115200);
   packetSerial.setStream(&PACKET_SERIAL);
   packetSerial.setPacketHandler(&onPacketReceived);
+
+  UI1_SERIAL.setRX(5); // set hardware pin 
+  UI1_SERIAL.setTX(4);
+  UI1_SERIAL.begin(115200);
+  UISerial.setStream(&UI1_SERIAL);
+  UISerial.setPacketHandler(&onUIPacketReceived);
+
+
+
 
   /*
    * IMU INITIALIZATION
@@ -264,7 +428,47 @@ void setup()
   }
 
   rp2040.resumeOtherCore();
+
+  
+  // UIboard clear all LEDs
+  buttonComStruct.type    =   Set_LED;
+  buttonComStruct.cmd1    =   0;              
+  buttonComStruct.cmd2    =   LED_All_OFF;
+  sendUIMessage(&buttonComStruct, sizeof(struct mower_com));
+  
+
 }
+
+void onUIPacketReceived(const uint8_t *buffer, size_t size)
+{
+
+  u_int16_t *crc_pointer = (uint16_t *)(buffer + (size - 2));
+  u_int16_t readcrc = *crc_pointer;
+
+
+  // check structure size
+  if (size != sizeof(struct mower_com))
+    return;
+  if ((buffer[0] != Get_Version) && (buffer[0] != Get_Buttonnr)) 
+    return;
+
+  // check the CRC
+  uint16_t crc = CRC16.ccitt(buffer, size - 2);
+   
+  
+
+  if (buffer[size - 1] != ((crc >> 8) & 0xFF) ||
+      buffer[size - 2] != (crc & 0xFF))
+    return;
+
+  
+  struct mower_com *buttonboard = (struct mower_com *)buffer;
+
+  sendMessage(buttonboard, sizeof(struct mower_com));
+  
+  
+}
+
 
 void onPacketReceived(const uint8_t *buffer, size_t size)
 {
@@ -295,10 +499,13 @@ void onPacketReceived(const uint8_t *buffer, size_t size)
   }
 }
 
+
+
+
 // returns true, if it's a good idea to charge the battery (current, voltages, ...)
 bool checkShouldCharge()
 {
-  return status_message.v_charge < 29.4 && status_message.charging_current < 1.5 && status_message.v_battery < 29.0;
+  return status_message.v_charge < 30.0 && status_message.charging_current < 1.5 && status_message.v_battery < 29.0;
 }
 
 void updateChargingEnabled()
@@ -335,11 +542,12 @@ void updateChargingEnabled()
 void loop()
 {
   packetSerial.update();
-  updateEmergency();
+  UISerial.update();
+  
   updateChargingEnabled();
 
   unsigned long now = millis();
-  if (now - last_imu_millis > 20)
+  if (now - last_imu_millis > IMU_CYCLETIME)
   {
     IMU.readSensor();
     imu_message.type = PACKET_ID_LL_IMU;
@@ -385,8 +593,11 @@ void loop()
 #endif
   }
 
-  if (now - last_status_update_millis > 100)
+  if (now - last_status_update_millis > STATUS_CYCLETIME)
   {
+
+    updateEmergency();
+
     status_message.v_battery = (float)analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
     status_message.v_charge = (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
     status_message.charging_current = (float)analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
@@ -396,6 +607,10 @@ void loop()
     mutex_enter_blocking(&mtx_status_message);
     sendMessage(&status_message, sizeof(struct ll_status));
     mutex_exit(&mtx_status_message);
+
+    
+
+
 
     last_status_update_millis = now;
 #ifdef USB_DEBUG
@@ -416,8 +631,25 @@ void loop()
     DEBUG_SERIAL.print(status_message.emergency_bitmask, BIN);
     DEBUG_SERIAL.println();
 #endif
+
   }
+
+  if (now - last_UILED_millis > UI_SET_LED_CYCLETIME)
+  {
+
+    manageUILEDS();  
+    last_UILED_millis = now;
+ }
+
+ 
+    
+ 
+
+
 }
+
+
+
 
 void sendMessage(void *message, size_t size)
 {
@@ -427,11 +659,30 @@ void sendMessage(void *message, size_t size)
     return;
   }
   uint8_t *data_pointer = (uint8_t *)message;
-  uint16_t *crc_pointer = (uint16_t *)(data_pointer + (size - 3));
+  
   // calculate the CRC
   uint16_t crc = CRC16.ccitt((uint8_t *)message, size - 2);
   data_pointer[size - 1] = (crc >> 8) & 0xFF;
   data_pointer[size - 2] = crc & 0xFF;
 
   packetSerial.send((uint8_t *)message, size);
+}
+
+
+
+void sendUIMessage(void *message, size_t size)
+{
+  // packages need to be at least 1 byte of type, 1 byte of data and 2 bytes of CRC
+  if (size < 4)
+  {
+    return;
+  }
+  uint8_t *data_pointer = (uint8_t *)message;
+  
+  // calculate the CRC
+  uint16_t crc = CRC16.ccitt((uint8_t *)message, size - 2);
+  data_pointer[size - 1] = (crc >> 8) & 0xFF;
+  data_pointer[size - 2] = crc & 0xFF;
+
+  UISerial.send((uint8_t *)message, size);
 }
