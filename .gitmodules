@@ -13,3 +13,6 @@
 [submodule "ROS/src/xesc_ros"]
 	path = ROS/src/xesc_ros
 	url = https://github.com/ClemensElflein/xesc_ros.git
+[submodule "ROS/src/mower2smarthome"]
+	path = ROS/src/mower2smarthome
+	url = https://github.com/ene9ba/mower2smarthome.git
