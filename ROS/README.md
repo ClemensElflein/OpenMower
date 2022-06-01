@@ -28,7 +28,7 @@ rosdep install --from-paths src --ignore-src
 
 # How to Build
 
-Just build as any other ROS workspace: `catkin make`
+Just build as any other ROS workspace: `catkin_make`
 
 
 
