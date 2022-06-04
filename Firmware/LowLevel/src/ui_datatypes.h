@@ -1,6 +1,7 @@
-#ifndef _BttnCtl_HEADER_FILE_
-#define _BttnCtl_HEADER_FILE_
+#ifndef _UI_DATATYPES_H_
+#define _UI_DATATYPES_H_
 
+#include <stdint.h>
 
 
 /**************************************************************
@@ -17,7 +18,7 @@
 
 
 
-// The structure mower_com is the command inferface
+// The structure ui_command is the command inferface
 
 
 // The buttonboard is waiting for structure, wich will be transmitted byte by byte serial
@@ -92,7 +93,6 @@ anwser      :   01, 03, 100, 40, 255, 00
 
 
 
-
 // example get version
 
 type    =   Get_Version;
@@ -105,14 +105,6 @@ res     =   0;               // not used
 
 send bytes  :   02, 00, 00, 00, 00, 00
 anwser      :   02, 123, 00, 00, 255, 00   // Version number / 100 = V1.23
-
-
-
-// see demo testprogram cobstest.cpp
-
-
-
-
 
 */
 
@@ -133,7 +125,7 @@ enum LED_id { CHARGING, BATTERY_LOW, POOR_GPS, MOWER_LIFTED, LED5, LED6, LED7, L
 
 //** Attention, because of CRC16, the struct has to be always an even lentth 
 #pragma pack(push, 1)
-struct mower_com 
+struct ui_command 
 {
     // Type of this message. Has to be PACKET_ID_LL_IMU.
     uint8_t type;       // command type
