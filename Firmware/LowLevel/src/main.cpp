@@ -213,24 +213,15 @@ void manageUILEDS()
   buttonComStruct.cmd1    =   BATTERY_LOW;              
   sendUIMessage(&buttonComStruct, sizeof(struct mower_com));
 
-
-
-  
-
-
-
-
-  // calculate and show percent value akkupower but only, if mower is not docked
+  // Show percent value akkupower but only, if mower is not docked
   buttonComStruct.type    =   Set_LED;
   buttonComStruct.cmd1    =   LED_BAR;              
-  if (status_message.v_charge < 10.0f) // activat only whne undocked
+  if (status_message.v_charge < 10.0f) // activate only when undocked
   {
-      float delta = BATT_FULL - BATT_EMPTY;
-      float vo = status_message.v_battery - BATT_EMPTY;
-      u_int16_t akku_percent_value = vo / delta   * 100;
       // use the second LED row as bargraph 
+      
       buttonComStruct.cmd2    =   LED_on;           
-      buttonComStruct.cmd3    =   akku_percent_value;   
+      buttonComStruct.cmd3    =   status_message.batt_percentage;   
       sendUIMessage(&buttonComStruct, sizeof(struct mower_com));
   }
   else
@@ -241,12 +232,12 @@ void manageUILEDS()
   }
 
 
-  if (emergency_latch)
+  if (~emergency_latch)  // emergency latch off
   {
-    // led off
-    buttonComStruct.cmd2    =   LED_off;
+  
     buttonComStruct.type    =   Set_LED;
     buttonComStruct.cmd1    =   MOWER_LIFTED;              
+    buttonComStruct.cmd2    =   LED_off;
     sendUIMessage(&buttonComStruct, sizeof(struct mower_com));
   }
 
@@ -603,6 +594,13 @@ void loop()
     status_message.charging_current = (float)analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
     status_message.status_bitmask = (status_message.status_bitmask & 0b11111011) | ((charging_allowed & 0b1) << 2);
     status_message.status_bitmask = (status_message.status_bitmask & 0b11011111) | ((sound_available & 0b1) << 5);
+     
+    // calculate percent value accu filling
+      float delta = BATT_FULL - BATT_EMPTY;
+      float vo = status_message.v_battery - BATT_EMPTY;
+      status_message.batt_percentage = vo / delta   * 100;
+  
+
 
     mutex_enter_blocking(&mtx_status_message);
     sendMessage(&status_message, sizeof(struct ll_status));
