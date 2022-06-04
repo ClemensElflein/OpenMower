@@ -116,6 +116,8 @@ void updateEmergency()
     emergency_latch = true;
   }
   uint8_t current_emergency = status_message.emergency_bitmask & 1;
+
+  // Mask the emergency bits. 2x Lift sensor, 2x Emergency Button
   uint8_t pin_states = gpio_get_all() & (0b11001100);
   uint8_t emergency_state = 0;
 
@@ -130,7 +132,7 @@ void updateEmergency()
     emergency_state |= 0b10000;
   }
   // Emergency bit 3 (stop button)set?
-  if (pin_states & 0b00001000)
+  if (~pin_states & 0b00001000)
   {
     emergency_state |= 0b01000;
   }
@@ -152,28 +154,28 @@ void updateEmergency()
   }
 
   status_message.emergency_bitmask = emergency_state;
+
+  // If it's a new emergency, instantly send the message. This is to not spam the channel during emergencies.
   if (current_emergency != (emergency_state & 1))
   {
     sendMessage(&status_message, sizeof(struct ll_status));
+
+    // Show Info mower lifted or stop button pressed
+    if (status_message.emergency_bitmask & 0b00110)
+      uiCommandStruct.cmd2 = LED_blink_fast;
+    else if (status_message.emergency_bitmask & 0b01000)
+      uiCommandStruct.cmd2 = LED_blink_slow;
+
+    uiCommandStruct.type = Set_LED;
+    uiCommandStruct.cmd1 = MOWER_LIFTED;
+    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
   }
-
-  // Show Info mower lifted or stop button pressed
-  if (status_message.emergency_bitmask & 0b00110)
-    uiCommandStruct.cmd2 = LED_blink_fast;
-  else if (status_message.emergency_bitmask & 0b01000)
-    uiCommandStruct.cmd2 = LED_blink_slow;
-
-  uiCommandStruct.type = Set_LED;
-  uiCommandStruct.cmd1 = MOWER_LIFTED;
-  sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
 }
 
 // deals with the pyhsical information an control the UI-LEDs und buzzer in depency of voltage und current values
 void manageUILEDS()
 {
   struct ui_command uiCommandStruct = {0};
-
-  // status_message.charging_current
 
   // Schow Info Docking LED
   if ((status_message.charging_current > 1.00f) && (status_message.v_charge > 20.0f))
@@ -344,7 +346,7 @@ void setup()
     DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
     DEBUG_SERIAL.print("Status: ");
     DEBUG_SERIAL.println(status);
-    #endif
+#endif
     status_message.status_bitmask = 0;
     while (1)
     {
