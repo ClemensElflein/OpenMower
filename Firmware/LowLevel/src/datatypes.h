@@ -54,7 +54,7 @@ struct ll_status {
     float v_battery;
     // Charge current
     float charging_current;
-    uint16_t batt_percentage;
+    uint8_t batt_percentage;
     uint16_t crc;
 } __attribute__((packed));
 #pragma pack(pop)
