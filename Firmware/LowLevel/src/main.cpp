@@ -115,7 +115,7 @@ void updateEmergency()
   {
     emergency_latch = true;
   }
-  uint8_t current_emergency = status_message.emergency_bitmask & 1;
+  uint8_t last_emergency = status_message.emergency_bitmask & 1;
 
   // Mask the emergency bits. 2x Lift sensor, 2x Emergency Button
   uint8_t pin_states = gpio_get_all() & (0b11001100);
@@ -140,10 +140,10 @@ void updateEmergency()
   if (count_emergency_cycle > LIMIT_COUNT_LIFT_EMERGENCY)
   {
     // Emergency bit 2 (lift wheel 1)set?
-    if (~pin_states & 0b01000000)
+    if (~pin_states & 0b00000100)
       emergency_state |= 0b01000;
     // Emergency bit 1 (lift wheel 2)set?
-    if (~pin_states & 0b10000000)
+    if (~pin_states & 0b00001000)
       emergency_state |= 0b10000;
   }
 
@@ -156,7 +156,7 @@ void updateEmergency()
   status_message.emergency_bitmask = emergency_state;
 
   // If it's a new emergency, instantly send the message. This is to not spam the channel during emergencies.
-  if (current_emergency != (emergency_state & 1))
+  if (last_emergency != (emergency_state & 1))
   {
     sendMessage(&status_message, sizeof(struct ll_status));
 
@@ -296,7 +296,7 @@ void setup()
   // Therefore, we pause the other core until setup() was a success
   rp2040.idleOtherCore();
 
-  emergency_latch = false;
+  emergency_latch = true;
   count_emergency_cycle = 0;
   // Initialize messages
   imu_message = {0};
