@@ -121,30 +121,30 @@ void updateEmergency()
   uint8_t pin_states = gpio_get_all() & (0b11001100);
   uint8_t emergency_state = 0;
 
-  if (~pin_states & 0b11000000)
+  if (~pin_states & 0b00001100)
     count_emergency_cycle += 1;
   else
     count_emergency_cycle = 0;
 
-  // Emergency bit 4 (stop button) set?
-  if (~pin_states & 0b00000100)
+  // Emergency bit 2 (stop button) set?
+  if (~pin_states & 0b01000000)
   {
-    emergency_state |= 0b10000;
+    emergency_state |= 0b00010;
   }
-  // Emergency bit 3 (stop button)set?
-  if (~pin_states & 0b00001000)
+  // Emergency bit 1 (stop button)set?
+  if (~pin_states & 0b10000000)
   {
-    emergency_state |= 0b01000;
+    emergency_state |= 0b00100;
   }
 
   if (count_emergency_cycle > LIMIT_COUNT_LIFT_EMERGENCY)
   {
     // Emergency bit 2 (lift wheel 1)set?
     if (~pin_states & 0b01000000)
-      emergency_state |= 0b00100;
+      emergency_state |= 0b01000;
     // Emergency bit 1 (lift wheel 2)set?
     if (~pin_states & 0b10000000)
-      emergency_state |= 0b00010;
+      emergency_state |= 0b10000;
   }
 
   if (emergency_state || emergency_latch)
@@ -163,9 +163,13 @@ void updateEmergency()
     // Show Info mower lifted or stop button pressed
     if (status_message.emergency_bitmask & 0b00110)
       uiCommandStruct.cmd2 = LED_blink_fast;
-    else if (status_message.emergency_bitmask & 0b01000)
+    else if (status_message.emergency_bitmask & 0b11000)
       uiCommandStruct.cmd2 = LED_blink_slow;
-
+    else if (status_message.emergency_bitmask)
+      // On for other emergencies
+      uiCommandStruct.cmd2 = LED_on;
+    else
+      uiCommandStruct.cmd2 = LED_off;
     uiCommandStruct.type = Set_LED;
     uiCommandStruct.cmd1 = MOWER_LIFTED;
     sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
@@ -178,9 +182,9 @@ void manageUILEDS()
   struct ui_command uiCommandStruct = {0};
 
   // Schow Info Docking LED
-  if ((status_message.charging_current > 1.00f) && (status_message.v_charge > 20.0f))
+  if ((status_message.charging_current > 0.80f) && (status_message.v_charge > 20.0f))
     uiCommandStruct.cmd2 = LED_blink_fast;
-  else if ((status_message.charging_current <= 1.00f) && (status_message.charging_current >= 0.10f) && (status_message.v_charge > 20.0f))
+  else if ((status_message.charging_current <= 0.80f) && (status_message.charging_current >= 0.15f) && (status_message.v_charge > 20.0f))
     uiCommandStruct.cmd2 = LED_blink_slow;
   else if ((status_message.charging_current < 0.15f) && (status_message.v_charge > 20.0f))
     uiCommandStruct.cmd2 = LED_on;
@@ -219,14 +223,19 @@ void manageUILEDS()
     sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
   }
 
-  if (~emergency_latch) // emergency latch off
-  {
-
-    uiCommandStruct.type = Set_LED;
-    uiCommandStruct.cmd1 = MOWER_LIFTED;
+  // Show Info mower lifted or stop button pressed
+  if (status_message.emergency_bitmask & 0b00110)
+    uiCommandStruct.cmd2 = LED_blink_fast;
+  else if (status_message.emergency_bitmask & 0b11000)
+    uiCommandStruct.cmd2 = LED_blink_slow;
+  else if (status_message.emergency_bitmask)
+    // On for other emergencies
+    uiCommandStruct.cmd2 = LED_on;
+  else
     uiCommandStruct.cmd2 = LED_off;
-    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
-  }
+  uiCommandStruct.type = Set_LED;
+  uiCommandStruct.cmd1 = MOWER_LIFTED;
+  sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
 }
 
 void setup1()
