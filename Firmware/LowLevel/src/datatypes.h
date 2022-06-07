@@ -22,6 +22,7 @@
 
 #define PACKET_ID_LL_STATUS 1
 #define PACKET_ID_LL_IMU 2
+#define PACKET_ID_LL_UI_EVENT 3
 #define PACKET_ID_LL_HEARTBEAT 0x42
 
 
@@ -54,6 +55,7 @@ struct ll_status {
     float v_battery;
     // Charge current
     float charging_current;
+    uint8_t batt_percentage;
     uint16_t crc;
 } __attribute__((packed));
 #pragma pack(pop)
