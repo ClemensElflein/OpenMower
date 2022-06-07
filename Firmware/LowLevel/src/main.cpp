@@ -28,7 +28,8 @@
 #define STATUS_CYCLETIME 100      // cycletime for refresh analog and digital Statusvalues
 #define UI_SET_LED_CYCLETIME 1000 // cycletime for refresh UI status LEDs
 
-#define LIMIT_COUNT_LIFT_EMERGENCY 30 // number of cycles get wheel lift lifted signal before set emergency
+#define LIFT_EMERGENCY_MILLIS 1500  // Time for wheels to be lifted in order to count as emergency. This is to filter uneven ground.
+#define BUTTON_EMERGENCY_MILLIS 150 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
 // Define to stream debugging messages via USB
 // #define USB_DEBUG
@@ -77,7 +78,8 @@ unsigned long last_status_update_millis = 0;
 unsigned long last_heartbeat_millis = 0;
 unsigned long last_UILED_millis = 0;
 
-uint16_t count_emergency_cycle = 0;
+unsigned long lift_emergency_started = 0;
+unsigned long button_emergency_started = 0;
 
 // Predefined message buffers, so that we don't need to allocate new ones later.
 struct ll_imu imu_message = {0};
@@ -121,23 +123,32 @@ void updateEmergency()
   uint8_t pin_states = gpio_get_all() & (0b11001100);
   uint8_t emergency_state = 0;
 
-  if (~pin_states & 0b00001100)
-    count_emergency_cycle += 1;
+  bool is_lifted = ~pin_states & 0b00001100;
+  bool stop_pressed = ~pin_states & 0b11000000;
+
+  if (is_lifted && lift_emergency_started == 0)
+  {
+    // We just lifted, store the timestamp
+    lift_emergency_started = millis();
+  }
   else
-    count_emergency_cycle = 0;
-
-  // Emergency bit 2 (stop button) set?
-  if (~pin_states & 0b01000000)
   {
-    emergency_state |= 0b00010;
-  }
-  // Emergency bit 1 (stop button)set?
-  if (~pin_states & 0b10000000)
-  {
-    emergency_state |= 0b00100;
+    // Not lifted, reset the time
+    lift_emergency_started = 0;
   }
 
-  if (count_emergency_cycle > LIMIT_COUNT_LIFT_EMERGENCY)
+  if (stop_pressed && button_emergency_started == 0)
+  {
+    // We just pressed, store the timestamp
+    button_emergency_started = millis();
+  }
+  else
+  {
+    // Not pressed, reset the time
+    button_emergency_started = 0;
+  }
+
+  if (lift_emergency_started > 0 && millis() - lift_emergency_started >= LIFT_EMERGENCY_MILLIS)
   {
     // Emergency bit 2 (lift wheel 1)set?
     if (~pin_states & 0b00000100)
@@ -145,6 +156,17 @@ void updateEmergency()
     // Emergency bit 1 (lift wheel 2)set?
     if (~pin_states & 0b00001000)
       emergency_state |= 0b10000;
+  }
+
+  if (button_emergency_started > 0 && millis() - button_emergency_started >= BUTTON_EMERGENCY_MILLIS)
+  {
+    // Emergency bit 2 (stop button) set?
+    if (~pin_states & 0b01000000)
+
+      emergency_state |= 0b00010;
+    // Emergency bit 1 (stop button)set?
+    if (~pin_states & 0b10000000)
+      emergency_state |= 0b00100;
   }
 
   if (emergency_state || emergency_latch)
@@ -297,7 +319,8 @@ void setup()
   rp2040.idleOtherCore();
 
   emergency_latch = true;
-  count_emergency_cycle = 0;
+  lift_emergency_started = 0;
+  button_emergency_started = 0;
   // Initialize messages
   imu_message = {0};
   status_message = {0};
@@ -513,6 +536,7 @@ void loop()
   UISerial.update();
 
   updateChargingEnabled();
+  updateEmergency();
 
   unsigned long now = millis();
   if (now - last_imu_millis > IMU_CYCLETIME)
@@ -563,8 +587,6 @@ void loop()
 
   if (now - last_status_update_millis > STATUS_CYCLETIME)
   {
-
-    updateEmergency();
 
     status_message.v_battery = (float)analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
     status_message.v_charge = (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
