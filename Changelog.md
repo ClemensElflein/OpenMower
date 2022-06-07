@@ -23,6 +23,10 @@
 - Added UI Board integration to LowLevel Firmware
 - Added service to start and pause mowing as well as start area recording mode
 - Added area recording behavior to main logic, so that we don't need an additional launch file for it
+- Added a mower_logic/current_state topic which has the identifier of the current high level state.
+- mower_comms now listens for UI button messages and calls the high level control service accordingly.
+- Added support for LAT/LNG coordinates instead of relative coordinates. Set **OM_USE_RELATIVE_POSITION** to **false** for this and provide an origin for your local coordinate space using **OM_DATUM_LAT** and **OM_DATUM_LONG** in your local config file.
+- Added the mag_calibration node to help magnetometer calibration without manually recording and copying files.
 
 ##### Small Fixes
 

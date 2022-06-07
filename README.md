@@ -80,13 +80,9 @@ The first mainboard PCB is almost done. It currently looks like this:
   - [x] Rain Sensor
   - [x] Charging State
   - [ ] Sound Module
-  - [ ] UI Board Communication
+  - [x] UI Board Communication
   - [ ] Low Power Mode
 - [X] ROS Hardware Interface
-- [ ] Hardware Redesign (bugs / enhancements):
-  - [ ] Digial Emergency Stop Signal from Pico to xESC
-  - [ ] Sound Module Pinout needs to be adapted to DFPlayer
-  - [ ] XT60 Power Connector needs to be connected to main power instead of charging input
 
 
 

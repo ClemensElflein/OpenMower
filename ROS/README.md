@@ -22,7 +22,7 @@ sudo rosdep init
 rosdep update
 
 # run this in the ROS directory
-rosdep install --from-paths src --ignore-src
+rosdep install --from-paths src --ignore-src --default-yes
 ```
 
 
