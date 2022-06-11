@@ -28,8 +28,8 @@
 #define STATUS_CYCLETIME 100      // cycletime for refresh analog and digital Statusvalues
 #define UI_SET_LED_CYCLETIME 1000 // cycletime for refresh UI status LEDs
 
-#define LIFT_EMERGENCY_MILLIS 1500  // Time for wheels to be lifted in order to count as emergency. This is to filter uneven ground.
-#define BUTTON_EMERGENCY_MILLIS 150 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
+#define LIFT_EMERGENCY_MILLIS 500  // Time for wheels to be lifted in order to count as emergency. This is to filter uneven ground.
+#define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
 // Define to stream debugging messages via USB
 // #define USB_DEBUG
@@ -123,13 +123,16 @@ void updateEmergency()
   uint8_t pin_states = gpio_get_all() & (0b11001100);
   uint8_t emergency_state = 0;
 
-  bool is_lifted = ~pin_states & 0b00001100;
-  bool stop_pressed = ~pin_states & 0b11000000;
+  bool is_lifted = (~pin_states & 0b00001100) != 0;
+  bool stop_pressed = (~pin_states & 0b11000000) != 0;
 
-  if (is_lifted && lift_emergency_started == 0)
+  if (is_lifted)
   {
     // We just lifted, store the timestamp
-    lift_emergency_started = millis();
+    if (lift_emergency_started == 0)
+    {
+      lift_emergency_started = millis();
+    }
   }
   else
   {
@@ -137,10 +140,13 @@ void updateEmergency()
     lift_emergency_started = 0;
   }
 
-  if (stop_pressed && button_emergency_started == 0)
+  if (stop_pressed)
   {
     // We just pressed, store the timestamp
-    button_emergency_started = millis();
+    if (button_emergency_started == 0)
+    {
+      button_emergency_started = millis();
+    }
   }
   else
   {
@@ -148,7 +154,7 @@ void updateEmergency()
     button_emergency_started = 0;
   }
 
-  if (lift_emergency_started > 0 && millis() - lift_emergency_started >= LIFT_EMERGENCY_MILLIS)
+  if (lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS)
   {
     // Emergency bit 2 (lift wheel 1)set?
     if (~pin_states & 0b00000100)
@@ -158,11 +164,10 @@ void updateEmergency()
       emergency_state |= 0b10000;
   }
 
-  if (button_emergency_started > 0 && millis() - button_emergency_started >= BUTTON_EMERGENCY_MILLIS)
+  if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
   {
     // Emergency bit 2 (stop button) set?
     if (~pin_states & 0b01000000)
-
       emergency_state |= 0b00010;
     // Emergency bit 1 (stop button)set?
     if (~pin_states & 0b10000000)
