@@ -6,7 +6,7 @@ Component,Description,Part,References,Value,Footprint,Quantity Per PCB,Datasheet
 5,Unpolarized capacitor,C,C11 C12,4.7uF,C_1206_3216Metric,2,~,1276-3179-1-ND,CL31B475KBHNFNE,C-1206-4.7uF-50V-X7R,,,,,,
 6,Unpolarized capacitor,C,C16 C20 C21 C22,22uF,C_1206_3216Metric,4,~,1276-3148-1-ND,CL31B226MPHNNNE,C-1206-22uF-10V-X7R,,,,,,
 7,Polarized capacitor,C_Polarized,C2 C3 C4 C6 C7 C8,220uF,CP_Radial_D10.0mm_P5.00mm,6,~,399-6654-1-ND,LKME1251J221MF,CP-TH-220uF-63V,C442941,,,,,
-8,Polarized capacitor,C_Polarized,C9 C23,680uF,CP_Elec_10x12.5,2,~,493-9607-2-ND,VEJ681M1VTR-1013,CP-SMD-680uF-35V,C882153,,,,,
+8,Polarized capacitor,C_Polarized,C9 C23,680uF,CP_Elec_10x12.5,2,~,P124828TR-ND,VEJ681M1VTR-1013,CP-SMD-680uF-35V,C882153,,,,,
 9,Schottky diode,D_Schottky,D1,D_Schottky,D_SOD-123F,1,~,3757-SS0520_R1_00001CT-ND,AS160-M,D-AS160-M,C541613,,,,,
 10,Schottky diode,D_Schottky,D2 D3 D15 D16,D_Schottky,D_SMA_Handsoldering,4,~,3757-SB54AFC_R1_00001CT-ND,SB54AFC_R1_00001,D-SMA-Schottky-40V-5A,,,,,,
 11,Light emitting diode,LED,D23,LED,LED_0805_2012Metric,1,~,L62505CT-ND,CMD17-21VGD/TR8,LED-805-GREEN,C84257,,,,,
@@ -63,6 +63,6 @@ Total components:,133
 Schematic Version:,
 Schematic Date:,
 PCB Variant:,default
-BoM Date:,23/05/2022 15:46:10
+BoM Date:,20/06/2022 15:58:25
 Schematic Source:,OpenMowerMainboard.kicad_sch
 KiCad Version:,Eeschema (6.0.1)
