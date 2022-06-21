@@ -1,0 +1,33 @@
+kibot:
+  version: 1
+
+outputs:
+  - name: 'bom'
+    type: 'bom'
+    dir: 'release'
+
+  - name: 'write_gerber_drill'
+    comment: 'This is the information for the drilling machine in gerber format.'
+    type: 'gerb_drill'
+    dir: 'release/gerber'
+
+  - name: 'write_gerber'
+    comment: 'This is the main fabrication format for the PCB.'
+    type: 'gerber'
+    dir: 'release/gerber'
+    layers: 'selected'
+
+  - name: 'gerber'
+    comment: 'Generates a compressed file containing gerber files.'
+    type: 'compress'
+    dir: 'release'
+    options:
+      files:
+        # [string=''] Destination directory inside the archive, empty means the same of the file
+        - dest: '.'
+          source: 'release/gerber/*'
+
+  - name: 'ibom'
+    comment: 'Generates an interactive web page useful to identify the position of the components in the PCB.'
+    type: 'ibom'
+    dir: 'release'
