@@ -73,3 +73,5 @@ outputs:
     comment: 'Generates a web page to navigate the generated outputs'
     type: 'navigate_results'
     dir: 'release_navigator'
+    options:
+      link_from_root: "release_navigator/index.html"
