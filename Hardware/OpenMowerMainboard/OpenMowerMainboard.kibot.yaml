@@ -1,6 +1,13 @@
 kibot:
   version: 1
 
+preflight:
+  run_erc: true
+  run_drc: true
+  set_text_variables:
+    - name: 'git_version'
+      command: 'git describe --tags'
+
 outputs:
   - name: 'bom'
     type: 'bom'
@@ -31,3 +38,38 @@ outputs:
     comment: 'Generates an interactive web page useful to identify the position of the components in the PCB.'
     type: 'ibom'
     dir: 'release'
+
+  - name: 'pcbdraw_svg'
+    comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
+    type: 'pcbdraw'
+    dir: 'release'
+    options:
+      format: 'svg'
+
+  - name: 'pcbdraw_png'
+    comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
+    type: 'pcbdraw'
+    dir: 'release'
+    options:
+      format: 'png'
+
+  - name: 'pcbdraw_svg_bottom'
+    comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
+    type: 'pcbdraw'
+    dir: 'release'
+    options:
+      bottom: true
+      format: 'svg'
+
+  - name: 'pcbdraw_png_bottom'
+    comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
+    type: 'pcbdraw'
+    dir: 'release'
+    options:
+      bottom: true
+      format: 'png'
+
+  - name: 'navigate_results'
+    comment: 'Generates a web page to navigate the generated outputs'
+    type: 'navigate_results'
+    dir: 'release_navigator'
