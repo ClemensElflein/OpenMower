@@ -1,0 +1,67 @@
+Row,Description,Part,References,Value,Footprint,Quantity Per PCB,Status,Datasheet,Config,DNP,Stock_PN,Digikey,Part Number,LCSC,Height,Mouser2 Part Number,Mouser2 Price/Stock,Manufacturer_Name,Manufacturer_Part_Number
+1,Unpolarized capacitor,C,C1 C5 C25,100nF,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,3, ,~,,,C-805-.1uF-100V-X7R,490-4789-1-ND,GCM21BR72A104KA37L,,,,,,
+2,Unpolarized capacitor,C,C15 C18 C19,0.1uF,C_0603_1608Metric,3, ,~,,,C-603-.1uF-100V-X7R,1276-1935-1-ND,CL10B104KC8NNNC,,,,,,
+3,Unpolarized capacitor,C,C13 C14,1uF,C_0805_2012Metric,2, ,~,,,C-805-1uF-50V-X7R,1276-1029-1-ND,CL21B105KBFNNNE,,,,,,
+4,Unpolarized capacitor,C,C17,2.2uF,C_0603_1608Metric,1, ,~,,,C-603-2.2uF-6.3V-X5R,1276-1183-1-ND,CL10A225KQ8NNNC,,,,,,
+5,Unpolarized capacitor,C,C11 C12,4.7uF,C_1206_3216Metric,2, ,~,,,C-1206-4.7uF-50V-X7R,1276-3179-1-ND,CL31B475KBHNFNE,,,,,,
+6,Unpolarized capacitor,C,C16 C20 C21 C22,22uF,C_1206_3216Metric,4, ,~,,,C-1206-22uF-10V-X7R,1276-3148-1-ND,CL31B226MPHNNNE,,,,,,
+7,Polarized capacitor,C_Polarized,C2 C3 C4 C6 C7 C8,220uF,CP_Radial_D10.0mm_P5.00mm,6, ,~,,,CP-TH-220uF-63V,399-6654-1-ND,LKME1251J221MF,C442941,,,,,
+8,Polarized capacitor,C_Polarized,C9 C23,680uF,CP_Elec_10x12.5,2, ,~,,,CP-SMD-680uF-35V,P124828TR-ND,VEJ681M1VTR-1013,C882153,,,,,
+9,Schottky diode,D_Schottky,D1,D_Schottky,D_SOD-123F,1, ,~,,,D-AS160-M,3757-SS0520_R1_00001CT-ND,AS160-M,C541613,,,,,
+10,Schottky diode,D_Schottky,D2 D3 D15 D16,D_Schottky,D_SMA_Handsoldering,4, ,~,,,D-SMA-Schottky-40V-5A,3757-SB54AFC_R1_00001CT-ND,SB54AFC_R1_00001,,,,,,
+11,Light emitting diode,LED,D23,LED,LED_0805_2012Metric,1, ,~,,,LED-805-GREEN,L62505CT-ND,CMD17-21VGD/TR8,C84257,,,,,
+12,RGB LED with integrated controller,WS2812B,D25,WS2812B,LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm,1, ,https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf,,,LED-WS2812B,1568-COM-16347CT-ND,COM-16347,,,,,,
+13,Fuse,Fuse,F2 F4,Fuse,Fuseholder5x20_horiz_open_inline_Type-I,2, ,~,,,FH-FC-202-24,FC-202-24-ND,FC-202-24,,,,,,
+14,74ALVC164245 - 16-bit dual supply translating transceiver; 3-state@en-us,"74ALVC164245DGG,11",IC1,"74ALVC164245DGG,11",SOP50P810X120-48N,1, ,https://assets.nexperia.com/documents/data-sheet/74ALVC164245.pdf,,,U-74ALVC164245,1727-4290-1-ND,74ALVC164245DGG:11,,1.2,,,Nexperia,"74ALVC164245DGG,11"
+15,36V 4A/5A/6A Sync Low Iq Buck Converter in P90,MAX20405AFOF_VY+T,IC3,MAX20405AFOF_VY+T,MAX2040,1, ,http://www.maximintegrated.com/MAX20405,,,U-MAX20405,175-MAX20405AFOD/VY+-ND,MAX20405AFOD/VY+,,0.8,,,Maxim Integrated,MAX20405AFOF/VY+T
+16,"TSC101CILT, Current Sensing Amplifier Single 5-Pin SOT-23",TSC101CILT,IC2,TSC101CILT,SOT95P280X145-5N,1, ,http://www.st.com/st-web-ui/static/active/en/resource/technical/document/datasheet/CD00153725.pdf,,,U-TSC101CILT,497-6947-1-ND,TSC101CILT,,1.45,,,STMicroelectronics,TSC101CILT
+17,"Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x02,J17 J18,Conn_01x02,JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical,2, ,~,,,J-JST-XH-1x2,455-2946-ND,B2B-XH-A-GU,,,,,,
+18,"Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x02,J3,Conn_01x02,Molex_Mini-Fit_Jr_5566-02A_2x01_P4.20mm_Vertical,1, ,~,,,J-TH-4.2mm-1x2F,WM3843-ND,0039293026,,,,,,
+19,"Generic connector, single row, 01x03, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x03_Male,J11 J12 J13 J14,Conn_01x03_Male,JST_XH_B3B-XH-A_1x03_P2.50mm_Vertical,4, ,~,,,J-JST-XH-1x3,455-2231-ND,B3B-XH-AM(LF)(SN),,,,,,
+20,"Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x04,J5 J6 J7 J8 J9 J19,Conn_01x04,JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical,6, ,~,,,J-JST-XH-1x4,455-2249-ND,B4B-XH-A(LF)(SN),,,,,,
+21,"Generic connector, single row, 01x05, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x05,J10,Conn_01x05,JST_PH_B5B-PH-K_1x05_P2.00mm_Vertical,1, ,~,,,J-JST-PH-1x5,455-1707-ND,B5B-PH-K-S(LF)(SN),,,,,,
+22,"Generic connector, single row, 01x05, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x05,J4,Conn_01x05,JST_XH_B5B-XH-A_1x05_P2.50mm_Vertical,1, ,~,,,J-JST-XH-1x5,455-2270-ND,B5B-XH-A(LF)(SN),,,,,,
+23,"Generic connector, single row, 01x05, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x05_Female,J28 J29 J36 J37 J44 J45,Conn_01x05_Female,,6, ,~,,,J-TH-1x5-.1F,,C50950,C50950,,,,,
+24,"Generic connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x06_Female,J24 J26 J32 J34 J40 J42 J47,Conn_01x06_Female,,7, ,~,,,J-TH-1x6-.1F,,C40877,C40877,,,,,
+25,"Generic connector, single row, 01x08, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x08,J16 J23,Conn_01x08,PinHeader_1x08_P2.54mm_Vertical,2, ,~,,,J-TH-1x8-.1,,DZ254R-11-08-63,C2935914,,,,,
+26,"Generic connector, single row, 01x08, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x08_Female,J48 J49,Conn_01x08_Female,,2, ,~,,,J-TH-1x8-.1F,,C27438,C27438,,,,,
+27,"Generic connector, single row, 01x09, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x09_Female,J30 J38 J46,Conn_01x09_Female,,3, ,~,,,J-TH-1x9-.1F,,C39576,C39576,,,,,
+28,"Generic connector, single row, 01x10, script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_01x10_Female,J20 J50,Conn_01x10_Female,PinHeader_1x10_P2.54mm_Vertical,2, ,~,,,J-TH-1x10-.1 J-TH-1x10-.1F,,PZ254-1-10-Z-8.5 C35445,C2894933 C35445,,,,,
+29,"Generic connector, double row, 02x02, counter clockwise pin numbering scheme (similar to DIP packge numbering), script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_02x02_Counter_Clockwise,J15 J25 J27 J31 J33 J35 J39 J41 J43,Conn_02x02_Female,,9, ,~,,,J-TH-2x2-.1F,,A2541HWV-2x2P,C239342,,,,,
+30,"Generic connector, double row, 02x04, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_02x04_Odd_Even,J22,Conn_02x04_Odd_Even,PinHeader_2x04_P2.54mm_Vertical,1, ,~,,,J-TH-2x4-.1,,PZ254-2-04-Z-8.5,C2894965,,,,,
+31,"Generic connector, double row, 02x04, top/bottom pin numbering scheme (row 1: 1...pins_per_row, row2: pins_per_row+1 ... num_pins), script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_02x04_Top_Bottom,J2,Conn_02x04_Top_Bottom,Molex_Mini-Fit_Jr_5566-08A_2x04_P4.20mm_Vertical,1, ,~,,,J-TH-4.2mm-2x4F,23-0039310080-ND,0039310080,,,,,,
+32,"Generic connector, double row, 02x11, top/bottom pin numbering scheme (row 1: 1...pins_per_row, row2: pins_per_row+1 ... num_pins), script generated (kicad-library-utils/schlib/autogen/connector/)",Conn_02x11_Top_Bottom,J1,Conn_02x11_Top_Bottom,Molex_Mini-Fit_Jr_5566-22A_2x11_P4.20mm_Vertical,1, ,~,,,J-TH-4.2mm-2x11F,WM23810-ND,0039288220,,,,,,
+33,expansion header for Raspberry Pi 2 & 3,Raspberry_Pi_2_3,J21,Raspberry_Pi_2_3,PinSocket_2x20_P2.54mm_Vertical_SMD,1, ,https://www.raspberrypi.org/documentation/hardware/raspberrypi/schematics/rpi_SCH_3bplus_1p0_reduced.pdf,,,J-SMD-2x20-.1F,S5729-ND,NPPC202KFMS-RC,,,,,,
+34,Inductor,L,L1,4.7uH 5A,L_Vishay_IHLP-2525,1, ,~,,,L-2525-47uH-5A,732-3354-1-ND,74437349047,,,,,,
+35,Fan,Fan,M1,Fan,PinHeader_1x02_P2.54mm_Vertical,1, ,~,,,J-TH-1x2-.1,,DZ254R-11-02-63,C2935908,,,,,
+36,"50V Vds, 0.22A Id, N-Channel MOSFET, SOT-23",BSS138,Q3 Q5 Q13 Q14 Q15 Q16,BSS138,SOT-23,6, ,https://www.onsemi.com/pub/Collateral/BSS138-D.PDF,,,Q-AP2300,BSS138K-13DICT-ND,AP2300,C360338,,,,,
+37,"P-MOSFET transistor, gate/drain/source",Q_PMOS_GDS,Q6,Q_PMOS_GDS,TO-252-2,1, ,~,,,Q-IRFR5505TRPBF,IRFR5505PBFCT-ND,IRFR5505TRPBF,,,,,,
+38,Resistor,R,R51,0.003R,R_2512_6332Metric_Pad1.40x3.35mm_HandSolder,1, ,~,,,R-2512-.003-2W-1%,RHM.003AUCT-ND,PMR100HZPFV3L00,,,,,,
+39,Resistor,R,R11,53.6 1%,R_0805_2012Metric_Pad1.20x1.40mm_HandSolder,1, ,~,,,R-805-53.6K-.125W-1%,RMCF0805FT53K6CT-ND,RMCF0805FT53K6,,,,,,
+40,Resistor,R,R5 R27,150,R_0805_2012Metric_Pad1.20x1.40mm_HandSolder,2, ,~,,,R-805-150-.125W-1%,311-150CRCT-ND,RC0805FR-07150RL,,,,,,
+41,Resistor,R,R3 R6 R7 R9 R10 R13 R15 R16 R18 R19 R20 R41 R43 R45 R47,1k,R_0805_2012Metric_Pad1.20x1.40mm_HandSolder,15, ,~,,,R-805-1K-.125W-1%,311-1.00KCRCT-ND,RC0805FR-071KL,,,,,,
+42,Resistor,R,R49,4k7,R_0805_2012Metric_Pad1.20x1.40mm_HandSolder,1, ,~,,,R-805-4.7K-.125W-1%,311-4.70KCRCT-ND,RC0805FR-074K7L,,,,,,
+43,Resistor,R,R1 R2 R4 R12 R26 R28 R40 R42 R48 R50,10k,R_0805_2012Metric_Pad1.20x1.40mm_HandSolder,10, ,~,,,R-805-10K-.125W-1%,738-RMCF0805FG10K0CT-ND,RMCF0805FG10K0,,,,,,
+44,Resistor,R,R44 R46,47k,R_0805_2012Metric_Pad1.20x1.40mm_HandSolder,2, ,~,,,R-805-47K-.125W-1%,311-47.0KCRCT-ND,RC0805FR-0747KL,,,,,,
+45,"8-channel analog multiplexer/demultiplexer, DIP-16/SOIC-16/TSSOP-16",74HC4051,U9 U10,74HC4051,SSOP-16_4.4x5.2mm_P0.65mm,2, ,http://www.ti.com/lit/ds/symlink/cd74hc4051.pdf,,,U-74HC4051,1727-3064-1-ND,"74HC4051PW,118",,,,,,
+46,"Quad 2.7V to 6.0V Single Supply CMOS Op Amps, DIP-14/SOIC-14/TSSOP-14",MCP604,U2,MCP604,SOIC-14_3.9x8.7mm_P1.27mm,1, ,http://ww1.microchip.com/downloads/en/DeviceDoc/21314g.pdf,,,U-MCP604T-E/SL,MCP604T-E/SLCT-ND,MCP604T-E/SL,,,,,,
+47,,Pico,U11,Pico,RPi_Pico_SMD_TH,1, ,,,,U-RP2040-PCB,2648-SC0915CT-ND,SC0915,,,,,,
+48,,SIP32509DT,U3,SIP32509DT,SOT-23-6_Handsoldering,1, ,,,,U-SIP32509,SIP32509DT-T1-GE3CT-ND,SIP32509DT-T1-GE3,,,,,,
+49,"Single Power Supply, Single Buffer GATE, CMOS Logic, Level Shifter, SOT-23-5",SN74LV1T34DBV,U7,SN74LV1T34DBV,SOT-23-5,1, ,https://www.ti.com/lit/ds/symlink/sn74lv1t34.pdf,,,U-SN74LV1T34,296-SN74LV1T34DBVRG4CT-ND,SN74LV1T34DBVRG4,,,,,,
+
+
+
+
+
+Project info:
+Schematic:,OpenMowerMainboard
+Variant:,default
+Revision:,
+Date:,2022-06-24_18-44-52
+KiCad Version:,6.0.5+dfsg-1~bpo11+1
+Statistics:
+Component Groups:,59
+Component Count:,154
+Fitted Components:,132
+Number of PCBs:,1
+Total Components:,132
