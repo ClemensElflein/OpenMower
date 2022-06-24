@@ -557,5 +557,7 @@
       "LevelShifter8"
     ]
   ],
-  "text_variables": {}
+  "text_variables": {
+    "git_version": "WIP"
+  }
 }
