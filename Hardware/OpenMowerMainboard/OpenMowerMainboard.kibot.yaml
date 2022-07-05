@@ -34,6 +34,11 @@ outputs:
         - dest: '.'
           source: 'release/gerber/*'
 
+  - name: 'position'
+    comment: 'Generates the file with position information for the PCB components, used by the pick and place machine.'
+    type: 'position'
+    dir: 'release'
+
   - name: 'ibom'
     comment: 'Generates an interactive web page useful to identify the position of the components in the PCB.'
     type: 'ibom'
