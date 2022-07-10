@@ -28,7 +28,8 @@
 #define STATUS_CYCLETIME 100      // cycletime for refresh analog and digital Statusvalues
 #define UI_SET_LED_CYCLETIME 1000 // cycletime for refresh UI status LEDs
 
-#define LIMIT_COUNT_LIFT_EMERGENCY 30 // number of cycles get wheel lift lifted signal before set emergency
+#define LIFT_EMERGENCY_MILLIS 500  // Time for wheels to be lifted in order to count as emergency. This is to filter uneven ground.
+#define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
 // Define to stream debugging messages via USB
 // #define USB_DEBUG
@@ -77,7 +78,8 @@ unsigned long last_status_update_millis = 0;
 unsigned long last_heartbeat_millis = 0;
 unsigned long last_UILED_millis = 0;
 
-uint16_t count_emergency_cycle = 0;
+unsigned long lift_emergency_started = 0;
+unsigned long button_emergency_started = 0;
 
 // Predefined message buffers, so that we don't need to allocate new ones later.
 struct ll_imu imu_message = {0};
@@ -115,36 +117,63 @@ void updateEmergency()
   {
     emergency_latch = true;
   }
-  uint8_t current_emergency = status_message.emergency_bitmask & 1;
+  uint8_t last_emergency = status_message.emergency_bitmask & 1;
 
   // Mask the emergency bits. 2x Lift sensor, 2x Emergency Button
   uint8_t pin_states = gpio_get_all() & (0b11001100);
   uint8_t emergency_state = 0;
 
-  if (~pin_states & 0b11000000)
-    count_emergency_cycle += 1;
+  bool is_lifted = (~pin_states &    0b00001100) != 0;
+  
+  // mower without mangets at emergency button, only GPIO 7 is used
+  bool stop_pressed = (pin_states & 0b01000000) != 0;
+
+  if (is_lifted)
+  {
+    // We just lifted, store the timestamp
+    if (lift_emergency_started == 0)
+    {
+      lift_emergency_started = millis();
+    }
+  }
   else
-    count_emergency_cycle = 0;
-
-  // Emergency bit 4 (stop button) set?
-  if (~pin_states & 0b00000100)
   {
-    emergency_state |= 0b10000;
-  }
-  // Emergency bit 3 (stop button)set?
-  if (pin_states & 0b00001000)
-  {
-    emergency_state |= 0b01000;
+    // Not lifted, reset the time
+    lift_emergency_started = 0;
   }
 
-  if (count_emergency_cycle > LIMIT_COUNT_LIFT_EMERGENCY)
+  if (stop_pressed)
+  {
+    // We just pressed, store the timestamp
+    if (button_emergency_started == 0)
+    {
+      button_emergency_started = millis();
+    }
+  }
+  else
+  {
+    // Not pressed, reset the time
+    button_emergency_started = 0;
+  }
+
+  if (lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS)
   {
     // Emergency bit 2 (lift wheel 1)set?
-    if (~pin_states & 0b01000000)
-      emergency_state |= 0b00100;
+    if (~pin_states & 0b00000100)
+      emergency_state |= 0b01000;
     // Emergency bit 1 (lift wheel 2)set?
-    if (~pin_states & 0b10000000)
+    if (~pin_states & 0b00001000)
+      emergency_state |= 0b10000;
+  }
+
+  if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
+  {
+    // Emergency bit 2 (stop button) set?
+    if (pin_states & 0b01000000)
       emergency_state |= 0b00010;
+    // Emergency bit 1 (stop button)set?
+    if (~pin_states & 0b10000000)
+      emergency_state |= 0b00100;
   }
 
   if (emergency_state || emergency_latch)
@@ -156,16 +185,20 @@ void updateEmergency()
   status_message.emergency_bitmask = emergency_state;
 
   // If it's a new emergency, instantly send the message. This is to not spam the channel during emergencies.
-  if (current_emergency != (emergency_state & 1))
+  if (last_emergency != (emergency_state & 1))
   {
     sendMessage(&status_message, sizeof(struct ll_status));
 
     // Show Info mower lifted or stop button pressed
     if (status_message.emergency_bitmask & 0b00110)
       uiCommandStruct.cmd2 = LED_blink_fast;
-    else if (status_message.emergency_bitmask & 0b01000)
+    else if (status_message.emergency_bitmask & 0b11000)
       uiCommandStruct.cmd2 = LED_blink_slow;
-
+    //else if (status_message.emergency_bitmask)
+      // On for other emergencies
+      //uiCommandStruct.cmd2 = LED_on;
+    else
+    uiCommandStruct.cmd2 = LED_off;
     uiCommandStruct.type = Set_LED;
     uiCommandStruct.cmd1 = MOWER_LIFTED;
     sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
@@ -177,10 +210,10 @@ void manageUILEDS()
 {
   struct ui_command uiCommandStruct = {0};
 
-  // Schow Info Docking LED
-  if ((status_message.charging_current > 1.00f) && (status_message.v_charge > 20.0f))
+  // Show Info Docking LED
+  if ((status_message.charging_current > 0.80f) && (status_message.v_charge > 20.0f))
     uiCommandStruct.cmd2 = LED_blink_fast;
-  else if ((status_message.charging_current <= 1.00f) && (status_message.charging_current >= 0.10f) && (status_message.v_charge > 20.0f))
+  else if ((status_message.charging_current <= 0.80f) && (status_message.charging_current >= 0.15f) && (status_message.v_charge > 20.0f))
     uiCommandStruct.cmd2 = LED_blink_slow;
   else if ((status_message.charging_current < 0.15f) && (status_message.v_charge > 20.0f))
     uiCommandStruct.cmd2 = LED_on;
@@ -192,21 +225,22 @@ void manageUILEDS()
 
   // Show Info Battery state
   if (status_message.v_battery >= (BATT_FULL - 0.5f))
-    uiCommandStruct.cmd2 = LED_on;
-  else if (status_message.v_battery <= (BATT_EMPTY + 1.5f))
-    uiCommandStruct.cmd2 = LED_blink_fast;
-  else
+    uiCommandStruct.cmd2 = LED_off;
+  else if (status_message.v_battery <= (BATT_EMPTY + 1.8f))
     uiCommandStruct.cmd2 = LED_blink_slow;
+  else
+    uiCommandStruct.cmd2 = LED_blink_fast;
   uiCommandStruct.type = Set_LED;
   uiCommandStruct.cmd1 = BATTERY_LOW;
   sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
 
-  // Show percent value akkupower but only, if mower is not docked
+
+  // Show percent value accupower, but only, if mower is not docked
   uiCommandStruct.type = Set_LED;
-  uiCommandStruct.cmd1 = LED_BAR;
+  uiCommandStruct.cmd1 = LED_BAR1;
   if (status_message.v_charge < 10.0f) // activate only when undocked
   {
-    // use the second LED row as bargraph
+    // use the first LED row as bargraph
 
     uiCommandStruct.cmd2 = LED_on;
     uiCommandStruct.cmd3 = status_message.batt_percentage;
@@ -215,18 +249,38 @@ void manageUILEDS()
   else
   {
     uiCommandStruct.cmd2 = LED_off;
-    uiCommandStruct.cmd3 = 0;
+    uiCommandStruct.cmd3 = 15;
     sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+    uiCommandStruct.cmd1 = LED18;
+    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+
   }
 
-  if (~emergency_latch) // emergency latch off
-  {
+  // Show Info mower lifted or stop button pressed
+  uiCommandStruct.type = Set_LED;
+  uiCommandStruct.cmd1 = MOWER_LIFTED;
 
-    uiCommandStruct.type = Set_LED;
-    uiCommandStruct.cmd1 = MOWER_LIFTED;
+  if (status_message.emergency_bitmask & 0b00110)
+      {
+        uiCommandStruct.cmd2 = LED_blink_fast;
+        sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+      }
+  else if (status_message.emergency_bitmask & 0b11000)
+        {
+           uiCommandStruct.cmd2 = LED_blink_slow;
+           sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+        }
+  //else if (status_message.emergency_bitmask)
+     // On for other emergencies
+    //uiCommandStruct.cmd2 = LED_on;
+
+  if (status_message.emergency_bitmask & 0b0000001 == 0) 
+  {
     uiCommandStruct.cmd2 = LED_off;
     sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
   }
+  
+  
 }
 
 void setup1()
@@ -287,8 +341,9 @@ void setup()
   // Therefore, we pause the other core until setup() was a success
   rp2040.idleOtherCore();
 
-  emergency_latch = false;
-  count_emergency_cycle = 0;
+  emergency_latch = true;
+  lift_emergency_started = 0;
+  button_emergency_started = 0;
   // Initialize messages
   imu_message = {0};
   status_message = {0};
@@ -405,7 +460,13 @@ void setup()
   uiCommandStruct.cmd1 = 0;
   uiCommandStruct.cmd2 = LED_All_OFF;
   sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+  
 }
+
+
+
+
+
 
 void onUIPacketReceived(const uint8_t *buffer, size_t size)
 {
@@ -427,7 +488,8 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size)
     return;
 
   struct ui_command *buttonboard = (struct ui_command *)buffer;
-
+  // overwrite type for the ROS system
+  buttonboard->type = PACKET_ID_LL_UI_EVENT;
   sendMessage(buttonboard, sizeof(struct ui_command));
 }
 
@@ -503,6 +565,7 @@ void loop()
   UISerial.update();
 
   updateChargingEnabled();
+  updateEmergency();
 
   unsigned long now = millis();
   if (now - last_imu_millis > IMU_CYCLETIME)
@@ -554,8 +617,6 @@ void loop()
   if (now - last_status_update_millis > STATUS_CYCLETIME)
   {
 
-    updateEmergency();
-
     status_message.v_battery = (float)analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
     status_message.v_charge = (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
     status_message.charging_current = (float)analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
@@ -566,6 +627,7 @@ void loop()
     float delta = BATT_FULL - BATT_EMPTY;
     float vo = status_message.v_battery - BATT_EMPTY;
     status_message.batt_percentage = vo / delta * 100;
+    if (status_message.batt_percentage > 100) status_message.batt_percentage = 100;
 
     mutex_enter_blocking(&mtx_status_message);
     sendMessage(&status_message, sizeof(struct ll_status));

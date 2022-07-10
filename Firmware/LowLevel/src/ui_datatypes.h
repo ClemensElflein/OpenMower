@@ -119,7 +119,7 @@ enum LED_state { LED_on, LED_off, LED_blink_slow, LED_blink_fast, LED_dimm, LED_
 
 // Function definiton for the 18 LEDS 
 
-enum LED_id { CHARGING, BATTERY_LOW, POOR_GPS, MOWER_LIFTED, LED5, LED6, LED7, LED8, LED9, LED10, LED11, LED12, LED13, LED14, LED15, LED16, LED17, LED18, LED_BAR };
+enum LED_id { CHARGING, BATTERY_LOW, POOR_GPS, MOWER_LIFTED, LED5, LED6, LED7, LED8, LED9, LED10, LED11, LED12, LED13, LED14, LED15, LED16, LED17, LED18, LED_BAR, LED_BAR1 };
 
 // used for com between moweboad and buttonboard via tty
 
@@ -127,7 +127,7 @@ enum LED_id { CHARGING, BATTERY_LOW, POOR_GPS, MOWER_LIFTED, LED5, LED6, LED7, L
 #pragma pack(push, 1)
 struct ui_command 
 {
-    // Type of this message. Has to be PACKET_ID_LL_IMU.
+    // Type of this message. Has to be PACKET_ID_LL_UI_EVENT if sent to ROS.
     uint8_t type;       // command type
     uint8_t cmd1;       // parameter to set 1
     uint8_t cmd2;       // parameter to set 2
