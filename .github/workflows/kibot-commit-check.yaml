@@ -1,0 +1,17 @@
+name: CI
+
+on: [push]
+
+jobs:
+  erc-drc-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: INTI-CMNB/KiBot@v2_k6
+        with:
+          config: Hardware/OpenMowerMainboard/OpenMowerMainboard.kibot.yaml
+          board: Hardware/OpenMowerMainboard/OpenMowerMainboard.kicad_pcb
+          verbose: 1

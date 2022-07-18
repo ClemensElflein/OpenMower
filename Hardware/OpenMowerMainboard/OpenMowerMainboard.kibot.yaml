@@ -1,0 +1,82 @@
+kibot:
+  version: 1
+
+preflight:
+  run_erc: true
+  run_drc: true
+  set_text_variables:
+    - name: 'git_version'
+      command: 'git describe --tags'
+
+outputs:
+  - name: 'bom'
+    type: 'bom'
+    dir: 'release'
+
+  - name: 'write_gerber_drill'
+    comment: 'This is the information for the drilling machine in gerber format.'
+    type: 'gerb_drill'
+    dir: 'release/gerber'
+
+  - name: 'write_gerber'
+    comment: 'This is the main fabrication format for the PCB.'
+    type: 'gerber'
+    dir: 'release/gerber'
+    layers: 'selected'
+
+  - name: 'gerber'
+    comment: 'Generates a compressed file containing gerber files.'
+    type: 'compress'
+    dir: 'release'
+    options:
+      files:
+        # [string=''] Destination directory inside the archive, empty means the same of the file
+        - dest: '.'
+          source: 'release/gerber/*'
+
+  - name: 'position'
+    comment: 'Generates the file with position information for the PCB components, used by the pick and place machine.'
+    type: 'position'
+    dir: 'release'
+
+  - name: 'ibom'
+    comment: 'Generates an interactive web page useful to identify the position of the components in the PCB.'
+    type: 'ibom'
+    dir: 'release'
+
+  - name: 'pcbdraw_svg'
+    comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
+    type: 'pcbdraw'
+    dir: 'release'
+    options:
+      format: 'svg'
+
+  - name: 'pcbdraw_png'
+    comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
+    type: 'pcbdraw'
+    dir: 'release'
+    options:
+      format: 'png'
+
+  - name: 'pcbdraw_svg_bottom'
+    comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
+    type: 'pcbdraw'
+    dir: 'release'
+    options:
+      bottom: true
+      format: 'svg'
+
+  - name: 'pcbdraw_png_bottom'
+    comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
+    type: 'pcbdraw'
+    dir: 'release'
+    options:
+      bottom: true
+      format: 'png'
+
+  - name: 'navigate_results'
+    comment: 'Generates a web page to navigate the generated outputs'
+    type: 'navigate_results'
+    dir: 'release_navigator'
+    options:
+      link_from_root: "release_navigator/index.html"
