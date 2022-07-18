@@ -16,13 +16,15 @@
 //
 #include <NeoPixelConnect.h>
 #include <Arduino.h>
-#include <MPU9250.h>
 #include <FastCRC.h>
 #include <PacketSerial.h>
-#include <DFPlayerMini_Fast.h>
 #include "datatypes.h"
 #include "pins.h"
 #include "ui_datatypes.h"
+#include "imu.h"
+#ifdef ENABLE_SOUND_MODULE
+#include <DFPlayerMini_Fast.h>
+#endif
 
 #define IMU_CYCLETIME 20          // cycletime for refresh IMU data
 #define STATUS_CYCLETIME 100      // cycletime for refresh analog and digital Statusvalues
@@ -33,15 +35,17 @@
 
 // Define to stream debugging messages via USB
 // #define USB_DEBUG
-// #define DEBUG_IMU
 
 // Only define DEBUG_SERIAL if USB_DEBUG is actually enabled.
 // This enforces compile errors if it's used incorrectly.
 #ifdef USB_DEBUG
 #define DEBUG_SERIAL Serial
 #endif
-#define PACKET_SERIAL Serial1
-#define UI1_SERIAL Serial2
+#define PACKET_SERIAL Serial
+
+SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
+
+#define UI1_SERIAL uiSerial
 
 // Millis after charging is retried
 #define CHARGING_RETRY_MILLIS 10000
@@ -69,10 +73,6 @@ PacketSerial packetSerial; // COBS communication PICO <> Raspi
 PacketSerial UISerial;     // COBS communication PICO UI-Board
 FastCRC16 CRC16;
 
-// MbedSPI IMU_SPI(16, 19, 18);
-MPU9250 IMU(SPI, PIN_IMU_CS);
-size_t fifoSize;
-
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
 unsigned long last_heartbeat_millis = 0;
@@ -95,8 +95,12 @@ bool charging_allowed = false;
 unsigned long charging_disabled_time = 0;
 
 bool sound_available = false;
+#ifdef ENABLE_SOUND_MODULE
 SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX);
 DFPlayerMini_Fast myMP3;
+#endif
+
+float imu_temp[9];
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -365,8 +369,6 @@ void setup()
   packetSerial.setStream(&PACKET_SERIAL);
   packetSerial.setPacketHandler(&onPacketReceived);
 
-  UI1_SERIAL.setRX(5); // set hardware pin
-  UI1_SERIAL.setTX(4);
   UI1_SERIAL.begin(115200);
   UISerial.setStream(&UI1_SERIAL);
   UISerial.setPacketHandler(&onUIPacketReceived);
@@ -375,14 +377,11 @@ void setup()
    * IMU INITIALIZATION
    */
 
-  int status = IMU.begin();
-  if (status < 0)
+  if (!init_imu())
   {
 #ifdef USB_DEBUG
     DEBUG_SERIAL.println("IMU initialization unsuccessful");
     DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
-    DEBUG_SERIAL.print("Status: ");
-    DEBUG_SERIAL.println(status);
 #endif
     status_message.status_bitmask = 0;
     while (1)
@@ -396,9 +395,6 @@ void setup()
     }
   }
 
-  // setting DLPF bandwidth to 20 Hz
-  IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
-
 #ifdef USB_DEBUG
   DEBUG_SERIAL.println("Imu initialized");
 #endif
@@ -409,31 +405,16 @@ void setup()
 
   status_message.status_bitmask |= 1;
 
+#ifdef ENABLE_SOUND_MODULE
   // sound init
   soundSerial.begin(9600);
   while (soundSerial.available())
     soundSerial.read();
   sound_available = myMP3.begin(soundSerial);
+#else
+  sound_available = false;
+#endif
 
-  if (sound_available)
-  {
-    p.neoPixelSetValue(0, 0, 0, 255, true);
-    p.neoPixelShow();
-    myMP3.volume(30);
-    myMP3.play(1);
-  }
-  else
-  {
-    for (uint8_t b = 0; b < 3; b++)
-    {
-      p.neoPixelSetValue(0, 0, 0, 0, true);
-      p.neoPixelShow();
-      delay(100);
-      p.neoPixelSetValue(0, 0, 0, 255, true);
-      p.neoPixelShow();
-      delay(100);
-    }
-  }
 
   rp2040.resumeOtherCore();
 
@@ -539,6 +520,7 @@ void loop()
 {
   packetSerial.update();
   UISerial.update();
+  imu_loop();
 
   updateChargingEnabled();
   updateEmergency();
@@ -546,48 +528,24 @@ void loop()
   unsigned long now = millis();
   if (now - last_imu_millis > IMU_CYCLETIME)
   {
-    IMU.readSensor();
-    imu_message.type = PACKET_ID_LL_IMU;
-    imu_message.acceleration_mss[0] = IMU.getAccelX_mss();
-    imu_message.acceleration_mss[1] = IMU.getAccelY_mss();
-    imu_message.acceleration_mss[2] = IMU.getAccelZ_mss();
-
-    imu_message.gyro_rads[0] = IMU.getGyroX_rads();
-    imu_message.gyro_rads[1] = IMU.getGyroY_rads();
-    imu_message.gyro_rads[2] = IMU.getGyroZ_rads();
-
-    imu_message.mag_uT[0] = IMU.getMagX_uT();
-    imu_message.mag_uT[1] = IMU.getMagY_uT();
-    imu_message.mag_uT[2] = IMU.getMagZ_uT();
+    // we have to copy to the temp data structure due to alignment issues
+    imu_read(imu_temp, imu_temp+3,imu_temp+6);
+    imu_message.acceleration_mss[0] = imu_temp[0];
+    imu_message.acceleration_mss[1] = imu_temp[1];
+    imu_message.acceleration_mss[2] = imu_temp[2];
+    imu_message.gyro_rads[0] = imu_temp[3];
+    imu_message.gyro_rads[1] = imu_temp[4];
+    imu_message.gyro_rads[2] = imu_temp[5];
+    imu_message.mag_uT[0] = imu_temp[6];
+    imu_message.mag_uT[1] = imu_temp[7];
+    imu_message.mag_uT[2] = imu_temp[8];
+    
 
     imu_message.dt_millis = now - last_imu_millis;
     sendMessage(&imu_message, sizeof(struct ll_imu));
 
     last_imu_millis = now;
 
-#ifdef USB_DEBUG
-#ifdef DEBUG_IMU
-    DEBUG_SERIAL.print(IMU.getAccelX_mss(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getAccelY_mss(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getAccelZ_mss(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getGyroX_rads(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getGyroY_rads(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getGyroZ_rads(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getMagX_uT(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getMagY_uT(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getMagZ_uT(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.println(IMU.getTemperature_C(), 6);
-#endif
-#endif
   }
 
   if (now - last_status_update_millis > STATUS_CYCLETIME)

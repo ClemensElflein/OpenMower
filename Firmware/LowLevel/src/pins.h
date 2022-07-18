@@ -22,5 +22,19 @@
 
 #define PIN_NEOPIXEL 10
 
+#define PIN_UI_TX 4
+#define PIN_UI_RX 5
+
+#ifdef ENABLE_SOUND_MODULE
 #define PIN_SOUND_TX 8
 #define PIN_SOUND_RX 9
+#endif
+
+//This is used as a hack to use WT901 on older mainboards.
+#ifdef WT901_INSTEAD_OF_SOUND
+#ifdef ENABLE_SOUND_MODULE
+#error you can not enable sound and have wt901 on sound port at the same time.
+#endif
+#define PIN_WT901_TX 8
+#define PIN_WT901_RX 9
+#endif
