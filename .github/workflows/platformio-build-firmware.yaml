@@ -1,0 +1,48 @@
+name: PlatformIO Firmware
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Cache PlatformIO
+      uses: actions/cache@v2
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+    - name: Set up Python
+      uses: actions/setup-python@v2
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
+    - name: Run PlatformIO
+      run: pio run -d Firmware/LowLevel
+    - name: Copy Artifacts
+      run: |
+        mkdir artifacts
+        mkdir ./artifacts/ELFLEIN_PROTOTYPE
+        cp Firmware/LowLevel/.pio/build/ELFLEIN_PROTOTYPE/firmware.bin ./artifacts/ELFLEIN_PROTOTYPE
+        cp Firmware/LowLevel/.pio/build/ELFLEIN_PROTOTYPE/firmware.uf2 ./artifacts/ELFLEIN_PROTOTYPE
+        mkdir ./artifacts/MPU9250
+        cp Firmware/LowLevel/.pio/build/MPU9250/firmware.bin ./artifacts/MPU9250
+        cp Firmware/LowLevel/.pio/build/MPU9250/firmware.uf2 ./artifacts/MPU9250
+        mkdir ./artifacts/WT901_INSTEAD_OF_SOUND
+        cp Firmware/LowLevel/.pio/build/WT901_INSTEAD_OF_SOUND/firmware.bin ./artifacts/WT901_INSTEAD_OF_SOUND
+        cp Firmware/LowLevel/.pio/build/WT901_INSTEAD_OF_SOUND/firmware.uf2 ./artifacts/WT901_INSTEAD_OF_SOUND
+    - name: Step 3 - Use the Upload Artifact GitHub Action
+      uses: actions/upload-artifact@v2
+      with: 
+        name: open-mower-pico-firmware
+        path: artifacts
