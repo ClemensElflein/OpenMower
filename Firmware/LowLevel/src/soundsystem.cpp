@@ -17,12 +17,14 @@
 #include <soundsystem.h>
 
 
-SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX);
 DFPlayerMini_Fast myMP3;
 
 
 MP3Sound::MP3Sound()
 {
+
+    Serial2.setTX(PIN_SOUND_TX);
+    Serial2.setRX(PIN_SOUND_RX);
 
     this->anzSoundfiles =   0;          // number of files stored on the SD-card
     this->playing =         false;
@@ -37,11 +39,11 @@ bool MP3Sound::begin(int anzsoundsOnSD)
 {
 
     // serial stream init for soundmodule
-    soundSerial.begin(9600);
-    while (soundSerial.available())
-        soundSerial.read();
+    Serial2.begin(9600);
+    while (Serial2.available())
+        Serial2.read();
     // init soundmodule
-    sound_available = myMP3.begin(soundSerial,true);    
+    sound_available = myMP3.begin(Serial2,true);    
     delay(1000);
     return (sound_available);
 }
