@@ -12,18 +12,18 @@ void CJY901::begin(int baudrate) {
 	uint8_t unlock[] = {0xFF,0xF0,0xF0,0xF0,0xF0};
 	serial->write(unlock, 5);
 	serial->flush();
-	delay(100);
-	writeRegister(RSW, 0b0000000000011111);
+	delay(10);
+	writeRegister(RSW, 0b0000000000010110);
+	delay(10);
 	writeRegister(RRATE, 0x09);
+	delay(10);
+	writeRegister(0x0b,0x00);
+	delay(10);
+	writeRegister(0x0c,0x00);
+	delay(10);
+	writeRegister(0x0d,0x00);
+	delay(10);
 
-	writeRegister(CALSW, 0x02);
-	digitalWrite(LED_BUILTIN, HIGH);
-	delay(10000);
-	
-	digitalWrite(LED_BUILTIN, LOW);
-
-	writeRegister(SAVE, 0x00);
-	writeRegister(CALSW, 0x00);
 
 	
 
