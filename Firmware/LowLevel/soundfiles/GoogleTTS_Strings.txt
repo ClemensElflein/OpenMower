@@ -1,0 +1,18 @@
+-- file leading nr --    ------ string to convert ------------ 
+
+0001					Hi, I am Steve, your open mower green care is my profession
+0002					open mower start up successful
+0003					Initializing robot operating system
+0004					Starting map area recording
+0005					waiting for rtk gps signal
+0006					calculating map dimensions
+0007					initiate mowing sequence
+0008					emergency stop button triggered
+0009					emergency wheel lift sensor triggered
+0010					rain detected, heading back to base
+0011					open mower has completed mowing the lawn, heading back to charging station
+0012					stay back, autononous robot mower in use
+0013                  	ups, I did it again
+0014					Hallo, ich bin Tobi, dein intelligenter Rasemäher, Rasenpflege ist mein Beruf
+0015					Hello, I am Tobi, your smart mower, green care ist my profession
+
