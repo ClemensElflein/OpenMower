@@ -75,7 +75,7 @@ void MP3Sound::playSound(int soundNr)
 {
     if((soundNr > NR_SOUNDFILES)  || (active_sounds.size() == BUFFERSIZE) ) return;
 
-    active_sounds.push_back(soundNr);
+    active_sounds.push_front(soundNr);
     
 }
 

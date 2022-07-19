@@ -471,7 +471,7 @@ void setup()
     my_sound.setvolume(10);
     delay(100);
     my_sound.playSoundAdHoc(1);
-    delay(5000);
+    delay(6000);
     p.neoPixelSetValue(0, 255, 255, 0, true);
     
   }
@@ -487,9 +487,11 @@ void setup()
   }
 
 // Soundtest
-  my_sound.playSound(3);
-  my_sound.playSound(1);
   my_sound.playSound(2);
+  my_sound.playSound(3);
+  my_sound.playSound(13);
+  my_sound.playSound(14);
+
 
   int i = my_sound.sounds2play();
 

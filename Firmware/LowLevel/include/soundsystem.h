@@ -28,7 +28,7 @@
 
 #define BUFFERSIZE 100
 
-#define NR_SOUNDFILES 3        // Number of Soundfiles on SD-card
+#define NR_SOUNDFILES 15        // Number of Soundfiles on SD-card
 
 
 
