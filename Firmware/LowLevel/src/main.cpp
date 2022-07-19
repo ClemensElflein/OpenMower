@@ -104,6 +104,7 @@ unsigned long charging_disabled_time = 0;
 
 float imu_temp[9];
 
+
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
@@ -122,6 +123,7 @@ void updateEmergency()
   if (millis() - last_heartbeat_millis > HEARTBEAT_MILLIS)
   {
     emergency_latch = true;
+    ROS_running = false;
   }
   uint8_t last_emergency = status_message.emergency_bitmask & 1;
 
@@ -360,7 +362,7 @@ void setup()
   // Setup pins
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(PIN_ENABLE_CHARGE, OUTPUT);
-  digitalWrite(PIN_ENABLE_CHARGE, charging_allowed);
+  digitalWrite(PIN_ENABLE_CHARGE, LOW);
 
   gpio_init(PIN_RASPI_POWER);
   gpio_put(PIN_RASPI_POWER, true);
@@ -528,17 +530,16 @@ void onPacketReceived(const uint8_t *buffer, size_t size)
 
   // CRC and packet is OK, reset watchdog
   last_heartbeat_millis = millis();
+  ROS_running = true;
   struct ll_heartbeat *heartbeat = (struct ll_heartbeat *)buffer;
   if (heartbeat->emergency_release_requested)
   {
     emergency_latch = false;
-    ROS_running = true;
   }
   // Check in this order, so we can set it again in the same packet if required.
   if (heartbeat->emergency_requested)
   {
     emergency_latch = true;
-    ROS_running = false;
   }
 }
 
@@ -554,7 +555,7 @@ void updateChargingEnabled()
   {
     if (!checkShouldCharge())
     {
-      digitalWrite(PIN_ENABLE_CHARGE, false);
+      digitalWrite(PIN_ENABLE_CHARGE, LOW);
       charging_allowed = false;
       charging_disabled_time = millis();
     }
@@ -566,13 +567,13 @@ void updateChargingEnabled()
     {
       if (!checkShouldCharge())
       {
-        digitalWrite(PIN_ENABLE_CHARGE, false);
+        digitalWrite(PIN_ENABLE_CHARGE, LOW);
         charging_allowed = false;
         charging_disabled_time = millis();
       }
       else
       {
-        digitalWrite(PIN_ENABLE_CHARGE, true);
+        digitalWrite(PIN_ENABLE_CHARGE, HIGH);
         charging_allowed = true;
       }
     }
