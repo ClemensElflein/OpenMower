@@ -42,7 +42,7 @@
 #ifdef USB_DEBUG
 #define DEBUG_SERIAL Serial
 #endif
-#define PACKET_SERIAL Serial
+#define PACKET_SERIAL Serial1
 
 SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 
