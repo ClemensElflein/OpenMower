@@ -24,9 +24,9 @@ bool imu_read(float *acceleration_mss, float *gyro_rads, float *mag_uT)
     gyro_rads[1] = (float)IMU.stcGyro.w[1]/32768.0f*2000.0f * PI / 180.0f;
     gyro_rads[2] = (float)IMU.stcGyro.w[2]/32768.0f*2000.0f * PI / 180.0f;
 
-    mag_uT[0] = IMU.stcMag.h[0];
-    mag_uT[1] = IMU.stcMag.h[1];
-    mag_uT[2] = IMU.stcMag.h[2];
+    mag_uT[0] = IMU.stcMag.h[0] / 1000.0f;
+    mag_uT[1] = IMU.stcMag.h[1] / 1000.0f;
+    mag_uT[2] = IMU.stcMag.h[2] / 1000.0f;
 
     return true;
 }
