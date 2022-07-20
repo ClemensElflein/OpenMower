@@ -71,6 +71,7 @@ SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 #define HEARTBEAT_MILLIS 500
 
 NeoPixelConnect p(PIN_NEOPIXEL, 1, pio1, 0); // use state machine 1, sm 0 is used by hardwareserial class
+uint8_t led_blink_counter = 0;
 
 PacketSerial packetSerial; // COBS communication PICO <> Raspi
 PacketSerial UISerial;     // COBS communication PICO UI-Board
@@ -103,7 +104,6 @@ bool ROS_running = false;
 unsigned long charging_disabled_time = 0;
 
 float imu_temp[9];
-
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -343,7 +343,6 @@ void loop1()
 
 void setup()
 {
-  // p.neoPixelSetValue(0, 128, 0, 0, true);
   //  We do hardware init in this core, so that we don't get invalid states.
   //  Therefore, we pause the other core until setup() was a success
   rp2040.idleOtherCore();
@@ -432,8 +431,6 @@ void setup()
 #ifdef USB_DEBUG
   DEBUG_SERIAL.println("Imu initialized");
 #endif
-  p.neoPixelSetValue(0, 255, 255, 0, true);
-  delay(1000);
 
   /*
    * /IMU INITIALIZATION
@@ -442,6 +439,8 @@ void setup()
   status_message.status_bitmask |= 1;
 
 #ifdef ENABLE_SOUND_MODULE
+  p.neoPixelSetValue(0, 0, 255, 255, true);
+  delay(1000);
 
   sound_available = my_sound.begin(NR_SOUNDFILES);
   if (sound_available)
@@ -580,12 +579,34 @@ void updateChargingEnabled()
   }
 }
 
+void updateNeopixel()
+{
+  led_blink_counter++;
+  // flash red on emergencies
+  if (emergency_latch && led_blink_counter&0b10)
+  {
+    p.neoPixelSetValue(0, 128, 0, 0, true);
+  }
+  else
+  {
+    if (ROS_running)
+    {
+      // Green, if ROS is running
+      p.neoPixelSetValue(0, 0, 255, 0, true);
+    }
+    else
+    {
+      // Yellow, if it's not running
+      p.neoPixelSetValue(0, 255, 50, 0, true);
+    }
+  }
+}
+
 void loop()
 {
   packetSerial.update();
   UISerial.update();
   imu_loop();
-
   updateChargingEnabled();
   updateEmergency();
 
@@ -612,6 +633,7 @@ void loop()
 
   if (now - last_status_update_millis > STATUS_CYCLETIME)
   {
+    updateNeopixel();
 
     status_message.v_battery = (float)analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
     status_message.v_charge = (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
@@ -653,7 +675,6 @@ void loop()
 
   if (now - last_UILED_millis > UI_SET_LED_CYCLETIME)
   {
-
     manageUILEDS();
     last_UILED_millis = now;
 #ifdef ENABLE_SOUND_MODULE
@@ -667,6 +688,10 @@ void loop()
 
 void sendMessage(void *message, size_t size)
 {
+  // Only send messages, if ROS is running, else Raspi sometimes doesn't boot
+  if (!ROS_running)
+    return;
+
   // packages need to be at least 1 byte of type, 1 byte of data and 2 bytes of CRC
   if (size < 4)
   {
@@ -679,13 +704,7 @@ void sendMessage(void *message, size_t size)
   data_pointer[size - 1] = (crc >> 8) & 0xFF;
   data_pointer[size - 2] = crc & 0xFF;
 
-  if (ROS_running)
-  {
-    p.neoPixelSetValue(0, 0, 255, 0, true);
-    packetSerial.send((uint8_t *)message, size);
-  }
-  else
-    p.neoPixelSetValue(0, 0, 255, 255, true);
+  packetSerial.send((uint8_t *)message, size);
 }
 
 void sendUIMessage(void *message, size_t size)
