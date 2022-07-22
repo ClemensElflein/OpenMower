@@ -13,18 +13,27 @@ void CJY901::begin(int baudrate) {
 	serial->write(unlock, 5);
 	serial->flush();
 	delay(10);
-	writeRegister(RSW, 0b0000000000010110);
+	writeRegister(RSW, 0b0000001000011110);
 	delay(10);
 	writeRegister(RRATE, 0x09);
 	delay(10);
-	writeRegister(0x0b,0x00);
+	//writeRegister(0x0b,0x00);
+	//delay(10);
+	//writeRegister(0x0c,0x00);
+	//delay(10);
+	//writeRegister(0x0d,0x00);
+	//delay(10);
+	writeRegister(0x23, 0);
 	delay(10);
-	writeRegister(0x0c,0x00);
-	delay(10);
-	writeRegister(0x0d,0x00);
+	writeRegister(0x24, 1);
 	delay(10);
 
-
+	writeRegister(0x0b, (uint16_t)(1000000.0f*-0.00756085));
+	delay(10);
+	writeRegister(0x0c, (uint16_t)(1000000.0f*0.00400938));
+	delay(10);
+	writeRegister(0x0d, (uint16_t)(1000000.0f*0.00450092));
+	delay(10);
 	
 
 	ucRxCnt = 0;
@@ -75,6 +84,9 @@ void CJY901 ::update()
 				break;
 			case 0x58:
 				memcpy(&stcGPSV, &ucRxBuffer[2], 8);
+				break;
+			case 0x59:
+				memcpy(&stcQuaternion, &ucRxBuffer[2], 8);
 				break;
 			}
 			ucRxCnt = 0;

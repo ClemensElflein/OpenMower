@@ -128,6 +128,10 @@ struct SGPSV
 	short sGPSYaw;
 	long lGPSVelocity;
 };
+struct SGQuaternion
+{
+	short q[4];
+};
 class CJY901 
 {
   public: 
@@ -140,6 +144,7 @@ class CJY901
 	struct SPress 		stcPress;
 	struct SLonLat 		stcLonLat;
 	struct SGPSV 		stcGPSV;
+	struct SGQuaternion 		stcQuaternion;
 	
     CJY901 (HardwareSerial *serial); 
 	

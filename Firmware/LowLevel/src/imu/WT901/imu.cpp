@@ -30,7 +30,13 @@ bool imu_read(float *acceleration_mss, float *gyro_rads, float *mag_uT)
 
     return true;
 }
-
+bool imu_read_quat(float *q) {
+    q[0] = (float)IMU.stcQuaternion.q[0]/32768.0f*180.0f * PI / 180.0f;
+    q[1] = (float)IMU.stcQuaternion.q[1]/32768.0f;
+    q[2] = (float)IMU.stcQuaternion.q[2]/32768.0f;
+    q[3] = (float)IMU.stcQuaternion.q[3]/32768.0f;
+    return true;
+}
 void imu_loop()
 {
     IMU.update();

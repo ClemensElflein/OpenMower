@@ -34,15 +34,11 @@
 #define LIFT_EMERGENCY_MILLIS 500  // Time for wheels to be lifted in order to count as emergency. This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
-// Define to stream debugging messages via USB
-// #define USB_DEBUG
-
-// Only define DEBUG_SERIAL if USB_DEBUG is actually enabled.
-// This enforces compile errors if it's used incorrectly.
-#ifdef USB_DEBUG
-#define DEBUG_SERIAL Serial
-#endif
+#ifdef USB_SERIAL
+#define PACKET_SERIAL Serial
+#else
 #define PACKET_SERIAL Serial1
+#endif
 
 SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 
@@ -91,6 +87,7 @@ unsigned long button_emergency_started = 0;
 
 // Predefined message buffers, so that we don't need to allocate new ones later.
 struct ll_imu imu_message = {0};
+struct ll_imu_quaternion imu_quat_message = {0};
 struct ll_status status_message = {0};
 struct ui_command uiCommandStruct = {0};
 // A mutex which is used by core1 each time status_message is modified.
@@ -293,7 +290,6 @@ void manageUILEDS()
 void setup1()
 {
   // Core
-  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void loop1()
@@ -354,12 +350,16 @@ void setup()
   button_emergency_started = 0;
   // Initialize messages
   imu_message = {0};
+  imu_quat_message = {0};
   status_message = {0};
   imu_message.type = PACKET_ID_LL_IMU;
   status_message.type = PACKET_ID_LL_STATUS;
+  imu_quat_message.type = PACKET_ID_LL_IMU_QUATERNION;
 
   // Setup pins
   pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+
   pinMode(PIN_ENABLE_CHARGE, OUTPUT);
   digitalWrite(PIN_ENABLE_CHARGE, LOW);
 
@@ -484,6 +484,8 @@ void setup()
   uiCommandStruct.cmd1 = 0;
   uiCommandStruct.cmd2 = LED_All_OFF;
   sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+  digitalWrite(LED_BUILTIN, LOW);
+
 }
 
 void onUIPacketReceived(const uint8_t *buffer, size_t size)
@@ -593,11 +595,13 @@ void updateNeopixel()
     {
       // Green, if ROS is running
       p.neoPixelSetValue(0, 0, 255, 0, true);
+      digitalWrite(LED_BUILTIN, HIGH);
     }
     else
     {
       // Yellow, if it's not running
       p.neoPixelSetValue(0, 255, 50, 0, true);
+      digitalWrite(LED_BUILTIN, LOW);
     }
   }
 }
@@ -627,6 +631,13 @@ void loop()
 
     imu_message.dt_millis = now - last_imu_millis;
     sendMessage(&imu_message, sizeof(struct ll_imu));
+
+    imu_read_quat(imu_temp);
+    imu_quat_message.q[0] = imu_temp[0];
+    imu_quat_message.q[1] = imu_temp[1];
+    imu_quat_message.q[2] = imu_temp[2];
+    imu_quat_message.q[3] = imu_temp[3];
+    sendMessage(&imu_quat_message, sizeof(struct ll_imu_quaternion));
 
     last_imu_millis = now;
   }

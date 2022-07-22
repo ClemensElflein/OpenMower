@@ -23,6 +23,7 @@
 #define PACKET_ID_LL_STATUS 1
 #define PACKET_ID_LL_IMU 2
 #define PACKET_ID_LL_UI_EVENT 3
+#define PACKET_ID_LL_IMU_QUATERNION 4
 #define PACKET_ID_LL_HEARTBEAT 0x42
 
 
@@ -70,6 +71,15 @@ struct ll_imu {
     float acceleration_mss[3];
     float gyro_rads[3];
     float mag_uT[3];
+    uint16_t crc;
+} __attribute__((packed));
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct ll_imu_quaternion {
+    // Type of this message. Has to be PACKET_ID_LL_IMU_QUATERNION.
+    uint8_t type;
+    float q[4];
     uint16_t crc;
 } __attribute__((packed));
 #pragma pack(pop)

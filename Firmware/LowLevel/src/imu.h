@@ -4,6 +4,7 @@
 bool init_imu();
 
 bool imu_read(float *acceleration_mss,float *gyro_rads,float *mag_uT);
+bool imu_read_quat(float *q);
 
 // call once per loop, used to process serial or do sensor fusion or do nothing.
 void imu_loop();
