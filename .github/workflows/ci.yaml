@@ -73,7 +73,7 @@ jobs:
           skip: run_drc,run_erc
 
       - name: 'Fix permissions on release/'
-        run: chmod 0777 release
+        run: sudo chmod 0777 release
 
       - uses: actions/download-artifact@v3
         with:
