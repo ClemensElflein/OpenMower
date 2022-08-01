@@ -62,6 +62,13 @@ outputs:
       extra_fields: Stock_PN
       highlight_pin1: true
 
+  - name: 'pdf_sch_print'
+    comment: 'Exports the PCB to the most common exchange format. Suitable for printing.'
+    type: 'pdf_sch_print'
+    dir: 'release'
+    options:
+      dnf_filter: anything_in_Config
+
   - name: 'pcbdraw_svg'
     comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
     type: 'pcbdraw'
