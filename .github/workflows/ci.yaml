@@ -78,18 +78,16 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: open-mower-pico-firmware
-          path: release/firmware
+          path: firmware
 
-      - name: 'List release files'
-        run: ls -alR release/
+      - name: Create firmware zip
+        run: zip -r release/firmware.zip firmware
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
-          files: |
-            release/*
-            release/firmware/*
+          files: release/*
 
       - name: Deploy release
         uses: peaceiris/actions-gh-pages@v3
