@@ -53,10 +53,10 @@ jobs:
           cp Firmware/LowLevel/.pio/build/WT901_INSTEAD_OF_SOUND/firmware.bin ./artifacts/WT901_INSTEAD_OF_SOUND
           cp Firmware/LowLevel/.pio/build/WT901_INSTEAD_OF_SOUND/firmware.uf2 ./artifacts/WT901_INSTEAD_OF_SOUND
       - name: Step 3 - Use the Upload Artifact GitHub Action
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: open-mower-pico-firmware
-          path: artifacts
+          path: artifacts/
 
   tagged-release:
     runs-on: ubuntu-latest
