@@ -80,11 +80,16 @@ jobs:
           name: open-mower-pico-firmware
           path: release
 
+      - name: 'List release files'
+        run: ls -alR release/
+
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
-          files: release/*
+          files: |
+            release/*
+            release/open-mower-pico-firmware/*
 
       - name: Deploy release
         uses: peaceiris/actions-gh-pages@v3
