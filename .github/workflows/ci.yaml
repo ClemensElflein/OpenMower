@@ -72,6 +72,9 @@ jobs:
           board: Hardware/OpenMowerMainboard/OpenMowerMainboard.kicad_pcb
           skip: run_drc,run_erc
 
+      - name: 'Fix permissions on release/'
+        run: chmod 0777 release
+
       - uses: actions/download-artifact@v3
         with:
           name: open-mower-pico-firmware
