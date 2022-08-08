@@ -6,7 +6,9 @@ preflight:
   run_drc: true
   set_text_variables:
     - name: 'git_version'
-      command: 'git describe --tags'
+      # Replace n.m.i with n.m."x"
+      command: >
+        git describe --tags | sed -E 's/^(v[0-9]+\.[0-9]+)\.([0-9]+)/\1.x/'
   update_xml: true
 
 filters:
