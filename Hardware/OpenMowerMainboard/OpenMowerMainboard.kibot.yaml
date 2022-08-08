@@ -6,12 +6,26 @@ preflight:
   run_drc: true
   set_text_variables:
     - name: 'git_version'
-      command: 'git describe --tags'
+      # Replace n.m.i with n.m."x"
+      command: >
+        git describe --tags | sed -E 's/^(v[0-9]+\.[0-9]+)\.([0-9]+)/\1.x/'
+  update_xml: true
+
+filters:
+  - name: anything_in_Config
+    type: 'generic'
+    comment: 'Remove components with something in config'
+    keys: ["do not place", "DNP", 'bench_test']
+    exclude_config: true
+    exclude_value: true
 
 outputs:
   - name: 'bom'
-    type: 'bom'
+    comment: 'Used to generate the BoM in CSV, HTML, TSV, TXT, XML or XLSX format using the internal BoM.'
+    type: 'kibom'   # reads bom.ini in contrast with 'bom'
     dir: 'release'
+    options:
+      format: CSV
 
   - name: 'write_gerber_drill'
     comment: 'This is the information for the drilling machine in gerber format.'
@@ -38,11 +52,24 @@ outputs:
     comment: 'Generates the file with position information for the PCB components, used by the pick and place machine.'
     type: 'position'
     dir: 'release'
+    options:
+      dnf_filter: anything_in_Config
 
   - name: 'ibom'
     comment: 'Generates an interactive web page useful to identify the position of the components in the PCB.'
     type: 'ibom'
     dir: 'release'
+    options:
+      dnf_filter: anything_in_Config
+      extra_fields: Stock_PN
+      highlight_pin1: true
+
+  - name: 'pdf_sch_print'
+    comment: 'Exports the PCB to the most common exchange format. Suitable for printing.'
+    type: 'pdf_sch_print'
+    dir: 'release'
+    options:
+      dnf_filter: anything_in_Config
 
   - name: 'pcbdraw_svg'
     comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
@@ -50,6 +77,7 @@ outputs:
     dir: 'release'
     options:
       format: 'svg'
+      dnf_filter: anything_in_Config
 
   - name: 'pcbdraw_png'
     comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
@@ -57,6 +85,7 @@ outputs:
     dir: 'release'
     options:
       format: 'png'
+      dnf_filter: anything_in_Config
 
   - name: 'pcbdraw_svg_bottom'
     comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
@@ -65,6 +94,7 @@ outputs:
     options:
       bottom: true
       format: 'svg'
+      dnf_filter: anything_in_Config
 
   - name: 'pcbdraw_png_bottom'
     comment: 'Exports the PCB as a 2D model (SVG, PNG or JPG).'
@@ -73,6 +103,7 @@ outputs:
     options:
       bottom: true
       format: 'png'
+      dnf_filter: anything_in_Config
 
   - name: 'navigate_results'
     comment: 'Generates a web page to navigate the generated outputs'
