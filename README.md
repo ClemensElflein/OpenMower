@@ -109,7 +109,9 @@ You can help by starting an OpenMower build of your own. This helps to validate 
 
 Additionally, you can help by starring 🌟 and watching 👀 this repository, since it will help with visibility. You can also subscribe to my [YouTube channel](https://youtube.com/c/ClemensElflein).
 
+## Getting started
 
+Please refer to Wiki for the instructions on how to get started: https://wiki.openmower.de/index.php?title=Main_Page#How_to_Get_Started
 
 ## Compatible Robotic Mowers
 
