@@ -1363,6 +1363,8 @@
   (no_connect (at 176.53 128.905) (uuid 90076413-1402-4652-9aa8-2ecd154c77df))
   (no_connect (at 176.53 126.365) (uuid 90076413-1402-4652-9aa8-2ecd154c77e0))
   (no_connect (at 176.53 121.285) (uuid 90076413-1402-4652-9aa8-2ecd154c77e1))
+  (no_connect (at 110.49 71.12) (uuid b4123fe0-b00b-4e5e-90e5-894d96fe075e))
+  (no_connect (at 97.79 71.12) (uuid dff1b6e1-6de1-4b9e-aeea-9e573265d774))
   (no_connect (at 110.49 66.04) (uuid fb0b1440-18be-4b5f-b469-b4cfaf66fc53))
 
   (wire (pts (xy 242.57 76.2) (xy 240.03 76.2))
@@ -2599,7 +2601,7 @@
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid 26b610c6-7367-4be6-9dd1-8a2add81e7c9)
   )
-  (hierarchical_label "Enable_Charge" (shape input) (at 127.635 35.56 180)
+  (hierarchical_label "ENABLE_CHARGE" (shape input) (at 127.635 35.56 180)
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid 2e93d858-d521-4047-968e-9a0fb17ea8c5)
   )

@@ -1738,7 +1738,7 @@
       (effects (font (size 1.27 1.27)) (justify right))
       (uuid 68ec3b04-e2b7-4bd6-a6a5-46c668a8338c)
     )
-    (pin "Enable_Charge" input (at 68.58 132.08 0)
+    (pin "ENABLE_CHARGE" input (at 68.58 132.08 0)
       (effects (font (size 1.27 1.27)) (justify right))
       (uuid c4ee5d6d-f02e-4abd-a7c0-6fd340101d5b)
     )
@@ -2231,6 +2231,12 @@
   )
 
   (symbol_instances
+    (path "/ea926745-863d-461e-9df3-dbf32112727b/bca34ef9-4aab-4ab9-889d-1e8c0af877f1"
+      (reference "#FLG0101") (unit 1) (value "PWR_FLAG") (footprint "")
+    )
+    (path "/ea926745-863d-461e-9df3-dbf32112727b/3935cc4c-fd83-4144-a6f3-151fe6ee58c5"
+      (reference "#FLG0102") (unit 1) (value "PWR_FLAG") (footprint "")
+    )
     (path "/00000000-0000-0000-0000-000061040c60/00000000-0000-0000-0000-00006105dd51"
       (reference "#PWR0101") (unit 1) (value "GND") (footprint "")
     )
@@ -2245,12 +2251,6 @@
     )
     (path "/00000000-0000-0000-0000-000061040c60/00000000-0000-0000-0000-00006105dd93"
       (reference "#PWR0105") (unit 1) (value "GND") (footprint "")
-    )
-    (path "/ea926745-863d-461e-9df3-dbf32112727b/b8cb89b3-4805-4e56-9325-1f9afe8522c4"
-      (reference "#PWR0106") (unit 1) (value "GND") (footprint "")
-    )
-    (path "/ea926745-863d-461e-9df3-dbf32112727b/ac238d30-44a0-44b9-b5c5-a58e54e3f16e"
-      (reference "#PWR0107") (unit 1) (value "+5V") (footprint "")
     )
     (path "/00000000-0000-0000-0000-000061040c60/3e1c4d9d-6fcf-4de0-994d-a29d1c10cdf1"
       (reference "#PWR0108") (unit 1) (value "GND") (footprint "")
@@ -2995,9 +2995,6 @@
     )
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/47ac0537-9ac5-4378-aadc-fd174bec615c"
       (reference "TP5") (unit 1) (value "TestPoint") (footprint "TestPoint:TestPoint_Pad_D2.0mm")
-    )
-    (path "/ea926745-863d-461e-9df3-dbf32112727b/5149161d-2f51-4282-870f-10edba0d6f25"
-      (reference "U1") (unit 1) (value "DNP") (footprint "MyModules:LM2596S_MODULE")
     )
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/6ea01d83-d7f6-4dbf-a272-c95bedd03712"
       (reference "U2") (unit 1) (value "MCP604") (footprint "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm")
