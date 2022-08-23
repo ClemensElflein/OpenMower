@@ -17,7 +17,6 @@ jobs:
         with:
           config: Hardware/OpenMowerMainboard/OpenMowerMainboard.kibot.yaml
           board: Hardware/OpenMowerMainboard/OpenMowerMainboard.kicad_pcb
-          skip: run_drc,run_erc
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:

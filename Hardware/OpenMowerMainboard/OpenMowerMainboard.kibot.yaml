@@ -2,8 +2,14 @@ kibot:
   version: 1
 
 preflight:
-  run_erc: true
   run_drc: true
+  run_erc: true
+
+  filters:
+    - filter: 'SIP32509DT has 2 VOUTs'
+      error: 'pin_to_pin'
+      regex: 'Symbol U3'
+
   set_text_variables:
     - name: 'git_version'
       # Replace n.m.i with n.m."x"
