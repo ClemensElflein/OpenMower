@@ -358,7 +358,7 @@
     (property "LCSC" "C2894933" (id 4) (at 162.56 66.04 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (property "Part Number" "	PZ254-1-10-Z-8.5" (id 5) (at 162.56 66.04 0)
+    (property "Part Number" "PZ254-1-10-Z-8.5" (id 5) (at 162.56 66.04 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Stock_PN" "J-TH-1x10-.1" (id 6) (at 162.56 66.04 0)
