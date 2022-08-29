@@ -2401,9 +2401,6 @@
     (path "/c4934db8-1638-4ac4-bd06-84d03b3fc106/cadda826-29d9-47cf-a101-493e53627cec"
       (reference "#PWR0142") (unit 1) (value "GND") (footprint "")
     )
-    (path "/c4934db8-1638-4ac4-bd06-84d03b3fc106/97c0ea8a-594c-43d5-82cc-6708e9553e16"
-      (reference "#PWR0143") (unit 1) (value "GND") (footprint "")
-    )
     (path "/c4934db8-1638-4ac4-bd06-84d03b3fc106/d3c16b61-2e8f-4325-9dc1-966d4188c0b7"
       (reference "#PWR0144") (unit 1) (value "+3.3V") (footprint "")
     )
@@ -3077,7 +3074,7 @@
       (reference "U10") (unit 1) (value "74HC4051") (footprint "Package_SO:SSOP-16_4.4x5.2mm_P0.65mm")
     )
     (path "/c4934db8-1638-4ac4-bd06-84d03b3fc106/7f34cbf5-0a68-49fa-8ebc-ca673fee9cb3"
-      (reference "U11") (unit 1) (value "Pico") (footprint "MCU_RaspberryPi_and_Boards:RPi_Pico_SMD_TH")
+      (reference "U11") (unit 1) (value "Pico") (footprint "PicoW:Raspberry_Pi_Pico_SMT_THT")
     )
     (path "/df7e4e30-b8d5-4f4b-a24f-39298e982d26/a8a623e2-4c2d-4c7c-97a1-d8b8fae36dda"
       (reference "WT901") (unit 1) (value "Conn_01x06_Female") (footprint "MyModules:WT901")
