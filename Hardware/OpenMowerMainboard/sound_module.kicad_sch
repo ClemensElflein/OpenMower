@@ -386,6 +386,7 @@
     )
   )
 
+
   (junction (at 122.555 160.655) (diameter 0) (color 0 0 0 0)
     (uuid 966da750-5b99-4117-a743-eea7690a9e53)
   )
@@ -484,11 +485,11 @@
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid 6c1393e7-cff5-4bc1-8d64-0c0ca69ee5ac)
   )
-  (hierarchical_label "DATA" (shape input) (at 92.71 137.16 180)
+  (hierarchical_label "TX" (shape output) (at 92.71 137.16 180)
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid cf0b47b5-d70f-45e7-b0f4-2ba7ee1dd739)
   )
-  (hierarchical_label "CLK" (shape input) (at 92.71 134.62 180)
+  (hierarchical_label "RX" (shape input) (at 92.71 134.62 180)
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid f73b52a1-2a2a-4872-bc55-4d8c4025ead8)
   )
