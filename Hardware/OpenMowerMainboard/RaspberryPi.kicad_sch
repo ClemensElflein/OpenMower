@@ -995,6 +995,7 @@
     )
   )
 
+
   (junction (at 93.98 49.53) (diameter 0) (color 0 0 0 0)
     (uuid 35bb30cb-9134-4cde-9cf2-4012be009511)
   )
@@ -1635,7 +1636,7 @@
     (property "LCSC" "C2894965" (id 4) (at 57.785 144.145 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (property "Part Number" "	PZ254-2-04-Z-8.5" (id 5) (at 57.785 144.145 0)
+    (property "Part Number" "PZ254-2-04-Z-8.5" (id 5) (at 57.785 144.145 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Stock_PN" "J-TH-2x4-.1" (id 6) (at 57.785 144.145 0)
