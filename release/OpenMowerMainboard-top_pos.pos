@@ -1,4 +1,4 @@
-### Module positions - created on Mon 26 Sep 2022 14:05:31  ###
+### Module positions - created on Mon 26 Sep 2022 14:31:56  ###
 ### Printed by KiBot
 ## Unit = mm, Angle = deg.
 ## Side : top
@@ -51,8 +51,10 @@ R10     1k                   R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   138.4
 R11     53.6 1%              R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   31.8000    29.2000    180.0000   top 
 R12     10k                  R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   36.0000    29.2000    180.0000   top 
 R13     1k                   R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   61.5900    19.9000    -90.0000   top 
+R14     4k7                  R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   60.3680    7.7480     90.0000    top 
 R15     1k                   R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   142.7167   102.9000   0.0000     top 
 R16     1k                   R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   142.7167   110.7000   0.0000     top 
+R17     4k7                  R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   56.3040    7.7480     90.0000    top 
 R18     1k                   R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   79.5000    1.6600     -90.0000   top 
 R19     1k                   R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   146.9500   102.9000   0.0000     top 
 R20     1k                   R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   146.9500   110.7000   0.0000     top 
