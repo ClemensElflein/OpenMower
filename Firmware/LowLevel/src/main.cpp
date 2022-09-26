@@ -16,13 +16,16 @@
 //
 #include <NeoPixelConnect.h>
 #include <Arduino.h>
-#include <MPU9250.h>
 #include <FastCRC.h>
 #include <PacketSerial.h>
-#include <DFPlayerMini_Fast.h>
 #include "datatypes.h"
 #include "pins.h"
 #include "ui_datatypes.h"
+#include "imu.h"
+#ifdef ENABLE_SOUND_MODULE
+#include <DFPlayerMini_Fast.h>
+#include <soundsystem.h>
+#endif
 
 #define IMU_CYCLETIME 20          // cycletime for refresh IMU data
 #define STATUS_CYCLETIME 100      // cycletime for refresh analog and digital Statusvalues
@@ -33,7 +36,6 @@
 
 // Define to stream debugging messages via USB
 // #define USB_DEBUG
-// #define DEBUG_IMU
 
 // Only define DEBUG_SERIAL if USB_DEBUG is actually enabled.
 // This enforces compile errors if it's used incorrectly.
@@ -41,7 +43,12 @@
 #define DEBUG_SERIAL Serial
 #endif
 #define PACKET_SERIAL Serial1
-#define UI1_SERIAL Serial2
+
+SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
+
+#define UI1_SERIAL uiSerial
+
+#define ANZ_SOUND_SD_FILES 3
 
 // Millis after charging is retried
 #define CHARGING_RETRY_MILLIS 10000
@@ -63,15 +70,16 @@
 // Emergency will be engaged, if no heartbeat was received in this time frame.
 #define HEARTBEAT_MILLIS 500
 
-NeoPixelConnect p(PIN_NEOPIXEL, 1);
+NeoPixelConnect p(PIN_NEOPIXEL, 1, pio1, 0); // use state machine 1, sm 0 is used by hardwareserial class
+uint8_t led_blink_counter = 0;
 
 PacketSerial packetSerial; // COBS communication PICO <> Raspi
 PacketSerial UISerial;     // COBS communication PICO UI-Board
 FastCRC16 CRC16;
 
-// MbedSPI IMU_SPI(16, 19, 18);
-MPU9250 IMU(SPI, PIN_IMU_CS);
-size_t fifoSize;
+#ifdef ENABLE_SOUND_MODULE
+MP3Sound my_sound; // Soundsystem
+#endif
 
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
@@ -90,13 +98,12 @@ struct ui_command uiCommandStruct = {0};
 auto_init_mutex(mtx_status_message);
 
 bool emergency_latch = true;
-
+bool sound_available = false;
 bool charging_allowed = false;
+bool ROS_running = false;
 unsigned long charging_disabled_time = 0;
 
-bool sound_available = false;
-SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX);
-DFPlayerMini_Fast myMP3;
+float imu_temp[9];
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -116,6 +123,7 @@ void updateEmergency()
   if (millis() - last_heartbeat_millis > HEARTBEAT_MILLIS)
   {
     emergency_latch = true;
+    ROS_running = false;
   }
   uint8_t last_emergency = status_message.emergency_bitmask & 1;
 
@@ -124,7 +132,13 @@ void updateEmergency()
   uint8_t emergency_state = 0;
 
   bool is_lifted = (~pin_states & 0b00001100) != 0;
+
+#ifndef ELFLEIN_PROTOTYPE
   bool stop_pressed = (~pin_states & 0b11000000) != 0;
+#else
+  // mower without mangets at emergency button, only GPIO 7 is used
+  bool stop_pressed = (pin_states & 0b01000000) != 0;
+#endif
 
   if (is_lifted)
   {
@@ -167,11 +181,16 @@ void updateEmergency()
   if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
   {
     // Emergency bit 2 (stop button) set?
+#ifndef ELFLEIN_PROTOTYPE
     if (~pin_states & 0b01000000)
       emergency_state |= 0b00010;
     // Emergency bit 1 (stop button)set?
     if (~pin_states & 0b10000000)
       emergency_state |= 0b00100;
+#else
+    if (pin_states & 0b01000000)
+      emergency_state |= 0b00100;
+#endif
   }
 
   if (emergency_state || emergency_latch)
@@ -192,11 +211,9 @@ void updateEmergency()
       uiCommandStruct.cmd2 = LED_blink_fast;
     else if (status_message.emergency_bitmask & 0b11000)
       uiCommandStruct.cmd2 = LED_blink_slow;
-    else if (status_message.emergency_bitmask)
-      // On for other emergencies
-      uiCommandStruct.cmd2 = LED_on;
     else
       uiCommandStruct.cmd2 = LED_off;
+
     uiCommandStruct.type = Set_LED;
     uiCommandStruct.cmd1 = MOWER_LIFTED;
     sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
@@ -208,7 +225,7 @@ void manageUILEDS()
 {
   struct ui_command uiCommandStruct = {0};
 
-  // Schow Info Docking LED
+  // Show Info Docking LED
   if ((status_message.charging_current > 0.80f) && (status_message.v_charge > 20.0f))
     uiCommandStruct.cmd2 = LED_blink_fast;
   else if ((status_message.charging_current <= 0.80f) && (status_message.charging_current >= 0.15f) && (status_message.v_charge > 20.0f))
@@ -222,9 +239,9 @@ void manageUILEDS()
   sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
 
   // Show Info Battery state
-  if (status_message.v_battery >= (BATT_FULL - 0.5f))
-    uiCommandStruct.cmd2 = LED_on;
-  else if (status_message.v_battery <= (BATT_EMPTY + 1.5f))
+  if (status_message.v_battery >= (BATT_FULL - 1.5f))
+    uiCommandStruct.cmd2 = LED_off;
+  else if (status_message.v_battery <= (BATT_EMPTY + 1.8f))
     uiCommandStruct.cmd2 = LED_blink_fast;
   else
     uiCommandStruct.cmd2 = LED_blink_slow;
@@ -232,12 +249,12 @@ void manageUILEDS()
   uiCommandStruct.cmd1 = BATTERY_LOW;
   sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
 
-  // Show percent value akkupower but only, if mower is not docked
+  // Show percent value accupower, but only, if mower is not docked
   uiCommandStruct.type = Set_LED;
-  uiCommandStruct.cmd1 = LED_BAR;
+  uiCommandStruct.cmd1 = LED_BAR1;
   if (status_message.v_charge < 10.0f) // activate only when undocked
   {
-    // use the second LED row as bargraph
+    // use the first LED row as bargraph
 
     uiCommandStruct.cmd2 = LED_on;
     uiCommandStruct.cmd3 = status_message.batt_percentage;
@@ -246,23 +263,31 @@ void manageUILEDS()
   else
   {
     uiCommandStruct.cmd2 = LED_off;
-    uiCommandStruct.cmd3 = 0;
+    uiCommandStruct.cmd3 = 15;
+    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+    uiCommandStruct.cmd1 = LED18;
     sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
   }
 
   // Show Info mower lifted or stop button pressed
-  if (status_message.emergency_bitmask & 0b00110)
-    uiCommandStruct.cmd2 = LED_blink_fast;
-  else if (status_message.emergency_bitmask & 0b11000)
-    uiCommandStruct.cmd2 = LED_blink_slow;
-  else if (status_message.emergency_bitmask)
-    // On for other emergencies
-    uiCommandStruct.cmd2 = LED_on;
-  else
-    uiCommandStruct.cmd2 = LED_off;
   uiCommandStruct.type = Set_LED;
   uiCommandStruct.cmd1 = MOWER_LIFTED;
-  sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+
+  if (status_message.emergency_bitmask & 0b00110)
+  {
+    uiCommandStruct.cmd2 = LED_blink_fast;
+    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+  }
+  else if (status_message.emergency_bitmask & 0b11000)
+  {
+    uiCommandStruct.cmd2 = LED_blink_slow;
+    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+  }
+  else if (status_message.emergency_bitmask & 0b0000001 == 0)
+  {
+    uiCommandStruct.cmd2 = LED_off;
+    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+  }
 }
 
 void setup1()
@@ -318,12 +343,13 @@ void loop1()
 
 void setup()
 {
-  p.neoPixelSetValue(0, 255, 0, 0, true);
-  // We do hardware init in this core, so that we don't get invalid states.
-  // Therefore, we pause the other core until setup() was a success
+  //  We do hardware init in this core, so that we don't get invalid states.
+  //  Therefore, we pause the other core until setup() was a success
   rp2040.idleOtherCore();
 
   emergency_latch = true;
+  ROS_running = false;
+
   lift_emergency_started = 0;
   button_emergency_started = 0;
   // Initialize messages
@@ -335,7 +361,7 @@ void setup()
   // Setup pins
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(PIN_ENABLE_CHARGE, OUTPUT);
-  digitalWrite(PIN_ENABLE_CHARGE, charging_allowed);
+  digitalWrite(PIN_ENABLE_CHARGE, LOW);
 
   gpio_init(PIN_RASPI_POWER);
   gpio_put(PIN_RASPI_POWER, true);
@@ -343,7 +369,10 @@ void setup()
   gpio_put(PIN_RASPI_POWER, true);
 
   // Enable raspi power
+  p.neoPixelSetValue(0, 32, 0, 0, true);
+  delay(1000);
   setRaspiPower(true);
+  p.neoPixelSetValue(0, 255, 0, 0, true);
 
   pinMode(PIN_MUX_OUT, OUTPUT);
   pinMode(PIN_MUX_ADDRESS_0, OUTPUT);
@@ -361,12 +390,11 @@ void setup()
   DEBUG_SERIAL.begin(115200);
 #endif
 
+  // init serial com to RasPi
   PACKET_SERIAL.begin(115200);
   packetSerial.setStream(&PACKET_SERIAL);
   packetSerial.setPacketHandler(&onPacketReceived);
 
-  UI1_SERIAL.setRX(5); // set hardware pin
-  UI1_SERIAL.setTX(4);
   UI1_SERIAL.begin(115200);
   UISerial.setStream(&UI1_SERIAL);
   UISerial.setPacketHandler(&onUIPacketReceived);
@@ -375,17 +403,21 @@ void setup()
    * IMU INITIALIZATION
    */
 
-  int status = IMU.begin();
-  if (status < 0)
+  if (!init_imu())
   {
 #ifdef USB_DEBUG
     DEBUG_SERIAL.println("IMU initialization unsuccessful");
     DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
-    DEBUG_SERIAL.print("Status: ");
-    DEBUG_SERIAL.println(status);
 #endif
     status_message.status_bitmask = 0;
     while (1)
+    {
+      p.neoPixelSetValue(0, 255, 0, 0, true);
+      delay(500);
+      p.neoPixelSetValue(0, 0, 0, 0, true);
+      delay(500);
+    }
+
     {
 #ifdef USB_DEBUG
       DEBUG_SERIAL.println("Error: Imu init failed");
@@ -395,9 +427,6 @@ void setup()
       delay(1000);
     }
   }
-
-  // setting DLPF bandwidth to 20 Hz
-  IMU.setDlpfBandwidth(MPU9250::DLPF_BANDWIDTH_20HZ);
 
 #ifdef USB_DEBUG
   DEBUG_SERIAL.println("Imu initialized");
@@ -409,31 +438,44 @@ void setup()
 
   status_message.status_bitmask |= 1;
 
-  // sound init
-  soundSerial.begin(9600);
-  while (soundSerial.available())
-    soundSerial.read();
-  sound_available = myMP3.begin(soundSerial);
+#ifdef ENABLE_SOUND_MODULE
+  p.neoPixelSetValue(0, 0, 255, 255, true);
+  delay(1000);
 
+  sound_available = my_sound.begin(NR_SOUNDFILES);
   if (sound_available)
   {
     p.neoPixelSetValue(0, 0, 0, 255, true);
-    p.neoPixelShow();
-    myMP3.volume(30);
-    myMP3.play(1);
+    my_sound.setvolume(10);
+    delay(100);
+    my_sound.setvolume(10);
+    delay(100);
+    my_sound.playSoundAdHoc(1);
+    delay(6000);
+    p.neoPixelSetValue(0, 255, 255, 0, true);
   }
   else
   {
     for (uint8_t b = 0; b < 3; b++)
     {
       p.neoPixelSetValue(0, 0, 0, 0, true);
-      p.neoPixelShow();
-      delay(100);
+      delay(200);
       p.neoPixelSetValue(0, 0, 0, 255, true);
-      p.neoPixelShow();
-      delay(100);
+      delay(200);
     }
   }
+
+  // Soundtest
+  my_sound.playSound(2);
+  my_sound.playSound(3);
+  my_sound.playSound(13);
+  my_sound.playSound(14);
+
+  int i = my_sound.sounds2play();
+
+#else
+  sound_available = false;
+#endif
 
   rp2040.resumeOtherCore();
 
@@ -464,6 +506,7 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size)
     return;
 
   struct ui_command *buttonboard = (struct ui_command *)buffer;
+
   // overwrite type for the ROS system
   buttonboard->type = PACKET_ID_LL_UI_EVENT;
   sendMessage(buttonboard, sizeof(struct ui_command));
@@ -486,6 +529,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size)
 
   // CRC and packet is OK, reset watchdog
   last_heartbeat_millis = millis();
+  ROS_running = true;
   struct ll_heartbeat *heartbeat = (struct ll_heartbeat *)buffer;
   if (heartbeat->emergency_release_requested)
   {
@@ -510,7 +554,7 @@ void updateChargingEnabled()
   {
     if (!checkShouldCharge())
     {
-      digitalWrite(PIN_ENABLE_CHARGE, false);
+      digitalWrite(PIN_ENABLE_CHARGE, LOW);
       charging_allowed = false;
       charging_disabled_time = millis();
     }
@@ -522,15 +566,38 @@ void updateChargingEnabled()
     {
       if (!checkShouldCharge())
       {
-        digitalWrite(PIN_ENABLE_CHARGE, false);
+        digitalWrite(PIN_ENABLE_CHARGE, LOW);
         charging_allowed = false;
         charging_disabled_time = millis();
       }
       else
       {
-        digitalWrite(PIN_ENABLE_CHARGE, true);
+        digitalWrite(PIN_ENABLE_CHARGE, HIGH);
         charging_allowed = true;
       }
+    }
+  }
+}
+
+void updateNeopixel()
+{
+  led_blink_counter++;
+  // flash red on emergencies
+  if (emergency_latch && led_blink_counter&0b10)
+  {
+    p.neoPixelSetValue(0, 128, 0, 0, true);
+  }
+  else
+  {
+    if (ROS_running)
+    {
+      // Green, if ROS is running
+      p.neoPixelSetValue(0, 0, 255, 0, true);
+    }
+    else
+    {
+      // Yellow, if it's not running
+      p.neoPixelSetValue(0, 255, 50, 0, true);
     }
   }
 }
@@ -539,59 +606,34 @@ void loop()
 {
   packetSerial.update();
   UISerial.update();
-
+  imu_loop();
   updateChargingEnabled();
   updateEmergency();
 
   unsigned long now = millis();
   if (now - last_imu_millis > IMU_CYCLETIME)
   {
-    IMU.readSensor();
-    imu_message.type = PACKET_ID_LL_IMU;
-    imu_message.acceleration_mss[0] = IMU.getAccelX_mss();
-    imu_message.acceleration_mss[1] = IMU.getAccelY_mss();
-    imu_message.acceleration_mss[2] = IMU.getAccelZ_mss();
-
-    imu_message.gyro_rads[0] = IMU.getGyroX_rads();
-    imu_message.gyro_rads[1] = IMU.getGyroY_rads();
-    imu_message.gyro_rads[2] = IMU.getGyroZ_rads();
-
-    imu_message.mag_uT[0] = IMU.getMagX_uT();
-    imu_message.mag_uT[1] = IMU.getMagY_uT();
-    imu_message.mag_uT[2] = IMU.getMagZ_uT();
+    // we have to copy to the temp data structure due to alignment issues
+    imu_read(imu_temp, imu_temp + 3, imu_temp + 6);
+    imu_message.acceleration_mss[0] = imu_temp[0];
+    imu_message.acceleration_mss[1] = imu_temp[1];
+    imu_message.acceleration_mss[2] = imu_temp[2];
+    imu_message.gyro_rads[0] = imu_temp[3];
+    imu_message.gyro_rads[1] = imu_temp[4];
+    imu_message.gyro_rads[2] = imu_temp[5];
+    imu_message.mag_uT[0] = imu_temp[6];
+    imu_message.mag_uT[1] = imu_temp[7];
+    imu_message.mag_uT[2] = imu_temp[8];
 
     imu_message.dt_millis = now - last_imu_millis;
     sendMessage(&imu_message, sizeof(struct ll_imu));
 
     last_imu_millis = now;
-
-#ifdef USB_DEBUG
-#ifdef DEBUG_IMU
-    DEBUG_SERIAL.print(IMU.getAccelX_mss(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getAccelY_mss(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getAccelZ_mss(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getGyroX_rads(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getGyroY_rads(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getGyroZ_rads(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getMagX_uT(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getMagY_uT(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(IMU.getMagZ_uT(), 6);
-    DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.println(IMU.getTemperature_C(), 6);
-#endif
-#endif
   }
 
   if (now - last_status_update_millis > STATUS_CYCLETIME)
   {
+    updateNeopixel();
 
     status_message.v_battery = (float)analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
     status_message.v_charge = (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
@@ -603,6 +645,8 @@ void loop()
     float delta = BATT_FULL - BATT_EMPTY;
     float vo = status_message.v_battery - BATT_EMPTY;
     status_message.batt_percentage = vo / delta * 100;
+    if (status_message.batt_percentage > 100)
+      status_message.batt_percentage = 100;
 
     mutex_enter_blocking(&mtx_status_message);
     sendMessage(&status_message, sizeof(struct ll_status));
@@ -631,14 +675,23 @@ void loop()
 
   if (now - last_UILED_millis > UI_SET_LED_CYCLETIME)
   {
-
     manageUILEDS();
     last_UILED_millis = now;
+#ifdef ENABLE_SOUND_MODULE
+    if (sound_available)
+    {
+      my_sound.processSounds();
+    }
+#endif
   }
 }
 
 void sendMessage(void *message, size_t size)
 {
+  // Only send messages, if ROS is running, else Raspi sometimes doesn't boot
+  if (!ROS_running)
+    return;
+
   // packages need to be at least 1 byte of type, 1 byte of data and 2 bytes of CRC
   if (size < 4)
   {
