@@ -24,7 +24,13 @@
 #define PACKET_ID_LL_IMU 2
 #define PACKET_ID_LL_UI_EVENT 3
 #define PACKET_ID_LL_HEARTBEAT 0x42
+#define PACKET_ID_LL_HIGH_LEVEL_STATE 0x43
 
+enum HighLevelMode {
+    MODE_IDLE = 1, // ROS connected, idle mode
+    MODE_AUTONOMOUS = 2, // ROS connected, Autonomous mode, either mowing or docking or undocking
+    MODE_MANUAL = 3 // ROS connected, Manual mode during recording etc
+};
 
 #pragma pack(push, 1)
 struct ll_status {
@@ -89,6 +95,24 @@ struct ll_heartbeat {
 #pragma pack(pop)
 
 
+#pragma pack(push, 1)
+struct ll_high_level_state {
+    // Type of this message. Has to be PACKET_ID_LL_HIGH_LEVEL_STATE
+    uint8_t type;
+    uint8_t current_mode; // see HighLevelMode
+    uint8_t gps_quality;   // GPS quality in percent (0-100)
+    uint16_t crc;
+} __attribute__((packed));
+#pragma pack(pop)
 
+#pragma pack(push, 1)
+struct ll_ui_event {
+    // Type of this message. Has to be PACKET_ID_LL_UI_EVENT
+    uint8_t type;
+    uint8_t button_id; 
+    uint8_t press_duration;   // 0 for single press, 1 for long, 2 for very long press
+    uint16_t crc;
+} __attribute__((packed));
+#pragma pack(pop)
 
 #endif

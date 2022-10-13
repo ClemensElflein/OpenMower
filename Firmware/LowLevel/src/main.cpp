@@ -20,7 +20,7 @@
 #include <PacketSerial.h>
 #include "datatypes.h"
 #include "pins.h"
-#include "ui_datatypes.h"
+#include "ui_board.h"
 #include "imu.h"
 #ifdef ENABLE_SOUND_MODULE
 #include <DFPlayerMini_Fast.h>
@@ -92,7 +92,12 @@ unsigned long button_emergency_started = 0;
 // Predefined message buffers, so that we don't need to allocate new ones later.
 struct ll_imu imu_message = {0};
 struct ll_status status_message = {0};
-struct ui_command uiCommandStruct = {0};
+// current high level state
+struct ll_high_level_state last_high_level_state = {0};
+
+// Struct for the current LEDs. This gets sent to the UI periodically
+struct msg_set_leds leds_message = {0};
+
 // A mutex which is used by core1 each time status_message is modified.
 // We can lock it during message transmission to prevent core1 to modify data in this time.
 auto_init_mutex(mtx_status_message);
@@ -109,6 +114,7 @@ void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
 void onUIPacketReceived(const uint8_t *buffer, size_t size);
+void manageUILEDS();
 
 void setRaspiPower(bool power)
 {
@@ -206,88 +212,102 @@ void updateEmergency()
   {
     sendMessage(&status_message, sizeof(struct ll_status));
 
-    // Show Info mower lifted or stop button pressed
-    if (status_message.emergency_bitmask & 0b00110)
-      uiCommandStruct.cmd2 = LED_blink_fast;
-    else if (status_message.emergency_bitmask & 0b11000)
-      uiCommandStruct.cmd2 = LED_blink_slow;
-    else
-      uiCommandStruct.cmd2 = LED_off;
-
-    uiCommandStruct.type = Set_LED;
-    uiCommandStruct.cmd1 = MOWER_LIFTED;
-    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+    // Update LEDs instantly
+    manageUILEDS();
   }
 }
 
 // deals with the pyhsical information an control the UI-LEDs und buzzer in depency of voltage und current values
 void manageUILEDS()
 {
-  struct ui_command uiCommandStruct = {0};
-
   // Show Info Docking LED
   if ((status_message.charging_current > 0.80f) && (status_message.v_charge > 20.0f))
-    uiCommandStruct.cmd2 = LED_blink_fast;
+    setLed(leds_message, LED_CHARGING, LED_blink_fast);
   else if ((status_message.charging_current <= 0.80f) && (status_message.charging_current >= 0.15f) && (status_message.v_charge > 20.0f))
-    uiCommandStruct.cmd2 = LED_blink_slow;
+    setLed(leds_message, LED_CHARGING, LED_blink_slow);
   else if ((status_message.charging_current < 0.15f) && (status_message.v_charge > 20.0f))
-    uiCommandStruct.cmd2 = LED_on;
+    setLed(leds_message, LED_CHARGING, LED_on);
   else
-    uiCommandStruct.cmd2 = LED_off;
-  uiCommandStruct.type = Set_LED;
-  uiCommandStruct.cmd1 = CHARGING;
-  sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+    setLed(leds_message, LED_CHARGING, LED_off);
 
   // Show Info Battery state
   if (status_message.v_battery >= (BATT_FULL - 1.5f))
-    uiCommandStruct.cmd2 = LED_off;
-  else if (status_message.v_battery <= (BATT_EMPTY + 1.8f))
-    uiCommandStruct.cmd2 = LED_blink_fast;
+    setLed(leds_message, LED_BATTERY_LOW, LED_off);
+  else if (status_message.v_battery >= (BATT_EMPTY + 1.8f))
+    setLed(leds_message, LED_BATTERY_LOW, LED_blink_fast);
   else
-    uiCommandStruct.cmd2 = LED_blink_slow;
-  uiCommandStruct.type = Set_LED;
-  uiCommandStruct.cmd1 = BATTERY_LOW;
-  sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+    setLed(leds_message, LED_BATTERY_LOW, LED_on);
 
-  // Show percent value accupower, but only, if mower is not docked
-  uiCommandStruct.type = Set_LED;
-  uiCommandStruct.cmd1 = LED_BAR1;
   if (status_message.v_charge < 10.0f) // activate only when undocked
   {
     // use the first LED row as bargraph
-
-    uiCommandStruct.cmd2 = LED_on;
-    uiCommandStruct.cmd3 = status_message.batt_percentage;
-    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+    setBars7(leds_message, status_message.batt_percentage / 100.0);
+    if (last_high_level_state.gps_quality == 0)
+    {
+      // if quality is 0, flash all LEDs to notify the user to calibrate.
+      setBars4(leds_message, -1.0);
+    }
+    else
+    {
+      setBars4(leds_message, last_high_level_state.gps_quality / 100.0);
+    }
   }
   else
   {
-    uiCommandStruct.cmd2 = LED_off;
-    uiCommandStruct.cmd3 = 15;
-    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
-    uiCommandStruct.cmd1 = LED18;
-    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+    setBars7(leds_message, 0);
+    setBars4(leds_message, 0);
+  }
+
+  if(last_high_level_state.gps_quality < 25) {
+    setLed(leds_message, LED_POOR_GPS, LED_on);
+  } else if(last_high_level_state.gps_quality < 50) {
+    setLed(leds_message, LED_POOR_GPS, LED_blink_fast);
+  } else if(last_high_level_state.gps_quality < 75) {
+    setLed(leds_message, LED_POOR_GPS, LED_blink_slow);
+  } else {
+    setLed(leds_message, LED_POOR_GPS, LED_off);
+  }
+
+  // Let S1 show if ros is connected and which state it's in
+  if (!ROS_running)
+  {
+    setLed(leds_message, LED_S1, LED_off);
+  }
+  else
+  {
+    switch (last_high_level_state.current_mode)
+    {
+    case HighLevelMode::MODE_IDLE:
+      setLed(leds_message, LED_S1, LED_on);
+      break;
+    case HighLevelMode::MODE_AUTONOMOUS:
+      setLed(leds_message, LED_S1, LED_blink_slow);
+      break;
+    default:
+      setLed(leds_message, LED_S1, LED_blink_fast);
+      break;
+    }
   }
 
   // Show Info mower lifted or stop button pressed
-  uiCommandStruct.type = Set_LED;
-  uiCommandStruct.cmd1 = MOWER_LIFTED;
-
   if (status_message.emergency_bitmask & 0b00110)
   {
-    uiCommandStruct.cmd2 = LED_blink_fast;
-    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+    setLed(leds_message, LED_MOWER_LIFTED, LED_blink_fast);
   }
   else if (status_message.emergency_bitmask & 0b11000)
   {
-    uiCommandStruct.cmd2 = LED_blink_slow;
-    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+    setLed(leds_message, LED_MOWER_LIFTED, LED_blink_slow);
   }
-  else if (status_message.emergency_bitmask & 0b0000001 == 0)
+  else if (status_message.emergency_bitmask & 0b0000001)
   {
-    uiCommandStruct.cmd2 = LED_off;
-    sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+    setLed(leds_message, LED_MOWER_LIFTED, LED_on);
   }
+  else
+  {
+    setLed(leds_message, LED_MOWER_LIFTED, LED_off);
+  }
+
+  sendUIMessage(&leds_message, sizeof(leds_message));
 }
 
 void setup1()
@@ -480,10 +500,9 @@ void setup()
   rp2040.resumeOtherCore();
 
   // UIboard clear all LEDs
-  uiCommandStruct.type = Set_LED;
-  uiCommandStruct.cmd1 = 0;
-  uiCommandStruct.cmd2 = LED_All_OFF;
-  sendUIMessage(&uiCommandStruct, sizeof(struct ui_command));
+  leds_message.type = Set_LEDs;
+  leds_message.leds = 0;
+  sendUIMessage(&leds_message, sizeof(leds_message));
 }
 
 void onUIPacketReceived(const uint8_t *buffer, size_t size)
@@ -493,9 +512,7 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size)
   u_int16_t readcrc = *crc_pointer;
 
   // check structure size
-  if (size != sizeof(struct ui_command))
-    return;
-  if ((buffer[0] != Get_Version) && (buffer[0] != Get_Buttonnr))
+  if (size < 4)
     return;
 
   // check the CRC
@@ -505,19 +522,20 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size)
       buffer[size - 2] != (crc & 0xFF))
     return;
 
-  struct ui_command *buttonboard = (struct ui_command *)buffer;
-
-  // overwrite type for the ROS system
-  buttonboard->type = PACKET_ID_LL_UI_EVENT;
-  sendMessage(buttonboard, sizeof(struct ui_command));
+  if(buffer[0] == Get_Button && size == sizeof(struct msg_event_button)) {
+    struct msg_event_button* msg = (struct msg_event_button*)buffer;
+    struct ll_ui_event ui_event;
+    ui_event.type = PACKET_ID_LL_UI_EVENT;
+    ui_event.button_id = msg->button_id;
+    ui_event.press_duration = msg->press_duration;
+    sendMessage(&ui_event, sizeof(ui_event));
+  }
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size)
 {
-  // we currently only support heartbeats
-  if (size != sizeof(struct ll_heartbeat))
-    return;
-  if (buffer[0] != PACKET_ID_LL_HEARTBEAT)
+  // sanity check for CRC to work (1 type, 1 data, 2 CRC)
+  if (size < 4)
     return;
 
   // check the CRC
@@ -527,18 +545,27 @@ void onPacketReceived(const uint8_t *buffer, size_t size)
       buffer[size - 2] != (crc & 0xFF))
     return;
 
-  // CRC and packet is OK, reset watchdog
-  last_heartbeat_millis = millis();
-  ROS_running = true;
-  struct ll_heartbeat *heartbeat = (struct ll_heartbeat *)buffer;
-  if (heartbeat->emergency_release_requested)
+  if (buffer[0] == PACKET_ID_LL_HEARTBEAT && size == sizeof(struct ll_heartbeat))
   {
-    emergency_latch = false;
+
+    // CRC and packet is OK, reset watchdog
+    last_heartbeat_millis = millis();
+    ROS_running = true;
+    struct ll_heartbeat *heartbeat = (struct ll_heartbeat *)buffer;
+    if (heartbeat->emergency_release_requested)
+    {
+      emergency_latch = false;
+    }
+    // Check in this order, so we can set it again in the same packet if required.
+    if (heartbeat->emergency_requested)
+    {
+      emergency_latch = true;
+    }
   }
-  // Check in this order, so we can set it again in the same packet if required.
-  if (heartbeat->emergency_requested)
+  else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_STATE && size == sizeof(struct ll_high_level_state))
   {
-    emergency_latch = true;
+    // copy the state
+    last_high_level_state = *((struct ll_high_level_state *)buffer);
   }
 }
 
@@ -583,7 +610,7 @@ void updateNeopixel()
 {
   led_blink_counter++;
   // flash red on emergencies
-  if (emergency_latch && led_blink_counter&0b10)
+  if (emergency_latch && led_blink_counter & 0b10)
   {
     p.neoPixelSetValue(0, 128, 0, 0, true);
   }
