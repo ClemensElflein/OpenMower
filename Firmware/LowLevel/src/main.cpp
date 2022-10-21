@@ -273,7 +273,7 @@ void manageUILEDS()
   }
   else
   {
-    switch (last_high_level_state.current_mode)
+    switch (last_high_level_state.current_mode & 0b111111)
     {
     case HighLevelMode::MODE_IDLE:
       setLed(leds_message, LED_S1, LED_on);
@@ -283,6 +283,21 @@ void manageUILEDS()
       break;
     default:
       setLed(leds_message, LED_S1, LED_blink_fast);
+      break;
+    }
+    switch ((last_high_level_state.current_mode >> 6) & 0b11)
+    {
+    case 1:
+      setLed(leds_message, LED_S2, LED_blink_slow);
+      break;
+    case 2:
+      setLed(leds_message, LED_S2, LED_blink_fast);
+      break;
+    case 3:
+      setLed(leds_message, LED_S2, LED_on);
+      break;
+    default:
+      setLed(leds_message, LED_S2, LED_off);
       break;
     }
   }
