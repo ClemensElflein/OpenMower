@@ -231,10 +231,8 @@ void manageUILEDS()
     setLed(leds_message, LED_CHARGING, LED_off);
 
   // Show Info Battery state
-  if (status_message.v_battery >= (BATT_FULL - 1.5f))
+  if (status_message.v_battery >= (BATT_EMPTY + 2.0f))
     setLed(leds_message, LED_BATTERY_LOW, LED_off);
-  else if (status_message.v_battery >= (BATT_EMPTY + 1.8f))
-    setLed(leds_message, LED_BATTERY_LOW, LED_blink_fast);
   else
     setLed(leds_message, LED_BATTERY_LOW, LED_on);
 

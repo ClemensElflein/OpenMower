@@ -10,7 +10,7 @@ void setLed(struct msg_set_leds &msg, int led, uint8_t state) {
 void setBars7(struct msg_set_leds &msg, double value) {
     int on_leds = round(value * 7.0);
     for(int i = 0; i < 7; i++) {
-        setLed(msg, LED5+i, i < on_leds ? LED_on : LED_off);
+        setLed(msg, LED11-i, i < on_leds ? LED_on : LED_off);
     }
 }
 
@@ -22,7 +22,7 @@ void setBars4(struct msg_set_leds &msg, double value) {
     } else {
         int on_leds = round(value * 4.0);
         for(int i = 0; i < 4; i++) {
-            setLed(msg, i+LED15, i < on_leds ? LED_on : LED_off);
+            setLed(msg, LED18-i, i < on_leds ? LED_on : LED_off);
         }
     }
 }
