@@ -29,7 +29,7 @@
 enum HighLevelMode {
     MODE_IDLE = 1, // ROS connected, idle mode
     MODE_AUTONOMOUS = 2, // ROS connected, Autonomous mode, either mowing or docking or undocking
-    MODE_MANUAL = 3 // ROS connected, Manual mode during recording etc
+    MODE_RECORDING = 3 // ROS connected, Manual mode during recording etc
 };
 
 #pragma pack(push, 1)

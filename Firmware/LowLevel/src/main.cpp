@@ -137,11 +137,11 @@ void updateEmergency()
   uint8_t pin_states = gpio_get_all() & (0b11001100);
   uint8_t emergency_state = 0;
 
-  bool is_lifted = (~pin_states & 0b00001100) != 0;
-
 #ifndef ELFLEIN_PROTOTYPE
-  bool stop_pressed = (~pin_states & 0b11000000) != 0;
+  bool is_lifted = (~pin_states & 0b11000000) != 0;
+  bool stop_pressed = (~pin_states & 0b00001100) != 0;
 #else
+  bool is_lifted = (~pin_states & 0b00001100) != 0;
   // mower without mangets at emergency button, only GPIO 7 is used
   bool stop_pressed = (pin_states & 0b01000000) != 0;
 #endif
@@ -176,22 +176,31 @@ void updateEmergency()
 
   if (lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS)
   {
+#ifndef ELFLEIN_PROTOTYPE
+    // Emergency bit 2 (lift wheel 1)set?
+    if (~pin_states & 0b01000000)
+      emergency_state |= 0b01000;
+    // Emergency bit 1 (lift wheel 2)set?
+    if (~pin_states & 0b10000000)
+      emergency_state |= 0b10000;
+#else
     // Emergency bit 2 (lift wheel 1)set?
     if (~pin_states & 0b00000100)
       emergency_state |= 0b01000;
     // Emergency bit 1 (lift wheel 2)set?
     if (~pin_states & 0b00001000)
       emergency_state |= 0b10000;
+#endif
   }
 
   if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
   {
     // Emergency bit 2 (stop button) set?
 #ifndef ELFLEIN_PROTOTYPE
-    if (~pin_states & 0b01000000)
+    if (~pin_states & 0b00000100)
       emergency_state |= 0b00010;
     // Emergency bit 1 (stop button)set?
-    if (~pin_states & 0b10000000)
+    if (~pin_states & 0b00001000)
       emergency_state |= 0b00100;
 #else
     if (pin_states & 0b01000000)
