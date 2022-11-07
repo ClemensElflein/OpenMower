@@ -110,3 +110,25 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: release_navigator
           keep_files: true
+  pre-release-latest-firmware:
+    runs-on: ubuntu-latest
+    if: github.ref_type != 'tag'
+    needs: firmware
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: open-mower-pico-firmware
+          path: firmware
+
+      - name: Create firmware zip
+        run: zip -r release/firmware.zip firmware
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: true
+          files: release/*
