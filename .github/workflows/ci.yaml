@@ -125,10 +125,10 @@ jobs:
           path: firmware
 
       - name: Create firmware zip
-        run: zip -r release/firmware.zip firmware
+        run: zip -r firmware.zip firmware
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: true
-          files: release/*
+          files: firmware.zip
