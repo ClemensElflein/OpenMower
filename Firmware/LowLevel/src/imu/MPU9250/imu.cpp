@@ -26,7 +26,7 @@ bool imu_read(float *acceleration_mss, float *gyro_rads, float *mag_uT)
 
     gyro_rads[0] = IMU.getGyroX_rads();
     gyro_rads[1] = IMU.getGyroY_rads();
-    gyro_rads[2] = IMU.getGyroZ_rads();
+    gyro_rads[2] = -IMU.getGyroZ_rads();
 
     mag_uT[0] = IMU.getMagX_uT();
     mag_uT[1] = IMU.getMagY_uT();
