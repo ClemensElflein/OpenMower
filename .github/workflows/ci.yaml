@@ -43,15 +43,18 @@ jobs:
       - name: Copy Artifacts
         run: |
           mkdir artifacts
-          mkdir ./artifacts/ELFLEIN_PROTOTYPE
-          cp Firmware/LowLevel/.pio/build/ELFLEIN_PROTOTYPE/firmware.elf ./artifacts/ELFLEIN_PROTOTYPE
-          cp Firmware/LowLevel/.pio/build/ELFLEIN_PROTOTYPE/firmware.uf2 ./artifacts/ELFLEIN_PROTOTYPE
-          mkdir ./artifacts/MPU9250
-          cp Firmware/LowLevel/.pio/build/MPU9250/firmware.elf ./artifacts/MPU9250
-          cp Firmware/LowLevel/.pio/build/MPU9250/firmware.uf2 ./artifacts/MPU9250
-          mkdir ./artifacts/WT901_INSTEAD_OF_SOUND
-          cp Firmware/LowLevel/.pio/build/WT901_INSTEAD_OF_SOUND/firmware.elf ./artifacts/WT901_INSTEAD_OF_SOUND
-          cp Firmware/LowLevel/.pio/build/WT901_INSTEAD_OF_SOUND/firmware.uf2 ./artifacts/WT901_INSTEAD_OF_SOUND
+          mkdir ./artifacts/0_10_X_MPU9250
+          cp Firmware/LowLevel/.pio/build/0_10_X_MPU9250/firmware.elf ./artifacts/0_10_X_MPU9250
+          cp Firmware/LowLevel/.pio/build/0_10_X_MPU9250/firmware.uf2 ./artifacts/0_10_X_MPU9250
+          mkdir ./artifacts/0_10_X_WT901
+          cp Firmware/LowLevel/.pio/build/0_10_X_WT901/firmware.elf ./artifacts/0_10_X_WT901
+          cp Firmware/LowLevel/.pio/build/0_10_X_WT901/firmware.uf2 ./artifacts/0_10_X_WT901
+          mkdir ./artifacts/0_9_X_MPU9250
+          cp Firmware/LowLevel/.pio/build/0_9_X_MPU9250/firmware.elf ./artifacts/0_9_X_MPU9250
+          cp Firmware/LowLevel/.pio/build/0_9_X_MPU9250/firmware.uf2 ./artifacts/0_9_X_MPU9250
+          mkdir ./artifacts/0_9_X_WT901_INSTEAD_OF_SOUND
+          cp Firmware/LowLevel/.pio/build/0_9_X_WT901_INSTEAD_OF_SOUND/firmware.elf ./artifacts/0_9_X_WT901_INSTEAD_OF_SOUND
+          cp Firmware/LowLevel/.pio/build/0_9_X_WT901_INSTEAD_OF_SOUND/firmware.uf2 ./artifacts/0_9_X_WT901_INSTEAD_OF_SOUND
       - name: Step 3 - Use the Upload Artifact GitHub Action
         uses: actions/upload-artifact@v3
         with:
