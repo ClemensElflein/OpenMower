@@ -17,14 +17,13 @@
 #include <soundsystem.h>
 
 
+SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX, 250);
+
 DFPlayerMini_Fast myMP3;
 
 
 MP3Sound::MP3Sound()
 {
-
-    Serial2.setTX(PIN_SOUND_TX);
-    Serial2.setRX(PIN_SOUND_RX);
 
     this->anzSoundfiles =   0;          // number of files stored on the SD-card
     this->playing =         false;
@@ -34,18 +33,19 @@ MP3Sound::MP3Sound()
 
 
 
-bool MP3Sound::begin(int anzsoundsOnSD)
+bool MP3Sound::begin()
               
 {
 
     // serial stream init for soundmodule
-    Serial2.begin(9600);
-    while (Serial2.available())
-        Serial2.read();
+    soundSerial.begin(9600);
+    soundSerial.flush();
+    while (soundSerial.available())
+        soundSerial.read();
     // init soundmodule
-    sound_available = myMP3.begin(Serial2,true);    
-    delay(1000);
-    return (sound_available);
+    sound_available = myMP3.begin(soundSerial,true);    
+    this->anzSoundfiles = myMP3.numSdTracks();
+    return this->anzSoundfiles > 0;
 }
 
 
@@ -53,7 +53,7 @@ void MP3Sound::setvolume(int vol)  // scales from 0 to 100 %
 {
 
      // value of 30 is max equivalent to 100 %
-     int val = (int) (30 / 100.0 * vol);  
+     int val = (int) (30.0 / 100.0 * (double)vol);  
      myMP3.volume(val);
      delay(300);
 
@@ -63,7 +63,7 @@ void MP3Sound::setvolume(int vol)  // scales from 0 to 100 %
 
 void MP3Sound::playSoundAdHoc(int soundNr)
 {
-    if(soundNr > NR_SOUNDFILES) return;
+    if(soundNr > anzSoundfiles) return;
 
     myMP3.play(soundNr);
     delay(1000);
@@ -75,7 +75,7 @@ void MP3Sound::playSoundAdHoc(int soundNr)
 
 void MP3Sound::playSound(int soundNr)
 {
-    if((soundNr > NR_SOUNDFILES)  || (active_sounds.size() == BUFFERSIZE) ) return;
+    if((soundNr > anzSoundfiles)  || (active_sounds.size() == BUFFERSIZE) ) return;
 
     active_sounds.push_front(soundNr);
     

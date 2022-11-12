@@ -134,11 +134,15 @@ void updateEmergency()
   uint8_t last_emergency = status_message.emergency_bitmask & 1;
 
   // Mask the emergency bits. 2x Lift sensor, 2x Emergency Button
-  uint8_t pin_states = gpio_get_all() & (0b11001100);
+  bool emergency1 = gpio_get(PIN_EMERGENCY_1);
+  bool emergency2 = gpio_get(PIN_EMERGENCY_2);
+  bool emergency3 = gpio_get(PIN_EMERGENCY_3);
+  bool emergency4 = gpio_get(PIN_EMERGENCY_4);
+  
   uint8_t emergency_state = 0;
 
-  bool is_lifted = (~pin_states & 0b11000000) != 0;
-  bool stop_pressed = (~pin_states & 0b00001100) != 0;
+  bool is_lifted = emergency1 || emergency2;
+  bool stop_pressed = emergency3 || emergency4;
 
   if (is_lifted)
   {
@@ -171,20 +175,20 @@ void updateEmergency()
   if (lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS)
   {
     // Emergency bit 2 (lift wheel 1)set?
-    if (~pin_states & 0b01000000)
+    if (emergency1)
       emergency_state |= 0b01000;
     // Emergency bit 1 (lift wheel 2)set?
-    if (~pin_states & 0b10000000)
+    if (emergency2)
       emergency_state |= 0b10000;
   }
 
   if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
   {
     // Emergency bit 2 (stop button) set?
-    if (~pin_states & 0b00000100)
+    if (emergency3)
       emergency_state |= 0b00010;
     // Emergency bit 1 (stop button)set?
-    if (~pin_states & 0b00001000)
+    if (emergency4)
       emergency_state |= 0b00100;
   }
 
@@ -462,18 +466,13 @@ void setup()
 
 #ifdef ENABLE_SOUND_MODULE
   p.neoPixelSetValue(0, 0, 255, 255, true);
-  delay(1000);
 
-  sound_available = my_sound.begin(NR_SOUNDFILES);
+  sound_available = my_sound.begin();
   if (sound_available)
   {
     p.neoPixelSetValue(0, 0, 0, 255, true);
-    my_sound.setvolume(10);
-    delay(100);
-    my_sound.setvolume(10);
-    delay(100);
+    my_sound.setvolume(100);
     my_sound.playSoundAdHoc(1);
-    delay(6000);
     p.neoPixelSetValue(0, 255, 255, 0, true);
   }
   else
@@ -487,13 +486,6 @@ void setup()
     }
   }
 
-  // Soundtest
-  my_sound.playSound(2);
-  my_sound.playSound(3);
-  my_sound.playSound(13);
-  my_sound.playSound(14);
-
-  int i = my_sound.sounds2play();
 
 #else
   sound_available = false;

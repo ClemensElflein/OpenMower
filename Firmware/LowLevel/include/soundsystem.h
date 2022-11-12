@@ -40,7 +40,7 @@ class MP3Sound
 
     public:
 
-                uint32_t anzSoundfiles;          // number of files stored on the SD-card
+                int16_t anzSoundfiles;          // number of files stored on the SD-card
                 bool     playing;
 
                 MP3Sound();
