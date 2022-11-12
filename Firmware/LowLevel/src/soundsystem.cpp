@@ -65,9 +65,7 @@ void MP3Sound::playSoundAdHoc(int soundNr)
 {
     if(soundNr > anzSoundfiles) return;
 
-    myMP3.play(soundNr);
-    delay(1000);
-    
+    myMP3.play(soundNr);    
 }
 
 
