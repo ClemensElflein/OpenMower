@@ -134,10 +134,10 @@ void updateEmergency()
   uint8_t last_emergency = status_message.emergency_bitmask & 1;
 
   // Mask the emergency bits. 2x Lift sensor, 2x Emergency Button
-  bool emergency1 = gpio_get(PIN_EMERGENCY_1);
-  bool emergency2 = gpio_get(PIN_EMERGENCY_2);
-  bool emergency3 = gpio_get(PIN_EMERGENCY_3);
-  bool emergency4 = gpio_get(PIN_EMERGENCY_4);
+  bool emergency1 = !gpio_get(PIN_EMERGENCY_1);
+  bool emergency2 = !gpio_get(PIN_EMERGENCY_2);
+  bool emergency3 = !gpio_get(PIN_EMERGENCY_3);
+  bool emergency4 = !gpio_get(PIN_EMERGENCY_4);
   
   uint8_t emergency_state = 0;
 
