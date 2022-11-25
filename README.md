@@ -10,6 +10,9 @@
 
 **IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME! ASK IN [DISCORD](https://discord.gg/jE7QNaSxW7), IF YOU HAVE ANY QUESTIONS!**
 
+# This project is active!
+This is the hardware repository, so it might seem that the project is inactive, since hardware is pretty stable by now.
+Most of the development work is done on the ROS code here: https://github.com/ClemensElflein/open_mower_ros
 
 
 # About the Project
