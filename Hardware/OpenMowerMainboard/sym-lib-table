@@ -9,4 +9,5 @@
   (lib (name "TSC101CILT")(type "Legacy")(uri "${KIPRJMOD}/TSC101CILT/TSC101CILT.lib")(options "")(descr ""))
   (lib (name "MAX2040")(type "Legacy")(uri "${KIPRJMOD}/MAX2040/MAX2040.lib")(options "")(descr ""))
   (lib (name "PicoW")(type "KiCad")(uri "${KIPRJMOD}/RP-PicoW Libraries/MCU_Module.kicad_sym")(options "")(descr ""))
+  (lib (name "lcsc")(type "KiCad")(uri "${KIPRJMOD}/lcsc.kicad_sym")(options "")(descr "Import using 'easyeda2kicad --full --lcsc_id=Cxxxxx --output ./lcsc'"))
 )
