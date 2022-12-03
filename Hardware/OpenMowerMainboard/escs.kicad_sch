@@ -2722,7 +2722,7 @@
   )
 
   (symbol (lib_id "Device:C_Polarized") (at 195.58 41.275 0) (unit 1)
-    (in_bom yes) (on_board yes) (fields_autoplaced)
+    (in_bom no) (on_board no) (fields_autoplaced)
     (uuid ae36bef6-b767-4161-a262-b1f32727900c)
     (property "Reference" "C4" (id 0) (at 198.755 39.1159 0)
       (effects (font (size 1.27 1.27)) (justify left))
