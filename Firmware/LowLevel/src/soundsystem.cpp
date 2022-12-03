@@ -17,7 +17,7 @@
 #include <soundsystem.h>
 
 
-SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX, 250);
+SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX);
 
 DFPlayerMini_Fast myMP3;
 
@@ -27,8 +27,6 @@ MP3Sound::MP3Sound()
 
     this->anzSoundfiles =   0;          // number of files stored on the SD-card
     this->playing =         false;
-    this->sound_available = false;
-
 }
 
 
@@ -42,8 +40,11 @@ bool MP3Sound::begin()
     soundSerial.flush();
     while (soundSerial.available())
         soundSerial.read();
+    
     // init soundmodule
-    sound_available = myMP3.begin(soundSerial,true);    
+    myMP3.begin(soundSerial,true);    
+    // it needs 2-3 seconds, let's wait 5 just to be extra sure.
+    delay(5000);
     this->anzSoundfiles = myMP3.numSdTracks();
     return this->anzSoundfiles > 0;
 }

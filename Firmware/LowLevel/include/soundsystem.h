@@ -58,7 +58,6 @@ class MP3Sound
                 
     private:
                 std::list <int> active_sounds;
-                bool sound_available;
                 
 
    

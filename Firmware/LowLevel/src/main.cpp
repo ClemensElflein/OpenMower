@@ -473,7 +473,6 @@ void setup()
     p.neoPixelSetValue(0, 0, 0, 255, true);
     my_sound.setvolume(100);
     my_sound.playSoundAdHoc(1);
-    p.neoPixelSetValue(0, 255, 255, 0, true);
   }
   else
   {
