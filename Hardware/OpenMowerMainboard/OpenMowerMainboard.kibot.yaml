@@ -9,9 +9,6 @@ preflight:
     - filter: SIP32509DT has 2 VOUTs
       error: 'pin_to_pin'
       regex: 'Symbol U3'
-    - filter: WT901 and MPU9250 are mutually exclusive sitting in one physical space
-      error: 'courtyards_overlap'
-      regex: 'Footprint WT901'
 
   set_text_variables:
     - name: 'git_version'
