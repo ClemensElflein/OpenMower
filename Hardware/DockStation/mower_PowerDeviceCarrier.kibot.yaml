@@ -1,10 +1,6 @@
 kibot:
   version: 1
 
-preflight:
-  run_drc: false
-  run_erc: false
-
 outputs:
   - name: 'write_gerber_drill'
     comment: 'This is the information for the drilling machine in gerber format.'
