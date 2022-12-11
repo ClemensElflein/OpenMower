@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "ene9ba_footprint")(type "KiCad")(uri "${KIPRJMOD}/ene9ba_footprint.pretty")(options "")(descr ""))
+)
