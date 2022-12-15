@@ -58,6 +58,14 @@ Here is a quick overview of this project's goals:
 
 
 
+# Open Mower App
+
+![Open Mower App 1](./img/open_mower_app_1.jpg)
+
+![Open Mower App 2](./img/open_mower_app_2.jpg)
+
+
+
 ## Current State
 
 The basic mowing function finally works! As you can see in the video, map teaching and mowing work as expected. It even returns to the docking station automatically as soon as the battery gets low and continues once it's recharged.
@@ -96,7 +104,7 @@ The software for the robot can be found in a separate repository: https://github
 - [x] Mowing State Machine (Docking / Mowing, ...)
 - [x] Path Planning
 - [ ] Obstacle Avoidance
-- [ ] App / Visualization
+- [x] App / Visualization
 
 
 
