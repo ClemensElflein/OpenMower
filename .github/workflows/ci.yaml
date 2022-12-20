@@ -15,6 +15,11 @@ jobs:
           config: Hardware/OpenMowerMainboard/OpenMowerMainboard.kibot.yaml
           board: Hardware/OpenMowerMainboard/OpenMowerMainboard.kicad_pcb
           verbose: 1
+      - uses: INTI-CMNB/KiBot@v2_k6
+        with:
+          config: Hardware/DockStation/mower_PowerDeviceCarrier.kibot.yaml
+          board: Hardware/DockStation/mower_PowerDeviceCarrier.kicad_pcb
+          verbose: 1
 
   firmware:
     runs-on: ubuntu-latest
@@ -73,7 +78,10 @@ jobs:
         with:
           config: Hardware/OpenMowerMainboard/OpenMowerMainboard.kibot.yaml
           board: Hardware/OpenMowerMainboard/OpenMowerMainboard.kicad_pcb
-          skip: run_drc,run_erc
+      - uses: INTI-CMNB/KiBot@v2_k6
+        with:
+          config: Hardware/DockStation/mower_PowerDeviceCarrier.kibot.yaml
+          board: Hardware/DockStation/mower_PowerDeviceCarrier.kicad_pcb
 
       - name: 'Fix permissions on release/'
         run: sudo chmod 0777 release
@@ -113,6 +121,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: release_navigator
           keep_files: true
+
   pre-release-latest-firmware:
     runs-on: ubuntu-latest
     if: github.ref_type != 'tag'

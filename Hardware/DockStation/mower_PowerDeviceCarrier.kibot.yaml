@@ -5,12 +5,12 @@ outputs:
   - name: 'write_gerber_drill'
     comment: 'This is the information for the drilling machine in gerber format.'
     type: 'gerb_drill'
-    dir: 'release/gerber'
+    dir: 'release/gerber_dock'
 
   - name: 'write_gerber'
     comment: 'This is the main fabrication format for the PCB.'
     type: 'gerber'
-    dir: 'release/gerber'
+    dir: 'release/gerber_dock'
     layers: 'selected'
 
   - name: 'gerber'
@@ -21,7 +21,7 @@ outputs:
       files:
         # [string=''] Destination directory inside the archive, empty means the same of the file
         - dest: '.'
-          source: 'release/gerber/*'
+          source: 'release/gerber_dock/*'
 
   - name: 'position'
     comment: 'Generates the file with position information for the PCB components, used by the pick and place machine.'
@@ -68,10 +68,3 @@ outputs:
       ray_tracing: true
       wait_render: -600
       zoom: 2
-
-  - name: 'navigate_results'
-    comment: 'Generates a web page to navigate the generated outputs'
-    type: 'navigate_results'
-    dir: 'release_navigator'
-    options:
-      link_from_root: "release_navigator/index.html"
