@@ -141,7 +141,11 @@ class CJY901
 	struct SLonLat 		stcLonLat;
 	struct SGPSV 		stcGPSV;
 	
-    CJY901 (HardwareSerial *serial); 
+    #ifdef WT901_INSTEAD_OF_SOUND
+	CJY901 (HardwareSerial *serial); 
+	#elif WT901
+	CJY901 (SerialPIO *serial); 
+	#endif 
 	
 	void begin(int baudrate = 9600);
 	// Call as often as possible to fetch data from serial
@@ -150,7 +154,11 @@ class CJY901
 	
 	
   private: 
+	#ifdef WT901_INSTEAD_OF_SOUND
 	HardwareSerial *serial;
+	#elif WT901
+	SerialPIO *serial;
+	#endif
 	unsigned char ucRxBuffer[250];
 	unsigned char ucRxCnt = 0;	
 

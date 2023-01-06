@@ -1,7 +1,11 @@
 #include "JY901.h"
 #include "string.h"
 
+#ifdef WT901_INSTEAD_OF_SOUND
 CJY901 ::CJY901(HardwareSerial *serial)
+#elif WT901
+CJY901 ::CJY901(SerialPIO *serial)
+#endif
 {
 	this->serial = serial;
 }
