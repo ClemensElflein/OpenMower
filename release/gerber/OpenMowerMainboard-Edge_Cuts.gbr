@@ -1,11 +1,11 @@
-%TF.GenerationSoftware,KiCad,Pcbnew,6.0.7+dfsg-1~bpo11+1*%
-%TF.CreationDate,2022-09-26T14:31:56+00:00*%
+%TF.GenerationSoftware,KiCad,Pcbnew,6.0.10+dfsg-1~bpo11+1*%
+%TF.CreationDate,2023-01-27T21:36:13+00:00*%
 %TF.ProjectId,OpenMowerMainboard,4f70656e-4d6f-4776-9572-4d61696e626f,rev?*%
 %TF.SameCoordinates,Original*%
 %TF.FileFunction,Profile,NP*%
 %FSLAX46Y46*%
 G04 Gerber Fmt 4.6, Leading zero omitted, Abs format (unit mm)*
-G04 Created by KiCad (PCBNEW 6.0.7+dfsg-1~bpo11+1) date 2022-09-26 14:31:56*
+G04 Created by KiCad (PCBNEW 6.0.10+dfsg-1~bpo11+1) date 2023-01-27 21:36:13*
 %MOMM*%
 %LPD*%
 G01*

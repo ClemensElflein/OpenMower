@@ -1,12 +1,12 @@
-%TF.GenerationSoftware,KiCad,Pcbnew,6.0.7+dfsg-1~bpo11+1*%
-%TF.CreationDate,2022-09-26T14:31:56+00:00*%
+%TF.GenerationSoftware,KiCad,Pcbnew,6.0.10+dfsg-1~bpo11+1*%
+%TF.CreationDate,2023-01-27T21:36:13+00:00*%
 %TF.ProjectId,OpenMowerMainboard,4f70656e-4d6f-4776-9572-4d61696e626f,rev?*%
 %TF.SameCoordinates,Original*%
 %TF.FileFunction,NonPlated,1,2,NPTH,Mixed*%
 %TF.FilePolarity,Positive*%
 %FSLAX46Y46*%
 G04 Gerber Fmt 4.6, Leading zero omitted, Abs format (unit mm)*
-G04 Created by KiCad (PCBNEW 6.0.7+dfsg-1~bpo11+1) date 2022-09-26 14:31:56*
+G04 Created by KiCad (PCBNEW 6.0.10+dfsg-1~bpo11+1) date 2023-01-27 21:36:13*
 %MOMM*%
 %LPD*%
 G01*
@@ -20,10 +20,13 @@ G04 aperture for slot hole*
 %ADD11O,1.800000X1.100000*%
 %TD*%
 %TA.AperFunction,ComponentDrill*%
-%ADD12C,2.750000*%
+%ADD12C,1.300000*%
 %TD*%
 %TA.AperFunction,ComponentDrill*%
-%ADD13C,3.500000*%
+%ADD13C,2.750000*%
+%TD*%
+%TA.AperFunction,ComponentDrill*%
+%ADD14C,3.500000*%
 %TD*%
 G04 APERTURE END LIST*
 D10*
@@ -34,6 +37,10 @@ D11*
 X197136544Y-93837104D03*
 X197136544Y-99287104D03*
 D12*
+%TO.C,J21*%
+X126000000Y-173700000D03*
+X162200000Y-173700000D03*
+D13*
 %TO.C,MH3*%
 X115100000Y-124700000D03*
 %TO.C,MH2*%
@@ -42,7 +49,7 @@ X115100000Y-173700000D03*
 X173100000Y-124700000D03*
 %TO.C,MH1*%
 X173100000Y-173700000D03*
-D13*
+D14*
 %TO.C,MH7*%
 X132100000Y-137200000D03*
 %TO.C,MH6*%
