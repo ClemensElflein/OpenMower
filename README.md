@@ -110,7 +110,7 @@ The software for the robot can be found in a separate repository: https://github
 
 ## Getting Started
 
-If you want to read how to get started building a robot for yourself, check the [OpenMower Wiki](https://wiki.openmower.de). There you can find information on which parts to buy, how to install the software and so on. If you find anything missing, please join the Discord server and ask there.
+If you want to read how to get started building a robot for yourself, check the [OpenMower Website](https://openmower.de). There you can find information on which parts to buy, how to install the software and so on. If you find anything missing, please join the Discord server and ask there. Also there's the [OpenMower Wiki](https://wiki.openmower.de) which is written by the community. It has some additional guides and information.
 
 
 
