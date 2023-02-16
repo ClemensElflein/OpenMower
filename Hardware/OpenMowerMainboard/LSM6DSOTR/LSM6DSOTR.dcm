@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP LSM6DSOTR
+D IMUs - Inertial Measurement Units iNEMO inertial module: 3D accelerometer and 3D gyroscope
+K
+F https://www.st.com/resource/en/datasheet/lsm6dso.pdf
+$ENDCMP
+#
+#End Doc Library

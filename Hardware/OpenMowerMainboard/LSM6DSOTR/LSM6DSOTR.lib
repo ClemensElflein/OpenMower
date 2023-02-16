@@ -1,0 +1,35 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#SamacSys ECAD Model LSM6DSOTR
+#/1490857/101608/2.49/14/4/Accelerometer
+DEF LSM6DSOTR AC 0 30 Y Y 1 F N
+F0 "AC" 1250 600 50 H V L CNN
+F1 "LSM6DSOTR" 1250 500 50 H V L CNN
+F2 "LGA-14(2.5X3X0.86)" 1250 400 50 H I L CNN
+F3 "https://www.st.com/resource/en/datasheet/lsm6dso.pdf" 1250 300 50 H I L CNN
+F4 "IMUs - Inertial Measurement Units iNEMO inertial module: 3D accelerometer and 3D gyroscope" 1250 200 50 H I L CNN "Description"
+F5 "" 1250 100 50 H I L CNN "Height"
+F6 "511-LSM6DSOTR" 1250 0 50 H I L CNN "Mouser Part Number"
+F7 "https://www.mouser.co.uk/ProductDetail/STMicroelectronics/LSM6DSOTR?qs=lc2O%252BfHJPVbD197C5c7oNw%3D%3D" 1250 -100 50 H I L CNN "Mouser Price/Stock"
+F8 "STMicroelectronics" 1250 -200 50 H I L CNN "Manufacturer_Name"
+F9 "LSM6DSOTR" 1250 -300 50 H I L CNN "Manufacturer_Part_Number"
+DRAW
+X SDO/SA0 1 0 0 200 R 50 50 0 0 P
+X SDX 2 0 -100 200 R 50 50 0 0 P
+X SCX 3 0 -200 200 R 50 50 0 0 P
+X INT1 4 0 -300 200 R 50 50 0 0 P
+X VDDIO 5 600 -1000 200 U 50 50 0 0 P
+X GND_1 6 700 -1000 200 U 50 50 0 0 P
+X GND_2 7 800 -1000 200 U 50 50 0 0 P
+X VDD 8 1400 -300 200 L 50 50 0 0 P
+X INT2 9 1400 -200 200 L 50 50 0 0 P
+X OCS_AUX 10 1400 -100 200 L 50 50 0 0 P
+X SDO_AUX 11 1400 0 200 L 50 50 0 0 P
+X CS 12 800 600 200 D 50 50 0 0 P
+X SCL 13 700 600 200 D 50 50 0 0 P
+X SDA 14 600 600 200 D 50 50 0 0 P
+P 5 0 1 6 200 400 1200 400 1200 -800 200 -800 200 400 N
+ENDDRAW
+ENDDEF
+#
+#End Library
