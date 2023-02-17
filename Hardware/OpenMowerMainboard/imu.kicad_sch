@@ -762,6 +762,7 @@
     )
   )
 
+
   (junction (at 240.03 66.04) (diameter 0) (color 0 0 0 0)
     (uuid 01a449e7-8fdf-4680-b2e3-1b08d5e4666a)
   )
@@ -1011,17 +1012,9 @@
     (uuid fd4dd248-3e78-4985-a4fc-58bc05b74cbf)
   )
 
-  (label "SDA" (at 232.41 102.235 0)
-    (effects (font (size 1.27 1.27)) (justify left bottom))
-    (uuid 0650a076-f41d-4bd5-8202-c83f2119f188)
-  )
   (label "~{CS}" (at 134.62 76.2 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 171bfe88-8cf8-4b23-936f-ba3dba4c81ac)
-  )
-  (label "SCL" (at 210.82 102.235 0)
-    (effects (font (size 1.27 1.27)) (justify left bottom))
-    (uuid 1da5ba9a-22e2-4791-8917-061e48d0eee3)
   )
   (label "~{CS}" (at 132.08 121.92 90)
     (effects (font (size 1.27 1.27)) (justify left bottom))
