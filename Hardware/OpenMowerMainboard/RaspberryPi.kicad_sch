@@ -2005,7 +2005,7 @@
     (property "Value" "Raspberry_Pi_2_3" (id 1) (at 114.4144 100.965 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
-    (property "Footprint" "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical_SMD" (id 2) (at 107.315 133.985 0)
+    (property "Footprint" "lcsc:HDR-SMD_40P-P2.54-V-F-R2-C20-S8.8-EH" (id 2) (at 107.315 133.985 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "https://www.raspberrypi.org/documentation/hardware/raspberrypi/schematics/rpi_SCH_3bplus_1p0_reduced.pdf" (id 3) (at 107.315 133.985 0)

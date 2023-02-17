@@ -2826,7 +2826,7 @@
       (reference "J20") (unit 1) (value "Conn_01x10_Female") (footprint "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical")
     )
     (path "/00000000-0000-0000-0000-000061080954/f4b738ba-4a65-46a3-92da-5c5db9e2a36a"
-      (reference "J21") (unit 1) (value "Raspberry_Pi_2_3") (footprint "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical_SMD")
+      (reference "J21") (unit 1) (value "Raspberry_Pi_2_3") (footprint "lcsc:HDR-SMD_40P-P2.54-V-F-R2-C20-S8.8-EH")
     )
     (path "/00000000-0000-0000-0000-000061080954/6d2868e4-53b9-4e5b-a322-f8609a50a25f"
       (reference "J22") (unit 1) (value "Conn_02x04_Odd_Even") (footprint "Connector_PinHeader_2.54mm:PinHeader_2x04_P2.54mm_Vertical")
