@@ -762,7 +762,6 @@
     )
   )
 
-
   (junction (at 240.03 66.04) (diameter 0) (color 0 0 0 0)
     (uuid 01a449e7-8fdf-4680-b2e3-1b08d5e4666a)
   )
@@ -1291,6 +1290,9 @@
     (property "Stock_PN" "C-603-.1uF-100V-X7R" (id 6) (at 119.38 177.165 0)
       (effects (font (size 1.27 1.27)) hide)
     )
+    (property "LCSC" "C15725" (id 7) (at 119.38 177.165 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
     (pin "1" (uuid 2c75854b-06d0-48b4-ba06-d436f193bc60))
     (pin "2" (uuid f3f03d0a-3ad3-4750-add2-9ee2175e2837))
   )
@@ -1479,6 +1481,9 @@
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Stock_PN" "C-603-.1uF-100V-X7R" (id 6) (at 149.225 158.115 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "LCSC" "C15725" (id 7) (at 149.225 158.115 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (pin "1" (uuid a4c426eb-65cf-4c74-8246-10c2079e50b3))
