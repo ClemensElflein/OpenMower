@@ -43,7 +43,7 @@
     #define PIN_WT901_RX 16
 #endif
 
-#elif HW_0_10_X
+#elif HW_0_10_X || HW_0_11_X
 #define WT901_WIRE Wire
 
 #define PIN_WT901_SDA 8

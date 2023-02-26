@@ -48,12 +48,21 @@ jobs:
       - name: Copy Artifacts
         run: |
           mkdir artifacts
+          
+          mkdir ./artifacts/0_11_X_MPU9250
+          cp Firmware/LowLevel/.pio/build/0_11_X_MPU9250/firmware.elf ./artifacts/0_11_X_MPU9250
+          cp Firmware/LowLevel/.pio/build/0_11_X_MPU9250/firmware.uf2 ./artifacts/0_11_X_MPU9250
+          mkdir ./artifacts/0_11_X_WT901
+          cp Firmware/LowLevel/.pio/build/0_11_X_WT901/firmware.elf ./artifacts/0_11_X_WT901
+          cp Firmware/LowLevel/.pio/build/0_11_X_WT901/firmware.uf2 ./artifacts/0_11_X_WT901
+          
           mkdir ./artifacts/0_10_X_MPU9250
           cp Firmware/LowLevel/.pio/build/0_10_X_MPU9250/firmware.elf ./artifacts/0_10_X_MPU9250
           cp Firmware/LowLevel/.pio/build/0_10_X_MPU9250/firmware.uf2 ./artifacts/0_10_X_MPU9250
           mkdir ./artifacts/0_10_X_WT901
           cp Firmware/LowLevel/.pio/build/0_10_X_WT901/firmware.elf ./artifacts/0_10_X_WT901
           cp Firmware/LowLevel/.pio/build/0_10_X_WT901/firmware.uf2 ./artifacts/0_10_X_WT901
+          
           mkdir ./artifacts/0_9_X_MPU9250
           cp Firmware/LowLevel/.pio/build/0_9_X_MPU9250/firmware.elf ./artifacts/0_9_X_MPU9250
           cp Firmware/LowLevel/.pio/build/0_9_X_MPU9250/firmware.uf2 ./artifacts/0_9_X_MPU9250
