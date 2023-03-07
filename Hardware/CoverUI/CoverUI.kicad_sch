@@ -623,6 +623,7 @@
     )
   )
 
+
   (junction (at 243.84 153.67) (diameter 0) (color 0 0 0 0)
     (uuid 0f41a909-27c4-4be2-9d5e-9ae2108c8ff5)
   )
@@ -1561,16 +1562,13 @@
     (path "/403dfe9b-382e-4009-a727-18d4160a2580"
       (reference "#PWR01") (unit 1) (value "+5V") (footprint "")
     )
-    (path "/efd1f727-1f73-478a-9070-4ac144506c44/2a81d323-87ee-4cc8-9c18-a68d80783212"
-      (reference "#PWR02") (unit 1) (value "+3.3V") (footprint "")
-    )
     (path "/efd1f727-1f73-478a-9070-4ac144506c44/2164d666-31f4-469f-ba6b-f3b1642f77cb"
       (reference "#PWR03") (unit 1) (value "GND") (footprint "")
     )
     (path "/efd1f727-1f73-478a-9070-4ac144506c44/ebad2a19-9867-4060-b7b1-41d89879fc07"
       (reference "#PWR04") (unit 1) (value "+5V") (footprint "")
     )
-    (path "/d873f0f6-b4ce-4566-acf6-f884a791b77a/cb0b39d3-b45f-4d89-9f29-cf7b493484bb"
+    (path "/efd1f727-1f73-478a-9070-4ac144506c44/2a81d323-87ee-4cc8-9c18-a68d80783212"
       (reference "#PWR0101") (unit 1) (value "+3.3V") (footprint "")
     )
     (path "/efd1f727-1f73-478a-9070-4ac144506c44/7992f284-70b3-4355-bde6-139407878f78"
@@ -1581,6 +1579,9 @@
     )
     (path "/5282cf54-f35a-4717-9e7d-1973021a25d0"
       (reference "#PWR0104") (unit 1) (value "GND") (footprint "")
+    )
+    (path "/d873f0f6-b4ce-4566-acf6-f884a791b77a/e63e4908-bdbf-4e03-b7a6-bfe095dae9d1"
+      (reference "#PWR0105") (unit 1) (value "+3.3V") (footprint "")
     )
     (path "/efd1f727-1f73-478a-9070-4ac144506c44/77198181-0704-4e7a-94dd-deab3b813beb"
       (reference "#PWR0106") (unit 1) (value "+5V") (footprint "")
