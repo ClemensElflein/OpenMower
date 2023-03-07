@@ -59,14 +59,15 @@ outputs:
     type: 'position'
     dir: 'release'
     options:
-      dnf_filter: anything_in_Config
+      dnf_filter: [anything_in_Config, _mechanical]
+      format: CSV
 
   - name: 'ibom'
     comment: 'Generates an interactive web page useful to identify the position of the components in the PCB.'
     type: 'ibom'
     dir: 'release'
     options:
-      dnf_filter: anything_in_Config
+      dnf_filter: [anything_in_Config, _mechanical]
       extra_fields: Stock_PN
       highlight_pin1: true
 
