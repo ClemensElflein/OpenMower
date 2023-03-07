@@ -26,6 +26,24 @@ filters:
     exclude_value: true
 
 outputs:
+  - name: 'diff_pcb'
+    type: 'diff'
+    comment: 'Generates a PDF with the differences between two PCBs.'
+    dir: 'release'
+    options:
+      old: origin/main
+      pcb: true
+      only_different: true
+
+  - name: 'diff_sch'
+    type: 'diff'
+    comment: 'Generates a PDF with the differences between two schematics.'
+    dir: 'release'
+    options:
+      old: origin/main
+      pcb: false
+      only_different: true
+
   - name: 'bom'
     comment: 'Used to generate the BoM in CSV, HTML, TSV, TXT, XML or XLSX format using the internal BoM.'
     type: 'kibom'   # reads bom.ini in contrast with 'bom'
