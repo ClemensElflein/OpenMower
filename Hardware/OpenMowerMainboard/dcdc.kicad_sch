@@ -2083,7 +2083,7 @@
     (property "Reference" "R11" (id 0) (at 166.878 105.7715 0)
       (effects (font (size 1.27 1.27)) (justify right))
     )
-    (property "Value" "53.6 1%" (id 1) (at 166.878 108.5466 0)
+    (property "Value" "53k6 1%" (id 1) (at 166.878 108.5466 0)
       (effects (font (size 1.27 1.27)) (justify right))
     )
     (property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder" (id 2) (at 166.878 106.68 90)
