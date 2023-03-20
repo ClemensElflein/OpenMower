@@ -48,6 +48,9 @@ jobs:
       - name: Copy Artifacts
         run: |
           mkdir artifacts
+          mkdir ./artifacts/0_12_X
+          cp Firmware/LowLevel/.pio/build/0_12_X/firmware.elf ./artifacts/0_12_X
+          cp Firmware/LowLevel/.pio/build/0_12_X/firmware.uf2 ./artifacts/0_12_X
           
           mkdir ./artifacts/0_11_X_MPU9250
           cp Firmware/LowLevel/.pio/build/0_11_X_MPU9250/firmware.elf ./artifacts/0_11_X_MPU9250
