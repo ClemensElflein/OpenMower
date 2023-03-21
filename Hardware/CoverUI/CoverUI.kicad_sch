@@ -623,7 +623,6 @@
     )
   )
 
-
   (junction (at 243.84 153.67) (diameter 0) (color 0 0 0 0)
     (uuid 0f41a909-27c4-4be2-9d5e-9ae2108c8ff5)
   )
@@ -1887,46 +1886,46 @@
       (reference "SP16") (unit 1) (value "LedSpacer") (footprint "lcsc:LED_SPACER_3mm")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/2797f476-0d53-4aa6-bffb-bcb1a3963095"
-      (reference "SW1") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW1") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/4dc67fb4-ed33-44ff-8dd2-a561de96d688"
-      (reference "SW2") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW2") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/2c78cffd-9c85-4793-9e80-05fa76785ab8"
-      (reference "SW3") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW3") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/bcabec3b-16fe-432d-840c-42ee3bc66606"
-      (reference "SW4") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW4") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/549a369d-f21e-4842-932e-3984fd8b055e"
-      (reference "SW5") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW5") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/24158c86-031e-4719-8bf2-e64e564d85e4"
-      (reference "SW6") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW6") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/9b22a34d-2fc5-47db-9a6c-5eeadaee9739"
-      (reference "SW7") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW7") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/c9b6a029-6b6e-4e8f-9a97-30ce6fc3ce9f"
-      (reference "SW8") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW8") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/5651bbeb-42ab-4cf1-ad5d-d89e0920b0e9"
-      (reference "SW9") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW9") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/d4acc132-d2c9-49bd-9fe4-5aadac1a210c"
-      (reference "SW10") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW10") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/aa193353-9d95-4c68-b036-3856e107ec77"
-      (reference "SW11") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW11") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/2fae3e07-fc37-40d2-bdad-5dc987f87810"
-      (reference "SW12") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW12") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/5e06c1d1-f248-4dd5-a52c-d69de6f445f0"
-      (reference "SW13") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW13") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/44a3d6e0-81da-4c53-981a-168ed3134773/a4059dce-ac83-48c6-a6e1-cf617cd855bf"
-      (reference "SW14") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0")
+      (reference "SW14") (unit 1) (value "SW_MEC_5G") (footprint "lcsc:SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0")
     )
     (path "/d873f0f6-b4ce-4566-acf6-f884a791b77a/1a85c13d-2436-4dd9-b9fb-6b50edd4f59d"
       (reference "U1") (unit 1) (value "Raspberry-Pico") (footprint "ene9ba_footprint:RPi_Pico_SMD_TH")
