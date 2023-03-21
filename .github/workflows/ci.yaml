@@ -50,8 +50,8 @@ jobs:
 
           mkdir artifacts
           mkdir ./artifacts/0_12_X_LSM6DSO
-          cp Firmware/LowLevel/.pio/build/0_12_X_LSM6DSO/firmware.elf ./artifacts/0_12_X_LSM6DSO
-          cp Firmware/LowLevel/.pio/build/0_12_X_LSM6DSO/firmware.uf2 ./artifacts/0_12_X_LSM6DSO
+          cp Firmware/LowLevel/.pio/build/0_12_X/firmware.elf ./artifacts/0_12_X_LSM6DSO
+          cp Firmware/LowLevel/.pio/build/0_12_X/firmware.uf2 ./artifacts/0_12_X_LSM6DSO
 
           mkdir ./artifacts/0_12_X
           cp Firmware/LowLevel/.pio/build/0_12_X/firmware.elf ./artifacts/0_12_X
