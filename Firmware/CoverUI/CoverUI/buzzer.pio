@@ -1,0 +1,96 @@
+;
+; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+;
+; SPDX-License-Identifier: BSD-3-Clause
+;
+
+; SET pin 0 should be mapped to your LED GPIO
+
+.program buzzer
+;.origin 0
+
+.define public Out_PIN      26
+.define public SM_CYCLE   10800     // 4 * resonance frequency = State machine cycle frequency 
+   
+   
+.wrap_target
+    pull block
+    out y, 32
+    pull block
+    out ISR, 32
+    pull block
+ lp2:   
+    mov x, ISR    
+ lp1:   
+    set pins, 1 [1]  ; Turn LED on
+    set pins, 0 ;[7]  ; Turn LED off
+
+    jmp x-- lp1   ; Delay for (x + 1) cycles, x is a 32 bit number
+    
+    mov x, OSR
+ lp3:   
+    nop [31]
+    jmp x-- lp3
+    jmp y-- lp2
+
+    mov y, OSR
+ lp4:
+    nop [31]
+    nop [31]
+    nop [31]
+    nop [31]
+    nop [31]
+    ;nop [31]
+    ;nop [31]
+    ;nop [31]
+    ;nop [31]
+    ;nop [31]
+    ;nop [31]
+    ;nop [31]
+    jmp y-- lp4   
+    
+ 
+
+    
+
+    
+.wrap   
+
+
+% c-sdk {
+// this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
+#include "hardware/clocks.h"
+void static inline buzzer_program_init(PIO pio, uint sm, uint offset, uint pin, uint freq) // frequency in kHz
+{
+   // Initialise pin clear output enable and output valúe
+   pio_gpio_init(pio, pin);
+
+   //set consecutive pin direction
+   pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
+
+   // get pio_sm_config
+   pio_sm_config c = buzzer_program_get_default_config(offset);
+   
+   //calculate divisor to reduce state machine cycle 
+   float div = (float)clock_get_hz(clk_sys) / (freq);
+
+   
+   sm_config_set_clkdiv(&c, div);
+
+   sm_config_set_set_pins(&c, pin, 1);
+   pio_sm_init(pio, sm, offset, &c);
+}
+
+static inline void buzzer_program_put_words(PIO pio, uint sm, uint32_t repeat, uint32_t duration, uint32_t gap) 
+{
+    pio_sm_put_blocking(pio, sm, repeat-1);
+    pio_sm_put_blocking(pio, sm, duration);
+    pio_sm_put_blocking(pio, sm, gap);
+
+
+}
+
+
+
+
+%}
