@@ -1,4 +1,4 @@
-### Module positions - created on Tue 28 Feb 2023 12:29:17  ###
+### Module positions - created on Thu 23 Mar 2023 17:04:10  ###
 ### Printed by KiBot
 ## Unit = mm, Angle = deg.
 ## Side : top
@@ -40,20 +40,20 @@ R27       150             R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   106.4064
 R28       150             R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   112.4064   -72.7964    180.0000   top 
 R29       10k             R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   105.5060   -133.4648   90.0000    top 
 R30       10k             R_0805_2012Metric_Pad1.20x1.40mm_HandSolder   141.8844   -119.1608   90.0000    top 
-SW1       SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              84.8570    -70.9870    45.0000    top 
-SW2       SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              84.0470    -84.3870    45.0000    top 
-SW3       SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              103.3470   -84.3870    45.0000    top 
-SW4       SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              122.6370   -84.3870    45.0000    top 
-SW5       SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              142.3370   -84.3870    45.0000    top 
-SW6       SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              161.4670   -84.4970    45.0000    top 
-SW7       SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              180.8770   -84.2670    45.0000    top 
-SW8       SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              184.1270   -96.7570    45.0000    top 
-SW9       SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              81.2070    -97.2170    45.0000    top 
-SW10      SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              98.4970    -97.0370    45.0000    top 
-SW11      SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              115.4770   -96.9870    45.0000    top 
-SW12      SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              132.9970   -96.9870    45.0000    top 
-SW13      SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              150.0570   -97.0370    45.0000    top 
-SW14      SW_MEC_5G       KEY-SMD_4P-L6.0-W6.0-P3.90-LS9.0              167.0670   -96.9270    45.0000    top 
+SW1       SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               84.8570    -70.9870    45.0000    top 
+SW2       SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               84.0470    -84.3870    45.0000    top 
+SW3       SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               103.3470   -84.3870    45.0000    top 
+SW4       SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               122.6370   -84.3870    45.0000    top 
+SW5       SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               142.3370   -84.3870    45.0000    top 
+SW6       SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               161.4670   -84.4970    45.0000    top 
+SW7       SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               180.8770   -84.2670    45.0000    top 
+SW8       SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               184.1270   -96.7570    45.0000    top 
+SW9       SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               81.2070    -97.2170    45.0000    top 
+SW10      SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               98.4970    -97.0370    45.0000    top 
+SW11      SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               115.4770   -96.9870    45.0000    top 
+SW12      SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               132.9970   -96.9870    45.0000    top 
+SW13      SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               150.0570   -97.0370    45.0000    top 
+SW14      SW_MEC_5G       SW-SMD_4P-L4.5-W4.5-P3.00-LS7.0               167.0670   -96.9270    45.0000    top 
 U2        TPIC6C596DRG4   SOIC-16_L10.8-W4.5-P1.27-LS6.8-BL             182.2704   -68.6308    0.0000     top 
 U3        TPIC6C596DRG4   SOIC-16_L10.8-W4.5-P1.27-LS6.8-BL             137.7188   -125.9332   0.0000     top 
 U4        TPIC6C596DRG4   SOIC-16_L10.8-W4.5-P1.27-LS6.8-BL             127.9652   -139.9540   0.0000     top 
