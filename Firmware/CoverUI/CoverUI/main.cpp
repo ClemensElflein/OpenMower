@@ -3,16 +3,26 @@
 
 #include <stdio.h>
 
+#ifdef HW_YFC500
+// Separated STM specific code into multiple header files to hold this main.cpp clean.
+// "Multiple" because I wasn't clever enough to get ..._error.h integrated into ..._main.h :-/
+#include "stm32f0xx_main.h"
+#include "stm32f0xx_error.h"
+#include "stm32f0xx_sysclock.hpp"
+#include "stm32f0xx_mx_gpio.hpp"
+#else
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
 #include "pico/multicore.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"
+#endif
 
 #include <cstdio>
 #include "COBS.h"
-#include "CRC.h"
+// FIXME
+// #include "CRC.h"
 
 #include <cstring>
 
@@ -30,7 +40,8 @@
 #define shortbeep 50
 
 // 2cnd UART
-#define UART_1 uart1
+/* FIXME
+#define UART_1 uart1 */
 #define BAUD_RATE 115200
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
@@ -48,13 +59,15 @@ static uint8_t out_buf[bufflen];
 COBS cobs;
 
 // defintion PIO-block and uses statemachines
+/* FIXME
 PIO pio_Block1 = pio0;
-PIO pio_Block2 = pio1;
+PIO pio_Block2 = pio1; */
 int sm_blink;  // Statemachine onboard LED blinking
 int sm_LEDmux; // Statemachine control LEDSs
 int sm_buzz;   // Statemachine control Buzzer
 
-auto_init_mutex(mx1);
+/* FIXME
+auto_init_mutex(mx1);*/
 
 /****************************************************************************************************
  *
@@ -64,9 +77,10 @@ auto_init_mutex(mx1);
 
 void Buzzer_set(uint32_t anz, uint32_t timeON, uint32_t timeOFF)
 {
-  mutex_enter_blocking(&mx1);
-  buzzer_program_put_words(pio_Block2, sm_buzz, anz, timeON * buzzer_SM_CYCLE / 4000, timeOFF);
-  mutex_exit(&mx1);
+  /* FIXME
+    mutex_enter_blocking(&mx1);
+    buzzer_program_put_words(pio_Block2, sm_buzz, anz, timeON * buzzer_SM_CYCLE / 4000, timeOFF);
+    mutex_exit(&mx1);*/
 }
 
 /****************************************************************************************************
@@ -77,51 +91,52 @@ void Buzzer_set(uint32_t anz, uint32_t timeON, uint32_t timeOFF)
 
 void sendMessage(void *message, size_t size)
 {
-  mutex_enter_blocking(&mx1);
+  /* FIXME
+      mutex_enter_blocking(&mx1);
 
-  // packages need to be at least 1 byte of type, 1 byte of data and 2 bytes of CRC
-  if (size < 4)
-  {
-    mutex_exit(&mx1);
-    return;
-  }
+      // packages need to be at least 1 byte of type, 1 byte of data and 2 bytes of CRC
+      if (size < 4)
+      {
+        mutex_exit(&mx1);
+        return;
+      }
 
-  uint8_t *data_pointer = (uint8_t *)message;
-  uint16_t *crc_pointer = (uint16_t *)(data_pointer + (size - 2));
+      uint8_t *data_pointer = (uint8_t *)message;
+      uint16_t *crc_pointer = (uint16_t *)(data_pointer + (size - 2));
 
-  // calculate the CRC
-  *crc_pointer = CRC::Calculate(message, size - 2, CRC::CRC_16_CCITTFALSE());
-  // structure is filled and CRC calculated, so print out, what should be encoded
+      // calculate the CRC
+      *crc_pointer = CRC::Calculate(message, size - 2, CRC::CRC_16_CCITTFALSE());
+      // structure is filled and CRC calculated, so print out, what should be encoded
 
-#ifdef _serial_debug_
-  printf("\nprint struct before encoding %d byte : ", (int)size);
-  uint8_t *temp = data_pointer;
-  for (int i = 0; i < size; i++)
-  {
-    printf("0x%02x , ", *temp);
-    temp++;
-  }
-#endif
+  #ifdef _serial_debug_
+    printf("\nprint struct before encoding %d byte : ", (int)size);
+    uint8_t *temp = data_pointer;
+    for (int i = 0; i < size; i++)
+    {
+      printf("0x%02x , ", *temp);
+      temp++;
+    }
+  #endif
 
-  // encode message
+    // encode message
 
-  size_t encoded_size = cobs.encode((uint8_t *)message, size, out_buf);
-  out_buf[encoded_size] = 0;
-  encoded_size++;
+    size_t encoded_size = cobs.encode((uint8_t *)message, size, out_buf);
+    out_buf[encoded_size] = 0;
+    encoded_size++;
 
-#ifdef _serial_debug_
-  printf("\nencoded message              %d byte : ", (int)encoded_size);
-  for (uint i = 0; i < encoded_size; i++)
-  {
-    printf("0x%02x , ", out_buf[i]);
-  }
-#endif
+  #ifdef _serial_debug_
+    printf("\nencoded message              %d byte : ", (int)encoded_size);
+    for (uint i = 0; i < encoded_size; i++)
+    {
+      printf("0x%02x , ", out_buf[i]);
+    }
+  #endif
 
-  for (uint i = 0; i < encoded_size; i++)
-  {
-    uart_putc(UART_1, out_buf[i]);
-  }
-  mutex_exit(&mx1);
+    for (uint i = 0; i < encoded_size; i++)
+    {
+      uart_putc(UART_1, out_buf[i]);
+    }
+    mutex_exit(&mx1);*/
 }
 
 /****************************************************************************************************
@@ -137,54 +152,54 @@ void PacketReceived()
   // calculate the CRC only if we have at least three bytes (two CRC, one data)
   if (data_size < 3)
     return;
+    /* FIXME
+        uint16_t calc_crc = CRC::Calculate(decoded_buffer, data_size - 2, CRC::CRC_16_CCITTFALSE());
 
-  uint16_t calc_crc = CRC::Calculate(decoded_buffer, data_size - 2, CRC::CRC_16_CCITTFALSE());
+        // struct mower_com *struct_CRC = (struct mower_com *) encoded_buffer;
 
-  // struct mower_com *struct_CRC = (struct mower_com *) encoded_buffer;
-
-  if (decoded_buffer[0] == Get_Version && data_size == sizeof(struct msg_get_version))
-  {
-    struct msg_get_version *message = (struct msg_get_version *)decoded_buffer;
-    if (message->crc == calc_crc)
-    {
-      // valid get_version request, send reply
-      struct msg_get_version reply;
-      reply.type = Get_Version;
-      reply.version = FIRMWARE_VERSION;
-      sendMessage(&reply, sizeof(reply));
-    }
-  }
-  else if (decoded_buffer[0] == Set_Buzzer && data_size == sizeof(struct msg_set_buzzer))
-  {
-    struct msg_set_buzzer *message = (struct msg_set_buzzer *)decoded_buffer;
-    if (message->crc == calc_crc)
-    {
-      // valid set_buzzer request
-      Buzzer_set(message->repeat, message->on_time, message->off_time);
-    }
-  }
-  else if (decoded_buffer[0] == Set_LEDs && data_size == sizeof(struct msg_set_leds))
-  {
-    struct msg_set_leds *message = (struct msg_set_leds *)decoded_buffer;
-    if (message->crc == calc_crc)
-    {
-      // valid set_leds request
-      printf("Got valid setled call\n");
-      mutex_enter_blocking(&mx1);
-      LED_activity = message->leds;
-      LEDs_refresh(pio_Block1, sm_LEDmux);
-      mutex_exit(&mx1);
-    }
-    else
-    {
-      printf("Got setled call with crc error\n");
-    }
-  }
-  else
-  {
-    printf("some invalid packet\n");
-  }
-
+        if (decoded_buffer[0] == Get_Version && data_size == sizeof(struct msg_get_version))
+        {
+          struct msg_get_version *message = (struct msg_get_version *)decoded_buffer;
+          if (message->crc == calc_crc)
+          {
+            // valid get_version request, send reply
+            struct msg_get_version reply;
+            reply.type = Get_Version;
+            reply.version = FIRMWARE_VERSION;
+            sendMessage(&reply, sizeof(reply));
+          }
+        }
+        else if (decoded_buffer[0] == Set_Buzzer && data_size == sizeof(struct msg_set_buzzer))
+        {
+          struct msg_set_buzzer *message = (struct msg_set_buzzer *)decoded_buffer;
+          if (message->crc == calc_crc)
+          {
+            // valid set_buzzer request
+            Buzzer_set(message->repeat, message->on_time, message->off_time);
+          }
+        }
+        else if (decoded_buffer[0] == Set_LEDs && data_size == sizeof(struct msg_set_leds))
+        {
+          struct msg_set_leds *message = (struct msg_set_leds *)decoded_buffer;
+          if (message->crc == calc_crc)
+          {
+            // valid set_leds request
+            printf("Got valid setled call\n");
+                  mutex_enter_blocking(&mx1);
+                  LED_activity = message->leds;
+                  LEDs_refresh(pio_Block1, sm_LEDmux);
+                  mutex_exit(&mx1);
+          }
+          else
+          {
+            printf("Got setled call with crc error\n");
+          }
+        }
+        else
+        {
+          printf("some invalid packet\n");
+        }
+    */
 #ifdef _serial_debug_
   printf("packet received with %d bytes : ", (int)data_size);
   uint8_t *temp = decoded_buffer;
@@ -205,25 +220,26 @@ void PacketReceived()
 
 void getDataFromBuffer()
 {
-  while (uart_is_readable(UART_1))
-  {
-    u_int8_t readbyte = uart_getc(UART_1);
-    buffer_serial[write] = readbyte;
-    write++;
-    if (write >= bufflen)
+  /* FIXME
+    while (uart_is_readable(UART_1))
     {
-      // buffer is full, but no separator. Reset
-      write = 0;
-      return;
-    }
-    if (readbyte == 0)
-    {
-      // we have found the packet marker, notify the other core
-      PacketReceived();
-      write = 0;
-      return;
-    }
-  }
+      u_int8_t readbyte = uart_getc(UART_1);
+      buffer_serial[write] = readbyte;
+      write++;
+      if (write >= bufflen)
+      {
+        // buffer is full, but no separator. Reset
+        write = 0;
+        return;
+      }
+      if (readbyte == 0)
+      {
+        // we have found the packet marker, notify the other core
+        PacketReceived();
+        write = 0;
+        return;
+      }
+    }*/
 }
 
 int getLedForButton(int button)
@@ -251,71 +267,72 @@ void core1()
     // Buttons where we allow the hold. The reason for this is, that we have an indicator LED for these buttons.
     allow_hold = (button >= 4 && button <= 6) || (button >= 8 && button <= 14);
 
-    if (button && allow_hold)
-    {
-      int led = getLedForButton(button);
-      // force led off
-      mutex_enter_blocking(&mx1);
-      Force_LED_off(led, true);
-      mutex_exit(&mx1);
-      do
-      {
-        // allow hold, wait for user to hold
-        button = bit_getbutton(1000, pressed);
-        if (pressed)
+    /* FIXME
+        if (button && allow_hold)
         {
-          // user indeed held the button
-          pressed_count++;
-          // if button is still held, we flash and rety
-          for (int i = 0; i < pressed_count; i++)
+          int led = getLedForButton(button);
+          // force led off
+          mutex_enter_blocking(&mx1);
+          Force_LED_off(led, true);
+          mutex_exit(&mx1);
+          do
           {
-            mutex_enter_blocking(&mx1);
-            Blink_LED(pio_Block1, sm_LEDmux, led);
-            mutex_exit(&mx1);
+            // allow hold, wait for user to hold
+            button = bit_getbutton(1000, pressed);
+            if (pressed)
+            {
+              // user indeed held the button
+              pressed_count++;
+              // if button is still held, we flash and rety
+              for (int i = 0; i < pressed_count; i++)
+              {
+                mutex_enter_blocking(&mx1);
+                Blink_LED(pio_Block1, sm_LEDmux, led);
+                mutex_exit(&mx1);
+              }
+            }
+          } while (pressed && button != 0 && pressed_count < 2);
+
+          // yes that's a duplicate but we want to wait before releasing the LED, so that's intended.
+          if (button && pressed)
+          {
+            // we're still holding, wait for the button to release. We don't care about the result here.
+            bool tmp;
+            bit_getbutton(0, tmp);
+          }
+
+          mutex_enter_blocking(&mx1);
+          Force_LED_off(led, false);
+          mutex_exit(&mx1);
+        }
+        else
+        {
+          if (button && pressed)
+          {
+            // we're still holding, wait for the button to release. We don't care about the result here.
+            bool tmp;
+            bit_getbutton(0, tmp);
           }
         }
-      } while (pressed && button != 0 && pressed_count < 2);
 
-      // yes that's a duplicate but we want to wait before releasing the LED, so that's intended.
-      if (button && pressed)
-      {
-        // we're still holding, wait for the button to release. We don't care about the result here.
-        bool tmp;
-        bit_getbutton(0, tmp);
-      }
+        if (button > 0)
+        {
 
-      mutex_enter_blocking(&mx1);
-      Force_LED_off(led, false);
-      mutex_exit(&mx1);
-    }
-    else
-    {
-      if (button && pressed)
-      {
-        // we're still holding, wait for the button to release. We don't care about the result here.
-        bool tmp;
-        bit_getbutton(0, tmp);
-      }
-    }
+          struct msg_event_button button_msg;
+          button_msg.type = Get_Button;
+          button_msg.button_id = button;
+          button_msg.press_duration = pressed_count;
 
-    if (button > 0)
-    {
+          sendMessage(&button_msg, sizeof(button_msg));
 
-      struct msg_event_button button_msg;
-      button_msg.type = Get_Button;
-      button_msg.button_id = button;
-      button_msg.press_duration = pressed_count;
+          // confirm pressed button with buzzer.
+          // TODO: on rapid button presses, the FIFO gets full and therefore this call is blocking for a long time.
+          mutex_enter_blocking(&mx1);
+          buzzer_program_put_words(pio_Block2, sm_buzz, 1, shortbeep * buzzer_SM_CYCLE / 4000, 40);
+          mutex_exit(&mx1);
 
-      sendMessage(&button_msg, sizeof(button_msg));
-
-      // confirm pressed button with buzzer.
-      // TODO: on rapid button presses, the FIFO gets full and therefore this call is blocking for a long time.
-      mutex_enter_blocking(&mx1);
-      buzzer_program_put_words(pio_Block2, sm_buzz, 1, shortbeep * buzzer_SM_CYCLE / 4000, 40);
-      mutex_exit(&mx1);
-
-      printf("\n\rsend Button Nr.: %d with count %d", button, pressed_count);
-    }
+          printf("\n\rsend Button Nr.: %d with count %d", button, pressed_count);
+        }*/
   }
 }
 
@@ -323,6 +340,36 @@ int main(void)
 {
   uint32_t last_led_update = 0;
 
+#ifdef HW_YFC500
+  printf("Main started\n");
+
+  // Reset of all peripherals, Initializes the Flash interface and the Systick
+  HAL_Init();
+
+  // Configure the system clock
+  SystemClock_Config();
+
+  // Initialize all configured peripherals
+  MX_GPIO_Init();
+
+  int blink = 0;
+
+  // Main infinite loop
+  while (1)
+  {
+    if (blink)
+    {
+      HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0); // LED
+      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
+      HAL_Delay(100);
+    }
+
+    //   blink = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14); // read WED button
+    blink = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8); // read SUN button
+  }
+#endif
+
+  /* FIXME
   stdio_init_all();
 
   // setup the second UART 1
@@ -397,5 +444,5 @@ int main(void)
       mutex_exit(&mx1);
       last_led_update = now;
     }
-  }
+  }*/
 }

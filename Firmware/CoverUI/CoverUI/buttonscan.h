@@ -1,15 +1,17 @@
 #ifndef _buttonscan_HEADER_FILE_
 #define _buttonscan_HEADER_FILE_
 
-
-#include "pico/stdlib.h"
+/* FIXME
+#include "pico/stdlib.h" */
 #include <stdio.h>
-#include "hardware/pio.h"
+/* FIXME
+#include "hardware/pio.h" */
 
 //include the state machine programs
-#include "status_LED.pio.h" 
-#include "LED_mux.pio.h" 
-#include "buzzer.pio.h" 
+/* FIXME
+#include "status_LED.pio.h"
+#include "LED_mux.pio.h"
+#include "buzzer.pio.h" */
 
 
 
@@ -17,10 +19,8 @@
 /***********************************
  * buttonscan.h
  * rev 0.0 - El 2022-04-04
- * 
+ *
  * *********************************/
-
-
 
 // assign output and input to hardware ports
 #define out_buttonRow1      15
