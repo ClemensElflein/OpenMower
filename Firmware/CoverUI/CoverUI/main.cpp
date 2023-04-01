@@ -4,12 +4,14 @@
 #include <stdio.h>
 
 #ifdef HW_YFC500
-// Separated STM specific code into multiple header files to hold this main.cpp clean.
-// "Multiple" because I wasn't clever enough to get ..._error.h integrated into ..._main.h :-/
-#include "stm32f0xx_main.h"
-#include "stm32f0xx_error.h"
-#include "stm32f0xx_sysclock.hpp"
-#include "stm32f0xx_mx_gpio.hpp"
+// STM32CubeIDE specific code to hold this main.cpp clean
+#include "yfc500/main.h"
+#include "yfc500/usart.h"
+#include "yfc500/gpio.h"
+#include "yfc500/error.hpp"
+#include "yfc500/sysclock.hpp"
+// FIXME Integrate only in debug cases?!
+extern "C" void initialise_monitor_handles(void);
 #else
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
@@ -338,34 +340,37 @@ void core1()
 
 int main(void)
 {
-  uint32_t last_led_update = 0;
+  //uint32_t last_led_update = 0;
 
 #ifdef HW_YFC500
-  printf("Main started\n");
-
-  // Reset of all peripherals, Initializes the Flash interface and the Systick
-  HAL_Init();
-
-  // Configure the system clock
-  SystemClock_Config();
-
+  initialise_monitor_handles(); // Semihosting
+  HAL_Init();                   // Reset of all peripherals, Initializes the Flash interface and the Systick
+  SystemClock_Config();         // Configure the system clock
   // Initialize all configured peripherals
   MX_GPIO_Init();
+  MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
+
+  printf("Main started\n");
 
   int blink = 0;
+  uint8_t cnt = 0;
 
   // Main infinite loop
   while (1)
   {
-    if (blink)
+    if (blink || true)
     {
       HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0); // LED
       HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
-      HAL_Delay(100);
+      HAL_Delay(900);
+
+      printf("while %d\n", cnt);
+      cnt++;
     }
 
     //   blink = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14); // read WED button
-    blink = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8); // read SUN button
+    //blink = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8); // read SUN button
   }
 #endif
 

@@ -22,17 +22,15 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2016 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * Copyright (c) 2016 STMicroelectronics.
+  * All rights reserved.
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
   *
   ******************************************************************************
   */
-
 /** @addtogroup CMSIS
   * @{
   */
@@ -156,6 +154,8 @@ void SystemInit(void)
   *           - If SYSCLK source is PLL, SystemCoreClock will contain the HSE_VALUE(**)
   *             or HSI_VALUE(*) multiplied/divided by the PLL factors.
   *
+  *           - If SYSCLK source is HSI48, SystemCoreClock will contain the HSI48_VALUE(***)
+  *
   *         (*) HSI_VALUE is a constant defined in stm32f0xx_hal_conf.h file (default value
   *             8 MHz) but the real value may vary depending on the variations
   *             in voltage and temperature.
@@ -164,6 +164,10 @@ void SystemInit(void)
   *              depends on the application requirements), user has to ensure that HSE_VALUE
   *              is same as the real frequency of the crystal used. Otherwise, this function
   *              may have wrong result.
+  *
+  *         (***) HSI48_VALUE is a constant defined in stm32f0xx_hal_conf.h file (default value
+  *             48 MHz) but the real value may vary depending on the variations
+  *             in voltage and temperature.
   *
   *         - The result of this function could be not correct when using fractional
   *           value for HSE crystal.
@@ -198,13 +202,13 @@ void SystemCoreClockUpdate (void)
         /* HSE used as PLL clock source : SystemCoreClock = HSE/PREDIV * PLLMUL */
         SystemCoreClock = (HSE_VALUE/predivfactor) * pllmull;
       }
-#if defined(STM32F042x6) || defined(STM32F048xx) || defined(STM32F072xB) || defined(STM32F078xx) || defined(STM32F091xC) || defined(STM32F098xx)
+#if defined(STM32F042x6) || defined(STM32F048xx) || defined(STM32F071xB) || defined(STM32F072xB) || defined(STM32F078xx) || defined(STM32F091xC) || defined(STM32F098xx)
       else if (pllsource == RCC_CFGR_PLLSRC_HSI48_PREDIV)
       {
         /* HSI48 used as PLL clock source : SystemCoreClock = HSI48/PREDIV * PLLMUL */
         SystemCoreClock = (HSI48_VALUE/predivfactor) * pllmull;
       }
-#endif /* STM32F042x6 || STM32F048xx || STM32F072xB || STM32F078xx || STM32F091xC || STM32F098xx */
+#endif /* STM32F042x6 || STM32F048xx || STM32F071xB || STM32F072xB || STM32F078xx || STM32F091xC || STM32F098xx */
       else
       {
 #if defined(STM32F042x6) || defined(STM32F048xx)  || defined(STM32F070x6) \
@@ -218,7 +222,7 @@ void SystemCoreClockUpdate (void)
 #endif /* STM32F042x6 || STM32F048xx || STM32F070x6 || 
           STM32F071xB || STM32F072xB || STM32F078xx || STM32F070xB ||
           STM32F091xC || STM32F098xx || STM32F030xC */
-      }
+	  }
       break;
     default: /* HSI used as system clock */
       SystemCoreClock = HSI_VALUE;
@@ -242,6 +246,4 @@ void SystemCoreClockUpdate (void)
 /**
   * @}
   */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 
