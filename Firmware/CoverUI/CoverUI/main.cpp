@@ -4,27 +4,49 @@
 #include <stdio.h>
 
 #ifdef HW_YFC500
+
 // STM32CubeIDE specific code to hold this main.cpp clean
 #include "yfc500/main.h"
+#include "yfc500/dma.h"
 #include "yfc500/usart.h"
 #include "yfc500/gpio.h"
 #include "yfc500/error.hpp"
 #include "yfc500/sysclock.hpp"
+#include "yfc500/stm32f0xx_it.h"
 // FIXME Integrate only in debug cases?!
 extern "C" void initialise_monitor_handles(void);
-#else
+// UART2 specif cstuff
+extern DMA_HandleTypeDef hdma_usart2_rx;
+#define RX_BUFFER_SIZE 1000 // FIXME: This look huge
+uint8_t uart_ll_rx_buffer[RX_BUFFER_SIZE];
+uint16_t uart_ll_rx_ringbuffer_pos = 0;
+// Misc Pico-SDK stuff
+#define auto_init_mutex(name) // Don't have threads
+
+#else // HW Pico
+
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
 #include "pico/multicore.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"
+
+// 2nd UART
+#define UART_1 uart1
+#define BAUD_RATE 115200
+#define UART_TX_PIN 4
+#define UART_RX_PIN 5
+
 #endif
 
 #include <cstdio>
 #include "COBS.h"
-// FIXME
-// #include "CRC.h"
+#ifdef CRC // i.e. by STM32Cube
+#undef CRC
+#endif
+// FIXME STM32: should use the STM32 included crc unit
+#include "CRC.h"
 
 #include <cstring>
 
@@ -40,13 +62,6 @@ extern "C" void initialise_monitor_handles(void);
 
 // buzzer ontime in ms
 #define shortbeep 50
-
-// 2cnd UART
-/* FIXME
-#define UART_1 uart1 */
-#define BAUD_RATE 115200
-#define UART_TX_PIN 4
-#define UART_RX_PIN 5
 
 // write & read pointer serial interrupt buffer
 static uint write = 0;
@@ -68,8 +83,7 @@ int sm_blink;  // Statemachine onboard LED blinking
 int sm_LEDmux; // Statemachine control LEDSs
 int sm_buzz;   // Statemachine control Buzzer
 
-/* FIXME
-auto_init_mutex(mx1);*/
+auto_init_mutex(mx1);
 
 /****************************************************************************************************
  *
@@ -154,54 +168,55 @@ void PacketReceived()
   // calculate the CRC only if we have at least three bytes (two CRC, one data)
   if (data_size < 3)
     return;
-    /* FIXME
-        uint16_t calc_crc = CRC::Calculate(decoded_buffer, data_size - 2, CRC::CRC_16_CCITTFALSE());
 
-        // struct mower_com *struct_CRC = (struct mower_com *) encoded_buffer;
+  uint16_t calc_crc = CRC::Calculate(decoded_buffer, data_size - 2, CRC::CRC_16_CCITTFALSE());
 
-        if (decoded_buffer[0] == Get_Version && data_size == sizeof(struct msg_get_version))
-        {
-          struct msg_get_version *message = (struct msg_get_version *)decoded_buffer;
-          if (message->crc == calc_crc)
-          {
-            // valid get_version request, send reply
-            struct msg_get_version reply;
-            reply.type = Get_Version;
-            reply.version = FIRMWARE_VERSION;
-            sendMessage(&reply, sizeof(reply));
-          }
-        }
-        else if (decoded_buffer[0] == Set_Buzzer && data_size == sizeof(struct msg_set_buzzer))
-        {
-          struct msg_set_buzzer *message = (struct msg_set_buzzer *)decoded_buffer;
-          if (message->crc == calc_crc)
-          {
-            // valid set_buzzer request
-            Buzzer_set(message->repeat, message->on_time, message->off_time);
-          }
-        }
-        else if (decoded_buffer[0] == Set_LEDs && data_size == sizeof(struct msg_set_leds))
-        {
-          struct msg_set_leds *message = (struct msg_set_leds *)decoded_buffer;
-          if (message->crc == calc_crc)
-          {
-            // valid set_leds request
-            printf("Got valid setled call\n");
-                  mutex_enter_blocking(&mx1);
-                  LED_activity = message->leds;
-                  LEDs_refresh(pio_Block1, sm_LEDmux);
-                  mutex_exit(&mx1);
-          }
-          else
-          {
-            printf("Got setled call with crc error\n");
-          }
-        }
-        else
-        {
-          printf("some invalid packet\n");
-        }
-    */
+  // struct mower_com *struct_CRC = (struct mower_com *) encoded_buffer;
+
+  if (decoded_buffer[0] == Get_Version && data_size == sizeof(struct msg_get_version))
+  {
+    struct msg_get_version *message = (struct msg_get_version *)decoded_buffer;
+    if (message->crc == calc_crc)
+    {
+      printf("TODO GetVersion\n");
+      // valid get_version request, send reply
+      struct msg_get_version reply;
+      reply.type = Get_Version;
+      reply.version = FIRMWARE_VERSION;
+      sendMessage(&reply, sizeof(reply));
+    }
+  }
+  else if (decoded_buffer[0] == Set_Buzzer && data_size == sizeof(struct msg_set_buzzer))
+  {
+    struct msg_set_buzzer *message = (struct msg_set_buzzer *)decoded_buffer;
+    if (message->crc == calc_crc)
+    {
+      // valid set_buzzer request
+      Buzzer_set(message->repeat, message->on_time, message->off_time);
+    }
+  }
+  else if (decoded_buffer[0] == Set_LEDs && data_size == sizeof(struct msg_set_leds))
+  {
+    struct msg_set_leds *message = (struct msg_set_leds *)decoded_buffer;
+    if (message->crc == calc_crc)
+    {
+      // valid set_leds request
+      printf("Got valid setled call\n");
+      // FIXME: mutex_enter_blocking(&mx1);
+      LED_activity = message->leds;
+      // FIXME: LEDs_refresh(pio_Block1, sm_LEDmux);
+      // FIXME: mutex_exit(&mx1);
+    }
+    else
+    {
+      printf("Got setled call with crc error\n");
+    }
+  }
+  else
+  {
+    printf("some invalid packet\n");
+  }
+
 #ifdef _serial_debug_
   printf("packet received with %d bytes : ", (int)data_size);
   uint8_t *temp = decoded_buffer;
@@ -220,28 +235,35 @@ void PacketReceived()
  * out to buffer_serial
  *****************************************************************************************************/
 
+#ifdef HW_YFC500
+void getDataFromBuffer(uint16_t size)
+{
+  for (uint16_t i = 0; i < size; i++)
+  {
+    u_int8_t readbyte = uart_ll_rx_buffer[i];
+#else // HW Pico
 void getDataFromBuffer()
 {
-  /* FIXME
-    while (uart_is_readable(UART_1))
+  while (uart_is_readable(UART_1))
+  {
+    u_int8_t readbyte = uart_getc(UART_1);
+#endif
+    buffer_serial[write] = readbyte;
+    write++;
+    if (write >= bufflen)
     {
-      u_int8_t readbyte = uart_getc(UART_1);
-      buffer_serial[write] = readbyte;
-      write++;
-      if (write >= bufflen)
-      {
-        // buffer is full, but no separator. Reset
-        write = 0;
-        return;
-      }
-      if (readbyte == 0)
-      {
-        // we have found the packet marker, notify the other core
-        PacketReceived();
-        write = 0;
-        return;
-      }
-    }*/
+      // buffer is full, but no separator. Reset
+      write = 0;
+      return;
+    }
+    if (readbyte == 0)
+    {
+      // we have found the packet marker, notify the other core
+      PacketReceived();
+      write = 0;
+      return;
+    }
+  }
 }
 
 int getLedForButton(int button)
@@ -340,16 +362,20 @@ void core1()
 
 int main(void)
 {
-  //uint32_t last_led_update = 0;
+  // uint32_t last_led_update = 0;
 
 #ifdef HW_YFC500
+
   initialise_monitor_handles(); // Semihosting
   HAL_Init();                   // Reset of all peripherals, Initializes the Flash interface and the Systick
   SystemClock_Config();         // Configure the system clock
-  // Initialize all configured peripherals
+  // Initialize required peripherals
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
-  MX_USART1_UART_Init();
+
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_rx_buffer, RX_BUFFER_SIZE); // UART_LL DMA buffer
+  __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);                         // Disable "Half Transfer" interrupt
 
   printf("Main started\n");
 
@@ -357,7 +383,7 @@ int main(void)
   uint8_t cnt = 0;
 
   // Main infinite loop
-  while (1)
+  while (0)
   {
     if (blink || true)
     {
@@ -370,11 +396,11 @@ int main(void)
     }
 
     //   blink = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14); // read WED button
-    //blink = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8); // read SUN button
+    // blink = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8); // read SUN button
   }
-#endif
 
-  /* FIXME
+#else
+
   stdio_init_all();
 
   // setup the second UART 1
@@ -385,12 +411,17 @@ int main(void)
   uart_set_hw_flow(UART_1, false, false);
   uart_set_fifo_enabled(UART_1, true);
 
+#endif
+
+  /* FIXME
   init_button_scan(); // Init hardware for button matix
   // init_LED_driver();
+  */
 
   float ver = (float)FIRMWARE_VERSION / 100.0;
   printf("\n\n\n\rMower Button-LED-Control Version %2.2f\n", ver);
 
+  /* FIXME
   // initialise state machines
   sm_blink = init_run_StateMachine_blink(pio_Block1);    // on board led alive blink
   sm_LEDmux = init_run_StateMachine_LED_mux(pio_Block1); // LED multiplexer
@@ -433,12 +464,14 @@ int main(void)
   multicore_launch_core1(core1);
 
   printf("\n\n waiting for commands or button press");
-
+*/
   while (true)
   {
-
+#ifndef HW_YFC500
     getDataFromBuffer();
+#endif
 
+    /* FIXME
     uint32_t now = to_ms_since_boot(get_absolute_time());
 
     // Update the LEDs and their blinking states
@@ -448,6 +481,23 @@ int main(void)
       LEDs_refresh(pio_Block1, sm_LEDmux);
       mutex_exit(&mx1);
       last_led_update = now;
-    }
-  }*/
+    }*/
+  }
+}
+
+/**
+ * UART_LL DMA Callback once data is ready/idle
+ *
+ * @param huart
+ * @param Size
+ */
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+  if (huart->Instance == UART_LL)
+  {
+    getDataFromBuffer(Size);
+
+    HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_rx_buffer, RX_BUFFER_SIZE); // Start UART DMA again
+    __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);                         // Disable "Half Transfer" interrupt
+  }
 }
