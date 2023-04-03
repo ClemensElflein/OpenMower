@@ -107,52 +107,55 @@ void Buzzer_set(uint32_t anz, uint32_t timeON, uint32_t timeOFF)
 
 void sendMessage(void *message, size_t size)
 {
-  /* FIXME
-      mutex_enter_blocking(&mx1);
+  // FIXME: mutex_enter_blocking(&mx1);
 
-      // packages need to be at least 1 byte of type, 1 byte of data and 2 bytes of CRC
-      if (size < 4)
-      {
-        mutex_exit(&mx1);
-        return;
-      }
+  // packages need to be at least 1 byte of type, 1 byte of data and 2 bytes of CRC
+  if (size < 4)
+  {
+    // FIXME: mutex_exit(&mx1);
+    return;
+  }
 
-      uint8_t *data_pointer = (uint8_t *)message;
-      uint16_t *crc_pointer = (uint16_t *)(data_pointer + (size - 2));
+  uint8_t *data_pointer = (uint8_t *)message;
+  uint16_t *crc_pointer = (uint16_t *)(data_pointer + (size - 2));
 
-      // calculate the CRC
-      *crc_pointer = CRC::Calculate(message, size - 2, CRC::CRC_16_CCITTFALSE());
-      // structure is filled and CRC calculated, so print out, what should be encoded
+  // calculate the CRC
+  *crc_pointer = CRC::Calculate(message, size - 2, CRC::CRC_16_CCITTFALSE());
+  // structure is filled and CRC calculated, so print out, what should be encoded
 
-  #ifdef _serial_debug_
-    printf("\nprint struct before encoding %d byte : ", (int)size);
-    uint8_t *temp = data_pointer;
-    for (int i = 0; i < size; i++)
-    {
-      printf("0x%02x , ", *temp);
-      temp++;
-    }
-  #endif
+#ifdef _serial_debug_
+  printf("\nprint struct before encoding %d byte : ", (int)size);
+  uint8_t *temp = data_pointer;
+  for (int i = 0; i < size; i++)
+  {
+    printf("0x%02x , ", *temp);
+    temp++;
+  }
+#endif
 
-    // encode message
+  // encode message
 
-    size_t encoded_size = cobs.encode((uint8_t *)message, size, out_buf);
-    out_buf[encoded_size] = 0;
-    encoded_size++;
+  size_t encoded_size = cobs.encode((uint8_t *)message, size, out_buf);
+  out_buf[encoded_size] = 0;
+  encoded_size++;
 
-  #ifdef _serial_debug_
-    printf("\nencoded message              %d byte : ", (int)encoded_size);
-    for (uint i = 0; i < encoded_size; i++)
-    {
-      printf("0x%02x , ", out_buf[i]);
-    }
-  #endif
+#ifdef _serial_debug_
+  printf("\nencoded message              %d byte : ", (int)encoded_size);
+  for (uint i = 0; i < encoded_size; i++)
+  {
+    printf("0x%02x , ", out_buf[i]);
+  }
+#endif
 
-    for (uint i = 0; i < encoded_size; i++)
-    {
-      uart_putc(UART_1, out_buf[i]);
-    }
-    mutex_exit(&mx1);*/
+#ifdef HW_YFC500
+  HAL_UART_Transmit_DMA(&huart2, out_buf, encoded_size);
+#else // HW Pico
+  for (uint i = 0; i < encoded_size; i++)
+  {
+    uart_putc(UART_1, out_buf[i]);
+  }
+  mutex_exit(&mx1);
+#endif
 }
 
 /****************************************************************************************************
@@ -178,7 +181,6 @@ void PacketReceived()
     struct msg_get_version *message = (struct msg_get_version *)decoded_buffer;
     if (message->crc == calc_crc)
     {
-      printf("TODO GetVersion\n");
       // valid get_version request, send reply
       struct msg_get_version reply;
       reply.type = Get_Version;
@@ -500,4 +502,16 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_rx_buffer, RX_BUFFER_SIZE); // Start UART DMA again
     __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);                         // Disable "Half Transfer" interrupt
   }
+}
+
+void HAL_UART_TxHalfCpltCallback(UART_HandleTypeDef *huart)
+{
+  //printf("UART TX Half callback\n");
+  // FIXME: Probably need to ensure that there's no TX overflow
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+  // printf("UART TX full callback\n");
+  //  FIXME: Probably need to ensure that there's no TX overflow
 }
