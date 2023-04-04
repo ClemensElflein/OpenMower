@@ -19,14 +19,12 @@
 #include "yfc500/stm32cube/error.hpp"
 #include "yfc500/stm32cube/sysclock.hpp"
 #include "yfc500/stm32cube/stm32f0xx_it.h"
-// FIXME Integrate only in debug cases?!
-extern "C" void
-initialise_monitor_handles(void);
-// UART2 specif cstuff
-extern DMA_HandleTypeDef hdma_usart2_rx;
-#define RX_BUFFER_SIZE 1000 // FIXME: This look huge. See "#define bufflen 1000"
+#ifdef DEBUG_SEMIHOSTING
+extern "C" void initialise_monitor_handles(void);
+#endif
+extern DMA_HandleTypeDef hdma_usart2_rx; // UART_LL
+#define RX_BUFFER_SIZE 1000              // FIXME: This look huge. See "#define bufflen 1000"
 uint8_t uart_ll_rx_buffer[RX_BUFFER_SIZE];
-uint16_t uart_ll_rx_ringbuffer_pos = 0;
 // Misc Pico-SDK stuff
 #define auto_init_mutex(name) // Don't have threads
 
@@ -376,16 +374,18 @@ int main(void)
 
 #ifdef HW_YFC500
 
+#ifdef DEBUG_SEMIHOSTING
   initialise_monitor_handles(); // Semihosting
-  HAL_Init();                   // Reset of all peripherals, Initializes the Flash interface and the Systick
-  SystemClock_Config();         // Configure the system clock
+#endif
+  HAL_Init();           // Reset of all peripherals, Initializes the Flash interface and the Systick
+  SystemClock_Config(); // Configure the system clock
   // Initialize required peripherals
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_TIM16_Init(); // TIM_BLINK_SLOW
-  MX_TIM17_Init(); // TIM_BLINK_FAST
   HAL_TIM_Base_Start_IT(&htim16);
+  MX_TIM17_Init(); // TIM_BLINK_FAST
   HAL_TIM_Base_Start_IT(&htim17);
 
   HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_rx_buffer, RX_BUFFER_SIZE); // UART_LL DMA buffer
@@ -499,6 +499,8 @@ int main(void)
   }
 }
 
+#ifdef HW_YFC500
+
 /**
  * UART_LL DMA Callback once data is ready/idle
  *
@@ -530,13 +532,14 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  printf("Timer int %s\n", htim->Instance);
   if (htim->Instance == TIM_BLINK_SLOW)
   {
     HAL_GPIO_TogglePin(LED_2HR_GPIO_Port, LED_2HR_Pin);
   }
-  else if(htim->Instance == TIM_BLINK_FAST)
+  else if (htim->Instance == TIM_BLINK_FAST)
   {
     HAL_GPIO_TogglePin(LED_4HR_GPIO_Port, LED_4HR_Pin);
   }
 }
+
+#endif

@@ -1,16 +1,99 @@
+//
+// !!! WARNING !!! AUTO-GENERATED FILE!
+// PLEASE DO NOT MODIFY IT AND USE "platformio.ini":
+// https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags
+//
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "PlatformIO",
             "includePath": [
-                "${workspaceFolder}/**"
+                "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/include",
+                "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/CMSIS/DSP/Include",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/CMSIS/Include",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/CMSIS/Device/ST/STM32F0xx/Include",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/STM32F0xx_HAL_Driver/Inc",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/STM32F0xx_HAL_Driver/Src",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/Common",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/hx8347d",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/i3g4250d",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/l3gd20",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/spfd5408",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/st7735",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/stlm75",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Adafruit_Shield",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Utilities/CPU",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Utilities/Fonts",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Utilities/Log",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Core/Src",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/AUDIO/Inc",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/AUDIO/Src",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Inc",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Src",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Src",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/HID/Inc",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/HID/Src",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Inc",
+                "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src",
+                ""
             ],
-            "defines": [],
-            "compilerPath": "/usr/local/bin/arm-none-eabi-gcc",
-            "cStandard": "c11",
-            "cppStandard": "gnu++14",
-            "intelliSenseMode": "linux-gcc-arm",
-            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/include",
+                    "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/CMSIS/DSP/Include",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/CMSIS/Include",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/CMSIS/Device/ST/STM32F0xx/Include",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/STM32F0xx_HAL_Driver/Inc",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/STM32F0xx_HAL_Driver/Src",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/Common",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/hx8347d",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/i3g4250d",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/l3gd20",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/spfd5408",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/st7735",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Components/stlm75",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Drivers/BSP/Adafruit_Shield",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Utilities/CPU",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Utilities/Fonts",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Utilities/Log",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Core/Src",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/AUDIO/Inc",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/AUDIO/Src",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Inc",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Src",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Src",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/HID/Inc",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/HID/Src",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Inc",
+                    "/home/jebeling/.platformio/packages/framework-stm32cubef0/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src",
+                    ""
+                ]
+            },
+            "defines": [
+                "PLATFORMIO=60106",
+                "STM32F030x8",
+                "HW_YFC500",
+                "USE_HAL_DRIVER",
+                "F_CPU=48000000L",
+                ""
+            ],
+            "compilerPath": "/home/jebeling/.platformio/packages/toolchain-gccarmnoneeabi@1.70201.0/bin/arm-none-eabi-gcc",
+            "compilerArgs": [
+                "-mthumb",
+                "-mcpu=cortex-m0",
+                ""
+            ]
         }
     ],
     "version": 4

@@ -3,5 +3,6 @@
     "files.associations": {
         "initializer_list": "cpp",
         "utility": "cpp"
-    }
+    },
+    "cmake.configureOnOpen": false
 }

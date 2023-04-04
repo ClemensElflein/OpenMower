@@ -1,7 +1,11 @@
+// AUTOMATICALLY GENERATED FILE. PLEASE DO NOT MODIFY IT MANUALLY
+//
+// PIO Unified Debugger
+//
+// Documentation: https://docs.platformio.org/page/plus/debugging.html
+// Configuration: https://docs.platformio.org/page/projectconf/section_env_debug.html
+
 {
-    // Verwendet IntelliSense zum Ermitteln möglicher Attribute.
-    // Zeigen Sie auf vorhandene Attribute, um die zugehörigen Beschreibungen anzuzeigen.
-    // Weitere Informationen finden Sie unter https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
@@ -13,10 +17,51 @@
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "openocd",
-            "configFiles": ["interface/picoprobe.cfg", "target/rp2040-core0.cfg"],
+            "configFiles": [
+                "interface/picoprobe.cfg",
+                "target/rp2040-core0.cfg"
+            ],
             "svdFile": "${env:PICO_SDK_PATH}/src/rp2040/hardware_regs/rp2040.svd",
             "runToMain": true,
-            "postRestartCommands": ["break main", "continue"]
+            "postRestartCommands": [
+                "break main",
+                "continue"
+            ]
+        },
+        {
+            "type": "platformio-debug",
+            "request": "launch",
+            "name": "PIO Debug",
+            "executable": "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/.pio/build/yfc500_picoprobe/firmware.elf",
+            "projectEnvName": "yfc500_picoprobe",
+            "toolchainBinDir": "/home/jebeling/.platformio/packages/toolchain-gccarmnoneeabi@1.70201.0/bin",
+            "internalConsoleOptions": "openOnSessionStart",
+            "svdPath": "/home/jebeling/.platformio/platforms/ststm32/misc/svd/STM32F030.svd",
+            "preLaunchTask": {
+                "type": "PlatformIO",
+                "task": "Pre-Debug (yfc500_picoprobe)"
+            }
+        },
+        {
+            "type": "platformio-debug",
+            "request": "launch",
+            "name": "PIO Debug (skip Pre-Debug)",
+            "executable": "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/.pio/build/yfc500_picoprobe/firmware.elf",
+            "projectEnvName": "yfc500_picoprobe",
+            "toolchainBinDir": "/home/jebeling/.platformio/packages/toolchain-gccarmnoneeabi@1.70201.0/bin",
+            "internalConsoleOptions": "openOnSessionStart",
+            "svdPath": "/home/jebeling/.platformio/platforms/ststm32/misc/svd/STM32F030.svd"
+        },
+        {
+            "type": "platformio-debug",
+            "request": "launch",
+            "name": "PIO Debug (without uploading)",
+            "executable": "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/.pio/build/yfc500_picoprobe/firmware.elf",
+            "projectEnvName": "yfc500_picoprobe",
+            "toolchainBinDir": "/home/jebeling/.platformio/packages/toolchain-gccarmnoneeabi@1.70201.0/bin",
+            "internalConsoleOptions": "openOnSessionStart",
+            "svdPath": "/home/jebeling/.platformio/platforms/ststm32/misc/svd/STM32F030.svd",
+            "loadMode": "manual"
         }
     ]
 }

@@ -57,10 +57,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define UART_LL USART2
-#define UART_U4 USART1
 #define TIM_BLINK_SLOW TIM16
 #define TIM_BLINK_FAST TIM17
+#define UART_LL USART2
+#define UART_U4 USART1
 #define LED_LIFTED_Pin GPIO_PIN_0
 #define LED_LIFTED_GPIO_Port GPIOC
 #define LED_WIRE_Pin GPIO_PIN_1

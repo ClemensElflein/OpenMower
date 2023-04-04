@@ -22,6 +22,23 @@
                 "isDefault": true
             },
             "detail": "Vom Debugger generierte Aufgabe."
+        },
+        {
+            "type": "PlatformIO",
+            "task": "Build (yfc500_picoprobe)",
+            "problemMatcher": [
+                "$platformio"
+            ],
+            "group": "build",
+            "label": "PlatformIO: Build (yfc500_picoprobe)"
+        },
+        {
+            "type": "PlatformIO",
+            "task": "Pre-Debug (yfc500_picoprobe)",
+            "problemMatcher": [
+                "$platformio"
+            ],
+            "label": "PlatformIO: Pre-Debug (yfc500_picoprobe)"
         }
     ],
     "version": "2.0.0"
