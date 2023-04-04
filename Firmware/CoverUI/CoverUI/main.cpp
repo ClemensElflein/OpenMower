@@ -5,19 +5,26 @@
 
 #ifdef HW_YFC500
 
-// STM32CubeIDE specific code to hold this main.cpp clean
-#include "yfc500/main.h"
-#include "yfc500/dma.h"
-#include "yfc500/usart.h"
-#include "yfc500/gpio.h"
-#include "yfc500/error.hpp"
-#include "yfc500/sysclock.hpp"
-#include "yfc500/stm32f0xx_it.h"
+// STM32CubeIDE files are only used for HW definition and initialization.
+// There's no user defined code within STM32Cube specific files except "#include yfc500/main.h" ??? FIXME
+// within "yfc500/stm32cube/main.h" which act as main.h for CoverUI's main.c
+// By this it's easily possible to change STM32Cube for HW definition,
+// copy STM32Cube files to this repo's yfc500/stm32cube dir without further modifications.
+// This is mainy to hold this repos's main.cpp and other files clean and untouched (as much as possible)
+#include "yfc500/stm32cube/main.h"
+#include "yfc500/stm32cube/dma.h"
+#include "yfc500/stm32cube/tim.h"
+#include "yfc500/stm32cube/usart.h"
+#include "yfc500/stm32cube/gpio.h"
+#include "yfc500/stm32cube/error.hpp"
+#include "yfc500/stm32cube/sysclock.hpp"
+#include "yfc500/stm32cube/stm32f0xx_it.h"
 // FIXME Integrate only in debug cases?!
-extern "C" void initialise_monitor_handles(void);
+extern "C" void
+initialise_monitor_handles(void);
 // UART2 specif cstuff
 extern DMA_HandleTypeDef hdma_usart2_rx;
-#define RX_BUFFER_SIZE 1000 // FIXME: This look huge
+#define RX_BUFFER_SIZE 1000 // FIXME: This look huge. See "#define bufflen 1000"
 uint8_t uart_ll_rx_buffer[RX_BUFFER_SIZE];
 uint16_t uart_ll_rx_ringbuffer_pos = 0;
 // Misc Pico-SDK stuff
@@ -78,12 +85,12 @@ COBS cobs;
 // defintion PIO-block and uses statemachines
 /* FIXME
 PIO pio_Block1 = pio0;
-PIO pio_Block2 = pio1; */
+PIO pio_Block2 = pio1;
 int sm_blink;  // Statemachine onboard LED blinking
 int sm_LEDmux; // Statemachine control LEDSs
 int sm_buzz;   // Statemachine control Buzzer
 
-auto_init_mutex(mx1);
+auto_init_mutex(mx1); */
 
 /****************************************************************************************************
  *
@@ -93,10 +100,11 @@ auto_init_mutex(mx1);
 
 void Buzzer_set(uint32_t anz, uint32_t timeON, uint32_t timeOFF)
 {
-  /* FIXME
-    mutex_enter_blocking(&mx1);
-    buzzer_program_put_words(pio_Block2, sm_buzz, anz, timeON * buzzer_SM_CYCLE / 4000, timeOFF);
-    mutex_exit(&mx1);*/
+#ifndef HW_YFC500
+  mutex_enter_blocking(&mx1);
+  buzzer_program_put_words(pio_Block2, sm_buzz, anz, timeON * buzzer_SM_CYCLE / 4000, timeOFF);
+  mutex_exit(&mx1);
+#endif
 }
 
 /****************************************************************************************************
@@ -375,6 +383,10 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_USART2_UART_Init();
+  MX_TIM16_Init(); // TIM_BLINK_SLOW
+  MX_TIM17_Init(); // TIM_BLINK_FAST
+  HAL_TIM_Base_Start_IT(&htim16);
+  HAL_TIM_Base_Start_IT(&htim17);
 
   HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_rx_buffer, RX_BUFFER_SIZE); // UART_LL DMA buffer
   __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);                         // Disable "Half Transfer" interrupt
@@ -385,7 +397,7 @@ int main(void)
   uint8_t cnt = 0;
 
   // Main infinite loop
-  while (0)
+  while (false)
   {
     if (blink || true)
     {
@@ -429,7 +441,7 @@ int main(void)
   sm_LEDmux = init_run_StateMachine_LED_mux(pio_Block1); // LED multiplexer
   sm_buzz = init_run_StateMachine_buzzer(pio_Block2);    // Beeper control
 
-  mutex_enter_blocking(&mx1);
+  //FIXME: mutex_enter_blocking(&mx1);
   init_LED_activity();                 // init LED statusmatrix all LEDs off
   LEDs_refresh(pio_Block1, sm_LEDmux); // LED-state to Hardware
   mutex_exit(&mx1);
@@ -506,12 +518,25 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 
 void HAL_UART_TxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
-  //printf("UART TX Half callback\n");
-  // FIXME: Probably need to ensure that there's no TX overflow
+  // printf("UART TX Half callback\n");
+  //  FIXME: Probably need to ensure that there's no TX overflow
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
   // printf("UART TX full callback\n");
   //  FIXME: Probably need to ensure that there's no TX overflow
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  printf("Timer int %s\n", htim->Instance);
+  if (htim->Instance == TIM_BLINK_SLOW)
+  {
+    HAL_GPIO_TogglePin(LED_2HR_GPIO_Port, LED_2HR_Pin);
+  }
+  else if(htim->Instance == TIM_BLINK_FAST)
+  {
+    HAL_GPIO_TogglePin(LED_4HR_GPIO_Port, LED_4HR_Pin);
+  }
 }

@@ -4,7 +4,7 @@
 
 
 
-//#define _serial_debug_
+#define _serial_debug_
 //#define _testCOBS_
 
 #include <stdio.h>
@@ -74,8 +74,7 @@ void PacketReceived()
     printf("\nafter decode count = %d values are ",(int)data_size);
     for (int i=0; i<data_size; i++)
     {
-      printf(", 0x%02x",encoded_buffer[i]);
-
+      printf(", 0x%02x", decoded_buffer[i]);
     }
 #endif
 
@@ -345,7 +344,6 @@ void getversion(int com_port)
     sendMessage(&msg, sizeof(msg), com_port);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     reply(com_port);
-
 }
 
 
@@ -372,7 +370,6 @@ void setBars4(struct msg_set_leds &msg, double value) {
 
 void LEDstatic(int com_port)
 {
-
     struct msg_set_leds msg;
     msg.type = Set_LEDs;
     msg.leds = 0;
@@ -385,7 +382,6 @@ void LEDstatic(int com_port)
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
         sendMessage(&msg, sizeof(msg), com_port);
     }
-
 }
 
 
@@ -532,11 +528,12 @@ int main(int argc, char *argv[])
     //set_LED_state(com_port , 0 ,LED_on , 0);
 
     //reply(com_port);
-
-
+while(true)
+{
     getversion(com_port);
 
     LEDstatic(com_port);
+}
 
     LEDfastblink(com_port);
 
