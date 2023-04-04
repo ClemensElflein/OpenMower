@@ -19,6 +19,7 @@
 #include "yfc500/stm32cube/error.hpp"
 #include "yfc500/stm32cube/sysclock.hpp"
 #include "yfc500/stm32cube/stm32f0xx_it.h"
+#include "yfc500/LED.h"
 #ifdef DEBUG_SEMIHOSTING
 extern "C" void initialise_monitor_handles(void);
 #endif
@@ -373,7 +374,6 @@ int main(void)
   // uint32_t last_led_update = 0;
 
 #ifdef HW_YFC500
-
 #ifdef DEBUG_SEMIHOSTING
   initialise_monitor_handles(); // Semihosting
 #endif
@@ -396,23 +396,7 @@ int main(void)
   int blink = 0;
   uint8_t cnt = 0;
 
-  // Main infinite loop
-  while (false)
-  {
-    if (blink || true)
-    {
-      HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0); // LED
-      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
-      HAL_Delay(900);
-
-      printf("while %d\n", cnt);
-      cnt++;
-    }
-
-    //   blink = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14); // read WED button
-    // blink = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_8); // read SUN button
-  }
-
+  LED TestLed = LED(LED_S1_GPIO_Port, LED_S1_Pin);
 #else
 
   stdio_init_all();
@@ -479,9 +463,18 @@ int main(void)
 
   printf("\n\n waiting for commands or button press");
 */
+
+  printf("On\n");
+  TestLed.set(true);
+  HAL_Delay(1000);
+  printf("Off\n");
+  TestLed.set(false);
+
   while (true)
   {
-#ifndef HW_YFC500
+#ifdef HW_YFC500
+  // STM UART get read by DMA+INT
+#else // HW Pico
     getDataFromBuffer();
 #endif
 
