@@ -4,9 +4,8 @@
 
 #include <stdio.h>
 
-/* FIXME
 #include "pico/stdlib.h"
-#include "hardware/pio.h"*/
+#include "hardware/pio.h"
 #include "BttnCtl.h"
 
 
@@ -29,12 +28,11 @@ extern uint64_t LED_activity;
 
 
 void init_LED_activity(void);               // Init LED array all LEDs off
-/* FIXME
 void LED_animation(PIO pioBlock, int statemachine);
 void LEDs_refresh(PIO pioBlock, int statemachine);  // refresh pio state machine
     void Blink_LED(PIO pioBlock, int statemachine, int led);
     void Force_LED_off(int led, bool force);
-    void Force_LED_on(int led, bool force); */
+    void Force_LED_on(int led, bool force);
 
 
 #endif // _LEDcontrol_HEADER_FILE_

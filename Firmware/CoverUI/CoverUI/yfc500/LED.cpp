@@ -1,19 +1,21 @@
 #include "LED.h"
 #include "stm32cube/gpio.h"
 
-LED::LED(GPIO_TypeDef *setPort, uint16_t setPin, LED_state setState)
+LED::LED(GPIO_TypeDef *set_port, uint16_t set_pin, LED_state set_state)
 {
-    port = setPort;
-    pin = setPin;
-    state = setState;
+    port = set_port;
+    pin = set_pin;
+    state = set_state;
 }
 
-void LED::set(bool on)
+void LED::on()
 {
-    if (on)
-        HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
-    else
-        HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_SET);
+}
+
+void LED::off()
+{
+    HAL_GPIO_WritePin(port, pin, GPIO_PIN_RESET);
 }
 
 void LED::toggle()

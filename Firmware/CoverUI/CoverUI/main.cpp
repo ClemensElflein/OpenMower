@@ -19,7 +19,7 @@
 #include "yfc500/stm32cube/error.hpp"
 #include "yfc500/stm32cube/sysclock.hpp"
 #include "yfc500/stm32cube/stm32f0xx_it.h"
-#include "yfc500/LED.h"
+#include "yfc500/LEDcontrol.h"
 #ifdef DEBUG_SEMIHOSTING
 extern "C" void initialise_monitor_handles(void);
 #endif
@@ -28,6 +28,8 @@ extern DMA_HandleTypeDef hdma_usart2_rx; // UART_LL
 uint8_t uart_ll_rx_buffer[RX_BUFFER_SIZE];
 // Misc Pico-SDK stuff
 #define auto_init_mutex(name) // Don't have threads
+
+LEDcontrol LedControl;
 
 #else // HW Pico
 
@@ -56,7 +58,9 @@ uint8_t uart_ll_rx_buffer[RX_BUFFER_SIZE];
 
 #include <cstring>
 
+#ifndef HW_YFC500 // HW Pico
 #include "LEDcontrol.h"
+#endif
 #include "statemachine.h"
 #include "buttonscan.h"
 #include "BttnCtl.h"
@@ -212,7 +216,7 @@ void PacketReceived()
       // valid set_leds request
       printf("Got valid setled call\n");
       // FIXME: mutex_enter_blocking(&mx1);
-      LED_activity = message->leds;
+      // FIXME: LED_activity = message->leds;
       // FIXME: LEDs_refresh(pio_Block1, sm_LEDmux);
       // FIXME: mutex_exit(&mx1);
     }
@@ -391,12 +395,9 @@ int main(void)
   HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_rx_buffer, RX_BUFFER_SIZE); // UART_LL DMA buffer
   __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);                         // Disable "Half Transfer" interrupt
 
-  printf("Main started\n");
-
   int blink = 0;
   uint8_t cnt = 0;
 
-  LED TestLed = LED(LED_S1_GPIO_Port, LED_S1_Pin);
 #else
 
   stdio_init_all();
@@ -464,16 +465,29 @@ int main(void)
   printf("\n\n waiting for commands or button press");
 */
 
-  printf("On\n");
-  TestLed.set(true);
-  HAL_Delay(1000);
-  printf("Off\n");
-  TestLed.set(false);
+  // Some stupid early testing
+  LedControl.set(0, LED_state::LED_on);
+  LedControl.set(LED_NUM_LIFTED, LED_state::LED_on);
+  LedControl.set(LED_NUM_WIRE, LED_state::LED_blink_slow);
+  LedControl.set(LED_NUM_BAT, LED_state::LED_blink_slow);
+  LedControl.set(LED_NUM_CHARGE, LED_state::LED_blink_fast);
+  LedControl.set(18, LED_state::LED_on);
+  HAL_Delay(5000);
+  LedControl.set(LED_NUM_LIFTED, LED_state::LED_off);
+  LedControl.set(LED_NUM_WIRE, LED_state::LED_on);
+  LedControl.set(LED_NUM_BAT, LED_state::LED_on);
+  LedControl.set(LED_NUM_CHARGE, LED_state::LED_on);
+  LedControl.set(0, LED_state::LED_blink_fast);
+  LedControl.set(18, LED_state::LED_blink_fast);
+  HAL_Delay(2000);
+  LedControl.set(LED_NUM_WIRE, LED_state::LED_off);
+  LedControl.set(LED_NUM_BAT, LED_state::LED_off);
+  LedControl.set(LED_NUM_CHARGE, LED_state::LED_off);
 
   while (true)
   {
 #ifdef HW_YFC500
-  // STM UART get read by DMA+INT
+    // STM UART get read by DMA+INT
 #else // HW Pico
     getDataFromBuffer();
 #endif
@@ -526,13 +540,9 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM_BLINK_SLOW)
-  {
-    HAL_GPIO_TogglePin(LED_2HR_GPIO_Port, LED_2HR_Pin);
-  }
+    LedControl.handle_blink_timer(LED_state::LED_blink_slow);
   else if (htim->Instance == TIM_BLINK_FAST)
-  {
-    HAL_GPIO_TogglePin(LED_4HR_GPIO_Port, LED_4HR_Pin);
-  }
+    LedControl.handle_blink_timer(LED_state::LED_blink_fast);
 }
 
 #endif

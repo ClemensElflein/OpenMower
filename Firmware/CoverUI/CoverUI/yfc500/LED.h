@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "stm32cube/gpio.h"
-#include "../BttnCtl.h" // Why is the LED defintion within Bttn?!
+#include "../BttnCtl.h" // Why is the LED_state defintion within Bttn?!
 
 class LED
 {
@@ -14,8 +14,10 @@ protected:
 
 public:
     LED(GPIO_TypeDef *port, uint16_t pin, LED_state state = LED_state::LED_off);
-    void set(bool on = true); // Set on/off state
-    void toggle();            // Toggle on->off or off->on
+    
+    void on();
+    void off();
+    void toggle(); // Toggle on->off or off->on
 };
 
 #endif /* YFC500_LED_H */

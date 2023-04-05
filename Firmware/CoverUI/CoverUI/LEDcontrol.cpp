@@ -28,7 +28,6 @@ void init_LED_activity()
     force_led_off = 0;
 }
 
-/* FIXME
 void LED_animation(PIO pioBlock, int statemachine)
 {
     LED_activity = 0;
@@ -50,7 +49,7 @@ void LED_animation(PIO pioBlock, int statemachine)
 
     LED_activity = 0;
     LEDs_refresh(pioBlock, statemachine);
-} */
+}
 
 /**
  * @brief Transmits the current state of the LEDs to the PIO output. This currently only supports ON, OFF and the blinking state, no dimming
@@ -60,7 +59,6 @@ void LED_animation(PIO pioBlock, int statemachine)
  * @param pioBlock the pio block for the state machine
  * @param statemachine the statemachine inside the block
  */
-/* FIXME
 void LEDs_refresh(PIO pioBlock, int statemachine)
 {
     uint32_t now = to_ms_since_boot(get_absolute_time());
@@ -89,9 +87,8 @@ void LEDs_refresh(PIO pioBlock, int statemachine)
 
     // Write the current state to the state machine
     pioBlock->txf[statemachine] = LED_mirror;
-}*/
+}
 
-/* FIXME
 void Blink_LED(PIO pioBlock, int statemachine, int led)
 {
 
@@ -113,7 +110,7 @@ void Blink_LED(PIO pioBlock, int statemachine, int led)
     // stop with forced off
     Force_LED_off(led, true);
     Force_LED_on(led, false);
-}*/
+}
 
 void Force_LED_off(int led, bool force)
 {

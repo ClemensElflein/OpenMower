@@ -52,14 +52,14 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, LED_LIFTED_Pin|LED_WIRE_Pin|LED_BAT_Pin|LED_CHARGE_Pin
-                          |LED_LOCKC4_Pin|LED_TUE_Pin|LED_WED_Pin|LED_THU_Pin, GPIO_PIN_RESET);
+                          |LED_LOCK_Pin|LED_TUE_Pin|LED_WED_Pin|LED_THU_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, LED_S1_Pin|LED_S2_Pin|LED_2HR_Pin|LED_4HR_Pin
-                          |LED_6HR_Pin|LED_LOCK_Pin|LED_MON_Pin, GPIO_PIN_RESET);
+                          |LED_6HR_Pin|LED_8HR_Pin|LED_MON_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LED_PCB_Pin|LED_SAT_Pin|LED_SUN_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LED_SMD_Pin|LED_SAT_Pin|LED_SUN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_FRI_GPIO_Port, LED_FRI_Pin, GPIO_PIN_RESET);
@@ -67,7 +67,7 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pins : PCPin PCPin PCPin PCPin
                            PCPin PCPin PCPin PCPin */
   GPIO_InitStruct.Pin = LED_LIFTED_Pin|LED_WIRE_Pin|LED_BAT_Pin|LED_CHARGE_Pin
-                          |LED_LOCKC4_Pin|LED_TUE_Pin|LED_WED_Pin|LED_THU_Pin;
+                          |LED_LOCK_Pin|LED_TUE_Pin|LED_WED_Pin|LED_THU_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -76,14 +76,14 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pins : PAPin PAPin PAPin PAPin
                            PAPin PAPin PAPin */
   GPIO_InitStruct.Pin = LED_S1_Pin|LED_S2_Pin|LED_2HR_Pin|LED_4HR_Pin
-                          |LED_6HR_Pin|LED_LOCK_Pin|LED_MON_Pin;
+                          |LED_6HR_Pin|LED_8HR_Pin|LED_MON_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PBPin PBPin PBPin */
-  GPIO_InitStruct.Pin = LED_PCB_Pin|LED_SAT_Pin|LED_SUN_Pin;
+  GPIO_InitStruct.Pin = LED_SMD_Pin|LED_SAT_Pin|LED_SUN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
