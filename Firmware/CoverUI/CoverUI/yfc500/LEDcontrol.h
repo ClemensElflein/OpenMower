@@ -42,6 +42,7 @@ private:
 public:
     LEDcontrol();
 
+    void animate();                           // A short LED Animation
     void handle_blink_timer(LED_state state); // Get called by responsible blink timer
     bool is_led_state(uint8_t led_num, LED_state state);
     void set(uint8_t led_num, LED_state state = LED_state::LED_off); // Set any of known LED_state states

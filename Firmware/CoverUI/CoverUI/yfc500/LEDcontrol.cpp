@@ -51,3 +51,18 @@ void LEDcontrol::handle_blink_timer(LED_state state)
         }
     }
 }
+
+void LEDcontrol::animate()
+{
+    for (int led = 0; led < NUM_LEDS; led++)
+    {
+        set(led, LED_state::LED_on);
+        HAL_Delay(15);
+    }
+
+    for (int led = 0; led < NUM_LEDS; led++)
+    {
+        set(led, LED_state::LED_off);
+        HAL_Delay(15);
+    }
+}

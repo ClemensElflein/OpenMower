@@ -85,15 +85,16 @@ static uint8_t out_buf[bufflen];
 
 COBS cobs;
 
+#ifndef HW_YFC500 // HW Pico
 // defintion PIO-block and uses statemachines
-/* FIXME
 PIO pio_Block1 = pio0;
 PIO pio_Block2 = pio1;
 int sm_blink;  // Statemachine onboard LED blinking
 int sm_LEDmux; // Statemachine control LEDSs
 int sm_buzz;   // Statemachine control Buzzer
 
-auto_init_mutex(mx1); */
+auto_init_mutex(mx1);
+#endif // HW Pico
 
 /****************************************************************************************************
  *
@@ -137,7 +138,7 @@ void sendMessage(void *message, size_t size)
 #ifdef _serial_debug_
   printf("\nprint struct before encoding %d byte : ", (int)size);
   uint8_t *temp = data_pointer;
-  for (int i = 0; i < size; i++)
+  for (int i = 0; i < (int)size; i++)
   {
     printf("0x%02x , ", *temp);
     temp++;
@@ -233,7 +234,7 @@ void PacketReceived()
 #ifdef _serial_debug_
   printf("packet received with %d bytes : ", (int)data_size);
   uint8_t *temp = decoded_buffer;
-  for (int i = 0; i < data_size; i++)
+  for (int i = 0; i < (int)data_size; i++)
   {
     printf("0x%02x , ", *temp);
     temp++;
@@ -398,7 +399,7 @@ int main(void)
   int blink = 0;
   uint8_t cnt = 0;
 
-#else
+#else // HW Pico
 
   stdio_init_all();
 
@@ -410,23 +411,27 @@ int main(void)
   uart_set_hw_flow(UART_1, false, false);
   uart_set_fifo_enabled(UART_1, true);
 
-#endif
-
-  /* FIXME
   init_button_scan(); // Init hardware for button matix
-  // init_LED_driver();
-  */
+  init_LED_driver();
+
+#endif
 
   float ver = (float)FIRMWARE_VERSION / 100.0;
   printf("\n\n\n\rMower Button-LED-Control Version %2.2f\n", ver);
 
-  /* FIXME
+#ifdef HW_YFC500
+
+  // LED blink to say it's alive
+  LedControl.animate();
+
+#else // HW Pico
+
   // initialise state machines
   sm_blink = init_run_StateMachine_blink(pio_Block1);    // on board led alive blink
   sm_LEDmux = init_run_StateMachine_LED_mux(pio_Block1); // LED multiplexer
   sm_buzz = init_run_StateMachine_buzzer(pio_Block2);    // Beeper control
 
-  //FIXME: mutex_enter_blocking(&mx1);
+  mutex_enter_blocking(&mx1);
   init_LED_activity();                 // init LED statusmatrix all LEDs off
   LEDs_refresh(pio_Block1, sm_LEDmux); // LED-state to Hardware
   mutex_exit(&mx1);
@@ -434,65 +439,49 @@ int main(void)
 
   // LED blink to say it's alive
   LED_animation(pio_Block1, sm_LEDmux);
-
   // buzzer say hello
   Buzzer_set(1, 50, 40);
 
-  // Check for button ins permanently pressed e.g. while mounting
+#endif
 
-  u_int32_t n = keypressed();
-  while (n > 0)
-  {
+  /* FIXME
+    // Check for button ins permanently pressed e.g. while mounting
+
+    u_int32_t n = keypressed();
+    while (n > 0)
+    {
+      mutex_enter_blocking(&mx1);
+      LED_activity = -1;
+      LEDs_refresh(pio_Block1, sm_LEDmux);
+      mutex_exit(&mx1);
+      Buzzer_set(n, 250, 100);
+
+      sleep_ms(10000);
+      n = keypressed();
+    }
+
     mutex_enter_blocking(&mx1);
-    LED_activity = -1;
+    LED_activity = 0;
     LEDs_refresh(pio_Block1, sm_LEDmux);
     mutex_exit(&mx1);
-    Buzzer_set(n, 250, 100);
 
-    sleep_ms(10000);
-    n = keypressed();
-  }
+    // enable other core for button detection
+    multicore_reset_core1();
+    multicore_launch_core1(core1);
 
-  mutex_enter_blocking(&mx1);
-  LED_activity = 0;
-  LEDs_refresh(pio_Block1, sm_LEDmux);
-  mutex_exit(&mx1);
-
-  // enable other core for button detection
-  multicore_reset_core1();
-  multicore_launch_core1(core1);
-
-  printf("\n\n waiting for commands or button press");
-*/
-
-  // Some stupid early testing
-  LedControl.set(0, LED_state::LED_on);
-  LedControl.set(LED_NUM_LIFTED, LED_state::LED_on);
-  LedControl.set(LED_NUM_WIRE, LED_state::LED_blink_slow);
-  LedControl.set(LED_NUM_BAT, LED_state::LED_blink_slow);
-  LedControl.set(LED_NUM_CHARGE, LED_state::LED_blink_fast);
-  LedControl.set(18, LED_state::LED_on);
-  HAL_Delay(5000);
-  LedControl.set(LED_NUM_LIFTED, LED_state::LED_off);
-  LedControl.set(LED_NUM_WIRE, LED_state::LED_on);
-  LedControl.set(LED_NUM_BAT, LED_state::LED_on);
-  LedControl.set(LED_NUM_CHARGE, LED_state::LED_on);
-  LedControl.set(0, LED_state::LED_blink_fast);
-  LedControl.set(18, LED_state::LED_blink_fast);
-  HAL_Delay(2000);
-  LedControl.set(LED_NUM_WIRE, LED_state::LED_off);
-  LedControl.set(LED_NUM_BAT, LED_state::LED_off);
-  LedControl.set(LED_NUM_CHARGE, LED_state::LED_off);
+    printf("\n\n waiting for commands or button press");
+    */
 
   while (true)
   {
 #ifdef HW_YFC500
-    // STM UART get read by DMA+INT
-#else // HW Pico
-    getDataFromBuffer();
-#endif
 
-    /* FIXME
+    // STM UART get read by DMA+INT
+
+#else // HW Pico
+
+    getDataFromBuffer();
+
     uint32_t now = to_ms_since_boot(get_absolute_time());
 
     // Update the LEDs and their blinking states
@@ -502,7 +491,9 @@ int main(void)
       LEDs_refresh(pio_Block1, sm_LEDmux);
       mutex_exit(&mx1);
       last_led_update = now;
-    }*/
+    }
+
+#endif
   }
 }
 
