@@ -20,16 +20,7 @@
 #include "yfc500/stm32cube/sysclock.hpp"
 #include "yfc500/stm32cube/stm32f0xx_it.h"
 #include "yfc500/LEDcontrol.h"
-#ifdef DEBUG_SEMIHOSTING
-extern "C" void initialise_monitor_handles(void);
-#endif
-extern DMA_HandleTypeDef hdma_usart2_rx; // UART_LL
-#define RX_BUFFER_SIZE 1000              // FIXME: This look huge. See "#define bufflen 1000"
-uint8_t uart_ll_rx_buffer[RX_BUFFER_SIZE];
-// Misc Pico-SDK stuff
-#define auto_init_mutex(name) // Don't have threads
-
-LEDcontrol LedControl;
+#include "yfc500/ring_buffer.hpp"
 
 #else // HW Pico
 
@@ -58,14 +49,34 @@ LEDcontrol LedControl;
 
 #include <cstring>
 
-#ifndef HW_YFC500 // HW Pico
-#include "LEDcontrol.h"
+#define bufflen 500 // Q: This look huge. Is it realistic? Reduced from 1000 to 500
+
+#ifdef HW_YFC500
+
+#ifdef DEBUG_SEMIHOSTING
+extern "C" void initialise_monitor_handles(void);
 #endif
+
+// UART circular DMA testing
+extern DMA_HandleTypeDef hdma_usart2_rx; // UART_LL
+uint8_t uart_ll_dma_buffer[50];          // DMA only need to be one COBS cmd length
+uint8_t uart_ll_ring_buffer[bufflen];    // Ringbuffer need to be large, at least when under Semihosting
+ring_buffer<uint8_t, uart_ll_ring_buffer, bufflen> Uart_ll_rb;
+
+// Misc Pico-SDK stuff
+#define auto_init_mutex(name) // Current STM32 impl. don't has threads (yet)
+
+LEDcontrol LedControl;
+
+#else // HW Pico
+
+#include "LEDcontrol.h"
+
+#endif
+
 #include "statemachine.h"
 #include "buttonscan.h"
 #include "BttnCtl.h"
-
-#define bufflen 1000
 
 #define FIRMWARE_VERSION 200
 // V 2.00 v. 11.10.2022 new protocol implementation for less messages on the bus
@@ -160,7 +171,7 @@ void sendMessage(void *message, size_t size)
 #endif
 
 #ifdef HW_YFC500
-  HAL_UART_Transmit_DMA(&huart2, out_buf, encoded_size);
+  // HAL_UART_Transmit_DMA(&huart2, out_buf, encoded_size);
 #else // HW Pico
   for (uint i = 0; i < encoded_size; i++)
   {
@@ -194,6 +205,7 @@ void PacketReceived()
     if (message->crc == calc_crc)
     {
       // valid get_version request, send reply
+      printf("TODO Got valid get_version call\n");
       struct msg_get_version reply;
       reply.type = Get_Version;
       reply.version = FIRMWARE_VERSION;
@@ -206,6 +218,7 @@ void PacketReceived()
     if (message->crc == calc_crc)
     {
       // valid set_buzzer request
+      printf("TODO Got valid buzzer call\n");
       Buzzer_set(message->repeat, message->on_time, message->off_time);
     }
   }
@@ -215,7 +228,7 @@ void PacketReceived()
     if (message->crc == calc_crc)
     {
       // valid set_leds request
-      printf("Got valid setled call\n");
+      printf("TODO Got valid setled call\n");
       // FIXME: mutex_enter_blocking(&mx1);
       // FIXME: LED_activity = message->leds;
       // FIXME: LEDs_refresh(pio_Block1, sm_LEDmux);
@@ -249,15 +262,14 @@ void PacketReceived()
  * out to buffer_serial
  *****************************************************************************************************/
 
-#ifdef HW_YFC500
-void getDataFromBuffer(uint16_t size)
-{
-  for (uint16_t i = 0; i < size; i++)
-  {
-    u_int8_t readbyte = uart_ll_rx_buffer[i];
-#else // HW Pico
 void getDataFromBuffer()
 {
+#ifdef HW_YFC500
+  while (!Uart_ll_rb.empty())
+  {
+    u_int8_t readbyte = Uart_ll_rb.remove();
+    //printf("rb.size %d, current %#04x\n", Uart_ll_rb.size(), readbyte);
+#else // HW Pico
   while (uart_is_readable(UART_1))
   {
     u_int8_t readbyte = uart_getc(UART_1);
@@ -376,12 +388,14 @@ void core1()
 
 int main(void)
 {
-  // uint32_t last_led_update = 0;
+  uint32_t last_led_update = 0;
 
 #ifdef HW_YFC500
+
 #ifdef DEBUG_SEMIHOSTING
   initialise_monitor_handles(); // Semihosting
 #endif
+
   HAL_Init();           // Reset of all peripherals, Initializes the Flash interface and the Systick
   SystemClock_Config(); // Configure the system clock
   // Initialize required peripherals
@@ -393,8 +407,12 @@ int main(void)
   MX_TIM17_Init(); // TIM_BLINK_FAST
   HAL_TIM_Base_Start_IT(&htim17);
 
-  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_rx_buffer, RX_BUFFER_SIZE); // UART_LL DMA buffer
-  __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);                         // Disable "Half Transfer" interrupt
+  // Ready to start UART receive
+  if (HAL_OK != HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_dma_buffer, bufflen))
+  {
+    Error_Handler();
+  }
+  __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT); // Disable "Half Transfer" interrupt
 
   int blink = 0;
   uint8_t cnt = 0;
@@ -474,53 +492,27 @@ int main(void)
 
   while (true)
   {
-#ifdef HW_YFC500
-
-    // STM UART get read by DMA+INT
-
-#else // HW Pico
 
     getDataFromBuffer();
 
+#ifdef HW_YFC500
+    uint32_t now = HAL_GetTick();
+#else // HW Pico
     uint32_t now = to_ms_since_boot(get_absolute_time());
+#endif
 
     // Update the LEDs and their blinking states
     if (now - last_led_update > 10)
     {
-      mutex_enter_blocking(&mx1);
-      LEDs_refresh(pio_Block1, sm_LEDmux);
-      mutex_exit(&mx1);
+      // FIXME: mutex_enter_blocking(&mx1);
+      // FIXME: LEDs_refresh(pio_Block1, sm_LEDmux);
+      // FIXME: mutex_exit(&mx1);
       last_led_update = now;
     }
-
-#endif
   }
 }
 
 #ifdef HW_YFC500
-
-/**
- * UART_LL DMA Callback once data is ready/idle
- *
- * @param huart
- * @param Size
- */
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
-{
-  if (huart->Instance == UART_LL)
-  {
-    getDataFromBuffer(Size);
-
-    HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_rx_buffer, RX_BUFFER_SIZE); // Start UART DMA again
-    __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);                         // Disable "Half Transfer" interrupt
-  }
-}
-
-void HAL_UART_TxHalfCpltCallback(UART_HandleTypeDef *huart)
-{
-  // printf("UART TX Half callback\n");
-  //  FIXME: Probably need to ensure that there's no TX overflow
-}
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -534,6 +526,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     LedControl.handle_blink_timer(LED_state::LED_blink_slow);
   else if (htim->Instance == TIM_BLINK_FAST)
     LedControl.handle_blink_timer(LED_state::LED_blink_fast);
+}
+
+/**
+ * @brief  User implementation of the Reception Event Callback
+ *         (Rx event notification called after use of advanced reception service).
+ * @param  huart UART handle
+ * @param  Size  Number of data available in application reception buffer (indicates a position in
+ *               reception buffer until which, data are available)
+ * @retval None
+ */
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+  if (huart->Instance == UART_LL)
+  {
+
+    //printf("-Received %lu bytes: ", (unsigned long)Size);
+    for (uint8_t i = 0; i < Size; i++)
+    {
+      Uart_ll_rb.add(uart_ll_dma_buffer[i]);
+      //printf("%#04x ", uart_ll_dma_buffer[i]);
+    }
+    //printf("RB now %d\n", Uart_ll_rb.size());
+
+    /* start the DMA again */
+    HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_dma_buffer, bufflen);
+    __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
+  }
 }
 
 #endif
