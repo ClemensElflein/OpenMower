@@ -2929,9 +2929,6 @@
     (path "/00000000-0000-0000-0000-00006109dce5/649164b7-9eb9-4189-839a-6dcef63f68c2"
       (reference "J50") (unit 1) (value "Conn_01x10_Female") (footprint "")
     )
-    (path "/00000000-0000-0000-0000-000061080954/4581c2a2-3f79-43af-90ea-af85d40bdadb"
-      (reference "J51") (unit 1) (value "Conn_01x02") (footprint "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical")
-    )
     (path "/7936fd08-09c5-4aba-8422-c848060d3b9f/b10f24a6-83e7-422c-a0e0-7c2ceaac88bc"
       (reference "JP1") (unit 1) (value "SolderJumper_3_Bridged12") (footprint "Jumper:SolderJumper-3_P1.3mm_Bridged12_Pad1.0x1.5mm")
     )
@@ -3099,6 +3096,9 @@
     )
     (path "/00000000-0000-0000-0000-000061080954/d62697d1-c5d8-427b-abf9-e6b18eb25e79"
       (reference "SW1") (unit 1) (value "MK-11C04-G013") (footprint "lcsc:SW-SMD_MK-11C04-G013")
+    )
+    (path "/00000000-0000-0000-0000-000061080954/092d65f4-8186-48c7-b496-34e91116a703"
+      (reference "SW2") (unit 1) (value "DA-01BP") (footprint "lcsc:SW-TH_DA-01BP")
     )
     (path "/989a400d-9ce2-403e-a19e-ad0a758fe27c/88528529-64b3-4d79-b2db-e04c4b468443"
       (reference "TP1") (unit 1) (value "TestPoint") (footprint "TestPoint:TestPoint_Pad_D2.0mm")
