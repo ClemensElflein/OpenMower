@@ -1,5 +1,5 @@
 // control to print out serial information in debug state via usb serial
-#define _serial_debug_
+//#define _serial_debug_
 
 #include <stdio.h>
 
@@ -511,6 +511,8 @@ int main(void)
 
 #ifdef HW_YFC500
 
+// FIXME: These should go into STM32 specific files
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM_BLINK_SLOW)
@@ -519,19 +521,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     LedControl.handle_blink_timer(LED_state::LED_blink_fast);
 }
 
-/**
- * @brief  User implementation of the Reception Event Callback
- *         (Rx event notification called after use of advanced reception service).
- * @param  huart UART handle
- * @param  Size  Number of data available in application reception buffer (indicates a position in
- *               reception buffer until which, data are available)
- * @retval None
- */
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
   if (huart->Instance == UART_LL)
   {
-
     // printf("-Received %lu bytes: ", (unsigned long)Size);
     for (uint8_t i = 0; i < Size; i++)
     {

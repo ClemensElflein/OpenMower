@@ -32,22 +32,22 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug",
-            "executable": "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/.pio/build/yfc500_picoprobe-debug/firmware.elf",
-            "projectEnvName": "yfc500_picoprobe-debug",
+            "executable": "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/.pio/build/yfc500_picoprobe/firmware.elf",
+            "projectEnvName": "yfc500_picoprobe",
             "toolchainBinDir": "/home/jebeling/.platformio/packages/toolchain-gccarmnoneeabi@1.70201.0/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "svdPath": "/home/jebeling/.platformio/platforms/ststm32/misc/svd/STM32F030.svd",
             "preLaunchTask": {
                 "type": "PlatformIO",
-                "task": "Pre-Debug (yfc500_picoprobe-debug)"
+                "task": "Pre-Debug (yfc500_picoprobe)"
             }
         },
         {
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
-            "executable": "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/.pio/build/yfc500_picoprobe-debug/firmware.elf",
-            "projectEnvName": "yfc500_picoprobe-debug",
+            "executable": "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/.pio/build/yfc500_picoprobe/firmware.elf",
+            "projectEnvName": "yfc500_picoprobe",
             "toolchainBinDir": "/home/jebeling/.platformio/packages/toolchain-gccarmnoneeabi@1.70201.0/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "svdPath": "/home/jebeling/.platformio/platforms/ststm32/misc/svd/STM32F030.svd"
@@ -56,8 +56,8 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (without uploading)",
-            "executable": "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/.pio/build/yfc500_picoprobe-debug/firmware.elf",
-            "projectEnvName": "yfc500_picoprobe-debug",
+            "executable": "/home/jebeling/Development/OpenMowerProject/OpenMower/Firmware/CoverUI/CoverUI/.pio/build/yfc500_picoprobe/firmware.elf",
+            "projectEnvName": "yfc500_picoprobe",
             "toolchainBinDir": "/home/jebeling/.platformio/packages/toolchain-gccarmnoneeabi@1.70201.0/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "svdPath": "/home/jebeling/.platformio/platforms/ststm32/misc/svd/STM32F030.svd",
