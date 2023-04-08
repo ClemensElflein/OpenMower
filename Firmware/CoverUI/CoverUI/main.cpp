@@ -71,10 +71,10 @@ LEDcontrol LedControl;
 #else // HW Pico
 
 #include "LEDcontrol.h"
+#include "statemachine.h"
 
 #endif
 
-#include "statemachine.h"
 #include "buttonscan.h"
 #include "BttnCtl.h"
 
@@ -389,8 +389,6 @@ void core1()
 
 int main(void)
 {
-  uint32_t last_led_update = 0;
-
 #ifdef HW_YFC500
 
 #ifdef DEBUG_SEMIHOSTING
@@ -415,10 +413,11 @@ int main(void)
   }
   __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT); // Disable "Half Transfer" interrupt
 
+#else // HW Pico
+
+  uint32_t last_led_update = 0;
   int blink = 0;
   uint8_t cnt = 0;
-
-#else // HW Pico
 
   stdio_init_all();
 
