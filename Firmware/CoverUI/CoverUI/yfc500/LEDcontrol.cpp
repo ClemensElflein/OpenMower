@@ -23,6 +23,15 @@ void LEDcontrol::set(uint8_t led_num, LED_state state)
     }
 }
 
+void LEDcontrol::set(uint64_t all_state)
+{
+    for (uint8_t led = 0; led < NUM_LEDS; led++)
+    {
+        uint8_t led_state = (all_state >> (3 * led)) & 0b111;
+        set(led, static_cast<LED_state>(led_state));
+    }
+}
+
 void LEDcontrol::toggle(uint8_t led_num)
 {
     _leds[led_num].toggle();

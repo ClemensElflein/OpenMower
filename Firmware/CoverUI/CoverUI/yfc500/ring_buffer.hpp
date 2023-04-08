@@ -1,5 +1,5 @@
 /**
- * Quite simple ring buffer copied from https://www.approxion.com/circular-adventures-vii-a-ring-buffer-implementation/
+ * Quite simple ring buffer, copied from https://www.approxion.com/circular-adventures-vii-a-ring-buffer-implementation/
  *
  * Adapted to pointer usage so that buffer doesn't get created in heap
  */

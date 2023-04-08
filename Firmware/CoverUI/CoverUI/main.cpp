@@ -115,7 +115,7 @@ auto_init_mutex(mx1);
 
 void Buzzer_set(uint32_t anz, uint32_t timeON, uint32_t timeOFF)
 {
-#ifndef HW_YFC500
+#ifndef HW_YFC500 // HW Pico
   mutex_enter_blocking(&mx1);
   buzzer_program_put_words(pio_Block2, sm_buzz, anz, timeON * buzzer_SM_CYCLE / 4000, timeOFF);
   mutex_exit(&mx1);
@@ -171,7 +171,7 @@ void sendMessage(void *message, size_t size)
 #endif
 
 #ifdef HW_YFC500
-  // HAL_UART_Transmit_DMA(&huart2, out_buf, encoded_size);
+  HAL_UART_Transmit_DMA(&huart2, out_buf, encoded_size);
 #else // HW Pico
   for (uint i = 0; i < encoded_size; i++)
   {
@@ -205,7 +205,6 @@ void PacketReceived()
     if (message->crc == calc_crc)
     {
       // valid get_version request, send reply
-      printf("TODO Got valid get_version call\n");
       struct msg_get_version reply;
       reply.type = Get_Version;
       reply.version = FIRMWARE_VERSION;
@@ -218,7 +217,6 @@ void PacketReceived()
     if (message->crc == calc_crc)
     {
       // valid set_buzzer request
-      printf("TODO Got valid buzzer call\n");
       Buzzer_set(message->repeat, message->on_time, message->off_time);
     }
   }
@@ -228,11 +226,14 @@ void PacketReceived()
     if (message->crc == calc_crc)
     {
       // valid set_leds request
-      printf("TODO Got valid setled call\n");
-      // FIXME: mutex_enter_blocking(&mx1);
-      // FIXME: LED_activity = message->leds;
-      // FIXME: LEDs_refresh(pio_Block1, sm_LEDmux);
-      // FIXME: mutex_exit(&mx1);
+#ifdef HW_YFC500
+      LedControl.set(message->leds);
+#else // HW Pico
+      mutex_enter_blocking(&mx1);
+      LED_activity = message->leds;
+      LEDs_refresh(pio_Block1, sm_LEDmux);
+      mutex_exit(&mx1);
+#endif
     }
     else
     {
@@ -268,7 +269,7 @@ void getDataFromBuffer()
   while (!Uart_ll_rb.empty())
   {
     u_int8_t readbyte = Uart_ll_rb.remove();
-    //printf("rb.size %d, current %#04x\n", Uart_ll_rb.size(), readbyte);
+    // printf("rb.size %d, current %#04x\n", Uart_ll_rb.size(), readbyte);
 #else // HW Pico
   while (uart_is_readable(UART_1))
   {
@@ -492,33 +493,24 @@ int main(void)
 
   while (true)
   {
-
     getDataFromBuffer();
 
-#ifdef HW_YFC500
-    uint32_t now = HAL_GetTick();
-#else // HW Pico
+#ifndef HW_YFC500 // HW Pico
     uint32_t now = to_ms_since_boot(get_absolute_time());
-#endif
 
     // Update the LEDs and their blinking states
     if (now - last_led_update > 10)
     {
-      // FIXME: mutex_enter_blocking(&mx1);
-      // FIXME: LEDs_refresh(pio_Block1, sm_LEDmux);
-      // FIXME: mutex_exit(&mx1);
+      mutex_enter_blocking(&mx1);
+      LEDs_refresh(pio_Block1, sm_LEDmux);
+      mutex_exit(&mx1);
       last_led_update = now;
     }
+#endif
   }
 }
 
 #ifdef HW_YFC500
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-  // printf("UART TX full callback\n");
-  //  FIXME: Probably need to ensure that there's no TX overflow
-}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -541,13 +533,13 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
   if (huart->Instance == UART_LL)
   {
 
-    //printf("-Received %lu bytes: ", (unsigned long)Size);
+    // printf("-Received %lu bytes: ", (unsigned long)Size);
     for (uint8_t i = 0; i < Size; i++)
     {
       Uart_ll_rb.add(uart_ll_dma_buffer[i]);
-      //printf("%#04x ", uart_ll_dma_buffer[i]);
+      // printf("%#04x ", uart_ll_dma_buffer[i]);
     }
-    //printf("RB now %d\n", Uart_ll_rb.size());
+    // printf("RB now %d\n", Uart_ll_rb.size());
 
     /* start the DMA again */
     HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_dma_buffer, bufflen);
