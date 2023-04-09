@@ -19,6 +19,12 @@
 extern "C" void initialise_monitor_handles(void);
 #endif
 
+// Current STM32F030 implementation is single core without threads.
+// Send mutex calls to nirvana
+#define auto_init_mutex(name)
+#define mutex_enter_blocking(ptr)
+#define mutex_exit(ptr)
+
 void initMCU()
 {
     HAL_Init();           // Reset of all peripherals, Initializes the Flash interface and the Systick
