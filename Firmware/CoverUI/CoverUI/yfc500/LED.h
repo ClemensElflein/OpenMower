@@ -2,7 +2,7 @@
 #define YFC500_LED_H
 
 #include <stdint.h>
-#include "stm32cube/gpio.h"
+#include "stm32cube/inc/gpio.h"
 #include "../BttnCtl.h" // Why is the LED_state defintion within Bttn?!
 
 class LED

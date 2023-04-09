@@ -2,7 +2,7 @@
 #define YFC500_LEDCONTROL_H
 
 #include <stdint.h>
-#include "stm32cube/gpio.h"
+#include "stm32cube/inc/gpio.h"
 #include "LED.h"
 
 #define NUM_LEDS 19

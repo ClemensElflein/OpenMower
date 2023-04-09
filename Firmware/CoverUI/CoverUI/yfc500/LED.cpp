@@ -1,5 +1,5 @@
 #include "LED.h"
-#include "stm32cube/gpio.h"
+#include "stm32cube/inc/gpio.h"
 
 LED::LED(GPIO_TypeDef *set_port, uint16_t set_pin, LED_state set_state)
 {

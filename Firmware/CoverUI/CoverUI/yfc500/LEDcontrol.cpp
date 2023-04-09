@@ -1,5 +1,5 @@
 #include "LEDcontrol.h"
-#include "stm32cube/gpio.h"
+#include "stm32cube/inc/gpio.h"
 #include "../BttnCtl.h" // LED_state is defined in BttnCtl.h
 
 LEDcontrol::LEDcontrol() {}

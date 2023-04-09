@@ -5,22 +5,8 @@
 
 #ifdef HW_YFC500
 
-// STM32CubeIDE files are only used for HW definition and initialization.
-// There's no user defined code within STM32Cube specific files except "#include yfc500/main.h" ??? FIXME
-// within "yfc500/stm32cube/main.h" which act as main.h for CoverUI's main.c
-// By this it's easily possible to change STM32Cube for HW definition,
-// copy STM32Cube files to this repo's yfc500/stm32cube dir without further modifications.
-// This is mainy to hold this repos's main.cpp and other files clean and untouched (as much as possible)
-#include "yfc500/stm32cube/main.h"
-#include "yfc500/stm32cube/dma.h"
-#include "yfc500/stm32cube/tim.h"
-#include "yfc500/stm32cube/usart.h"
-#include "yfc500/stm32cube/gpio.h"
-#include "yfc500/stm32cube/error.hpp"
-#include "yfc500/stm32cube/sysclock.hpp"
-#include "yfc500/stm32cube/stm32f0xx_it.h"
-#include "yfc500/LEDcontrol.h"
-#include "yfc500/ring_buffer.hpp"
+// Header file(s) for original YardForce Classic 500 ButtonBoard/CoverUI
+#include "yfc500/main.hpp"
 
 #else // HW Pico
 
@@ -41,7 +27,7 @@
 
 #include <cstdio>
 #include "COBS.h"
-#ifdef CRC // i.e. by STM32Cube
+#ifdef CRC // i.e. defined by STM32 HAL
 #undef CRC
 #endif
 // FIXME STM32: should use the STM32 included crc unit
@@ -49,13 +35,9 @@
 
 #include <cstring>
 
-#define bufflen 500 // Q: This look huge. Is it realistic? Reduced from 1000 to 500
+#define bufflen 500 // Reduced from 1000 to 500. Q: 1000 looked really huge. Was it a realistic value?
 
 #ifdef HW_YFC500
-
-#ifdef DEBUG_SEMIHOSTING
-extern "C" void initialise_monitor_handles(void);
-#endif
 
 // UART circular DMA testing
 extern DMA_HandleTypeDef hdma_usart2_rx; // UART_LL
@@ -391,20 +373,7 @@ int main(void)
 {
 #ifdef HW_YFC500
 
-#ifdef DEBUG_SEMIHOSTING
-  initialise_monitor_handles(); // Semihosting
-#endif
-
-  HAL_Init();           // Reset of all peripherals, Initializes the Flash interface and the Systick
-  SystemClock_Config(); // Configure the system clock
-  // Initialize required peripherals
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_USART2_UART_Init();
-  MX_TIM16_Init(); // TIM_BLINK_SLOW
-  HAL_TIM_Base_Start_IT(&htim16);
-  MX_TIM17_Init(); // TIM_BLINK_FAST
-  HAL_TIM_Base_Start_IT(&htim17);
+  initMCU(); // Init STM32 and all peripherals
 
   // Ready to start UART receive
   if (HAL_OK != HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_dma_buffer, bufflen))
