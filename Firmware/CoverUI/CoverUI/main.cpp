@@ -30,7 +30,7 @@
 #ifdef CRC // i.e. defined by STM32 HAL
 #undef CRC
 #endif
-// FIXME STM32: should use the STM32 included crc unit
+// FIXME STM32: should use STM32 crc unit
 #include "CRC.h"
 
 #include <cstring>
@@ -45,10 +45,6 @@ uint8_t uart_ll_dma_buffer[50];          // DMA only need to be one COBS cmd len
 uint8_t uart_ll_ring_buffer[bufflen];    // Ringbuffer need to be large, at least when under Semihosting
 ring_buffer<uint8_t, uart_ll_ring_buffer, bufflen> Uart_ll_rb;
 
-// Misc Pico-SDK stuff
-#define auto_init_mutex(name) // Current STM32 impl. don't has threads (yet)
-
-LEDcontrol LedControl;
 
 #else // HW Pico
 
@@ -112,12 +108,12 @@ void Buzzer_set(uint32_t anz, uint32_t timeON, uint32_t timeOFF)
 
 void sendMessage(void *message, size_t size)
 {
-  // FIXME: mutex_enter_blocking(&mx1);
+  mutex_enter_blocking(&mx1);
 
   // packages need to be at least 1 byte of type, 1 byte of data and 2 bytes of CRC
   if (size < 4)
   {
-    // FIXME: mutex_exit(&mx1);
+    mutex_exit(&mx1);
     return;
   }
 
@@ -481,14 +477,6 @@ int main(void)
 #ifdef HW_YFC500
 
 // FIXME: These should go into STM32 specific files
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  if (htim->Instance == TIM_BLINK_SLOW)
-    LedControl.handle_blink_timer(LED_state::LED_blink_slow);
-  else if (htim->Instance == TIM_BLINK_FAST)
-    LedControl.handle_blink_timer(LED_state::LED_blink_fast);
-}
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {

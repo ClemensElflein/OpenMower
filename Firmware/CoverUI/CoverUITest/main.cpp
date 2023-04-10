@@ -327,7 +327,7 @@ void setBars7(struct msg_set_leds &msg, double value)
     int on_leds = round(value * 7.0);
     for (int i = 0; i < 7; i++)
     {
-        setLed(msg, 4 + i, i < on_leds ? LED_on : LED_off);
+        setLed(msg, 7 + i, i < on_leds ? LED_on : LED_off);
     }
 }
 

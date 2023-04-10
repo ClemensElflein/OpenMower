@@ -10,8 +10,9 @@
 #include "yfc500/stm32cube/inc/tim.h"
 #include "yfc500/stm32cube/inc/usart.h"
 #include "yfc500/stm32cube/inc/gpio.h"
-#include "yfc500/sysclock.hpp"
 #include "yfc500/stm32cube/inc/stm32f0xx_it.h"
+
+#include "yfc500/sysclock.hpp"
 #include "yfc500/LEDcontrol.h"
 #include "yfc500/ring_buffer.hpp"
 
@@ -24,6 +25,8 @@ extern "C" void initialise_monitor_handles(void);
 #define auto_init_mutex(name)
 #define mutex_enter_blocking(ptr)
 #define mutex_exit(ptr)
+
+LEDcontrol LedControl;
 
 void initMCU()
 {
@@ -42,6 +45,14 @@ void initMCU()
 #ifdef DEBUG_SEMIHOSTING
     initialise_monitor_handles(); // Semihosting
 #endif
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM_BLINK_SLOW)
+        LedControl.blink_timer_elapsed(LED_state::LED_blink_slow);
+    else if (htim->Instance == TIM_BLINK_FAST)
+        LedControl.blink_timer_elapsed(LED_state::LED_blink_fast);
 }
 
 #endif /* __YFC500_MAIN_H */
