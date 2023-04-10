@@ -1,4 +1,4 @@
 Firmware/CoverUI/CoverUI/.pio/
 .vscode/settings.json
-Firmware/CoverUI/CoverUI/.vscode/extensions.json
-Firmware/CoverUI/CoverUI/.vscode/launch.json
+Firmware/CoverUI/CoverUI/.vscode/
+Firmware/CoverUI/CoverUI/yfc500/stm32cube/src/main.c

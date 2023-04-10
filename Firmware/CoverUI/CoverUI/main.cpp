@@ -1,5 +1,5 @@
 // control to print out serial information in debug state via usb serial
-//#define _serial_debug_
+// #define _serial_debug_
 
 #include <stdio.h>
 
@@ -45,15 +45,14 @@ uint8_t uart_ll_dma_buffer[50];          // DMA only need to be one COBS cmd len
 uint8_t uart_ll_ring_buffer[bufflen];    // Ringbuffer need to be large, at least when under Semihosting
 ring_buffer<uint8_t, uart_ll_ring_buffer, bufflen> Uart_ll_rb;
 
-
 #else // HW Pico
 
 #include "LEDcontrol.h"
 #include "statemachine.h"
+#include "buttonscan.h"
 
 #endif
 
-#include "buttonscan.h"
 #include "BttnCtl.h"
 
 #define FIRMWARE_VERSION 200
@@ -280,6 +279,8 @@ int getLedForButton(int button)
   return 0;
 }
 
+#ifndef HW_YFC500 // HW Pico (no STM32 button support implemented ATM)
+
 void core1()
 {
   printf("Core 1 started\n");
@@ -296,74 +297,75 @@ void core1()
     // Buttons where we allow the hold. The reason for this is, that we have an indicator LED for these buttons.
     allow_hold = (button >= 4 && button <= 6) || (button >= 8 && button <= 14);
 
-    /* FIXME
-        if (button && allow_hold)
+    if (button && allow_hold)
+    {
+      int led = getLedForButton(button);
+      // force led off
+      mutex_enter_blocking(&mx1);
+      Force_LED_off(led, true);
+      mutex_exit(&mx1);
+      do
+      {
+        // allow hold, wait for user to hold
+        button = bit_getbutton(1000, pressed);
+        if (pressed)
         {
-          int led = getLedForButton(button);
-          // force led off
-          mutex_enter_blocking(&mx1);
-          Force_LED_off(led, true);
-          mutex_exit(&mx1);
-          do
+          // user indeed held the button
+          pressed_count++;
+          // if button is still held, we flash and rety
+          for (int i = 0; i < pressed_count; i++)
           {
-            // allow hold, wait for user to hold
-            button = bit_getbutton(1000, pressed);
-            if (pressed)
-            {
-              // user indeed held the button
-              pressed_count++;
-              // if button is still held, we flash and rety
-              for (int i = 0; i < pressed_count; i++)
-              {
-                mutex_enter_blocking(&mx1);
-                Blink_LED(pio_Block1, sm_LEDmux, led);
-                mutex_exit(&mx1);
-              }
-            }
-          } while (pressed && button != 0 && pressed_count < 2);
-
-          // yes that's a duplicate but we want to wait before releasing the LED, so that's intended.
-          if (button && pressed)
-          {
-            // we're still holding, wait for the button to release. We don't care about the result here.
-            bool tmp;
-            bit_getbutton(0, tmp);
-          }
-
-          mutex_enter_blocking(&mx1);
-          Force_LED_off(led, false);
-          mutex_exit(&mx1);
-        }
-        else
-        {
-          if (button && pressed)
-          {
-            // we're still holding, wait for the button to release. We don't care about the result here.
-            bool tmp;
-            bit_getbutton(0, tmp);
+            mutex_enter_blocking(&mx1);
+            Blink_LED(pio_Block1, sm_LEDmux, led);
+            mutex_exit(&mx1);
           }
         }
+      } while (pressed && button != 0 && pressed_count < 2);
 
-        if (button > 0)
-        {
+      // yes that's a duplicate but we want to wait before releasing the LED, so that's intended.
+      if (button && pressed)
+      {
+        // we're still holding, wait for the button to release. We don't care about the result here.
+        bool tmp;
+        bit_getbutton(0, tmp);
+      }
 
-          struct msg_event_button button_msg;
-          button_msg.type = Get_Button;
-          button_msg.button_id = button;
-          button_msg.press_duration = pressed_count;
+      mutex_enter_blocking(&mx1);
+      Force_LED_off(led, false);
+      mutex_exit(&mx1);
+    }
+    else
+    {
+      if (button && pressed)
+      {
+        // we're still holding, wait for the button to release. We don't care about the result here.
+        bool tmp;
+        bit_getbutton(0, tmp);
+      }
+    }
 
-          sendMessage(&button_msg, sizeof(button_msg));
+    if (button > 0)
+    {
 
-          // confirm pressed button with buzzer.
-          // TODO: on rapid button presses, the FIFO gets full and therefore this call is blocking for a long time.
-          mutex_enter_blocking(&mx1);
-          buzzer_program_put_words(pio_Block2, sm_buzz, 1, shortbeep * buzzer_SM_CYCLE / 4000, 40);
-          mutex_exit(&mx1);
+      struct msg_event_button button_msg;
+      button_msg.type = Get_Button;
+      button_msg.button_id = button;
+      button_msg.press_duration = pressed_count;
 
-          printf("\n\rsend Button Nr.: %d with count %d", button, pressed_count);
-        }*/
+      sendMessage(&button_msg, sizeof(button_msg));
+
+      // confirm pressed button with buzzer.
+      // TODO: on rapid button presses, the FIFO gets full and therefore this call is blocking for a long time.
+      mutex_enter_blocking(&mx1);
+      buzzer_program_put_words(pio_Block2, sm_buzz, 1, shortbeep * buzzer_SM_CYCLE / 4000, 40);
+      mutex_exit(&mx1);
+
+      printf("\n\rsend Button Nr.: %d with count %d", button, pressed_count);
+    }
   }
 }
+
+#endif // HW Pico
 
 int main(void)
 {
