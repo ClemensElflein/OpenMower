@@ -13,7 +13,7 @@
 /***********************************
  * LEDcontrol.h
  * rev 0.0 - El 2022-04-04
- *
+ * 
  * *********************************/
 
 // define the Ports
@@ -27,7 +27,7 @@ extern uint64_t LED_activity;
 
 
 
-void init_LED_activity(void);               // Init LED array all LEDs off
+void init_LED_activity(void);               // Init LED array all LEDs off 
 void LED_animation(PIO pioBlock, int statemachine);
 void LEDs_refresh(PIO pioBlock, int statemachine);  // refresh pio state machine
     void Blink_LED(PIO pioBlock, int statemachine, int led);
