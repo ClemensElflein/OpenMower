@@ -8,15 +8,12 @@
  * @copyright Copyright (c) 2023
  *
  */
-#include <map>
-#include "LEDcontrol.h"
-#include "stm32cube/inc/gpio.h"
-#include "../BttnCtl.h" // LED_state is defined in BttnCtl.h
-
 #ifndef YFC500_LEDCONTROL_H
 #define YFC500_LEDCONTROL_H
 
 #include <stdint.h>
+#include <map>
+#include "LEDcontrol.h"
 #include "stm32cube/inc/gpio.h"
 #include "../BttnCtl.h"
 
