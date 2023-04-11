@@ -39,12 +39,6 @@
 
 #ifdef HW_YFC500
 
-// UART circular DMA testing
-extern DMA_HandleTypeDef hdma_usart2_rx; // UART_LL
-uint8_t uart_ll_dma_buffer[50];          // DMA only need to be one COBS cmd length
-uint8_t uart_ll_ring_buffer[bufflen];    // Ringbuffer need to be large, at least when under Semihosting
-ring_buffer<uint8_t, uart_ll_ring_buffer, bufflen> Uart_ll_rb;
-
 #else // HW Pico
 
 #include "LEDcontrol.h"
@@ -240,14 +234,15 @@ void PacketReceived()
  * out to buffer_serial
  *****************************************************************************************************/
 
+#ifdef HW_YFC500
+void getDataFromBuffer(const uint8_t *dma_buffer, uint16_t size)
+{
+  for (size_t i = 0; i < size; i++)
+  {
+    u_int8_t readbyte = *(dma_buffer + i);
+#else // HW Pico
 void getDataFromBuffer()
 {
-#ifdef HW_YFC500
-  while (!Uart_ll_rb.empty())
-  {
-    u_int8_t readbyte = Uart_ll_rb.remove();
-    // printf("rb.size %d, current %#04x\n", Uart_ll_rb.size(), readbyte);
-#else // HW Pico
   while (uart_is_readable(UART_1))
   {
     u_int8_t readbyte = uart_getc(UART_1);
@@ -371,14 +366,8 @@ int main(void)
 {
 #ifdef HW_YFC500
 
-  initMCU(); // Init STM32 and all peripherals
-
-  // Ready to start UART receive
-  if (HAL_OK != HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_dma_buffer, bufflen))
-  {
-    Error_Handler();
-  }
-  __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT); // Disable "Half Transfer" interrupt
+  initMCU();                   // Init STM32 and all peripherals
+  start_uart_LL_DMA_receive(); // Ready to start UART-LL DMA receive
 
 #else // HW Pico
 
@@ -459,9 +448,9 @@ int main(void)
 
   while (true)
   {
+#ifndef HW_YFC500 // HW Pico
     getDataFromBuffer();
 
-#ifndef HW_YFC500 // HW Pico
     uint32_t now = to_ms_since_boot(get_absolute_time());
 
     // Update the LEDs and their blinking states
@@ -475,27 +464,3 @@ int main(void)
 #endif
   }
 }
-
-#ifdef HW_YFC500
-
-// FIXME: These should go into STM32 specific files
-
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
-{
-  if (huart->Instance == UART_LL)
-  {
-    // printf("-Received %lu bytes: ", (unsigned long)Size);
-    for (uint8_t i = 0; i < Size; i++)
-    {
-      Uart_ll_rb.add(uart_ll_dma_buffer[i]);
-      // printf("%#04x ", uart_ll_dma_buffer[i]);
-    }
-    // printf("RB now %d\n", Uart_ll_rb.size());
-
-    /* start the DMA again */
-    HAL_UARTEx_ReceiveToIdle_DMA(&huart2, uart_ll_dma_buffer, bufflen);
-    __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
-  }
-}
-
-#endif

@@ -2,3 +2,5 @@ Firmware/CoverUI/CoverUI/.pio/
 .vscode/settings.json
 Firmware/CoverUI/CoverUI/.vscode/
 Firmware/CoverUI/CoverUI/yfc500/stm32cube/src/main.c
+Firmware/CoverUI/CoverUI/yfc500/stm32cube/inc/Backup/
+Firmware/CoverUI/CoverUI/yfc500/stm32cube/src/Backup/
