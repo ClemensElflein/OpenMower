@@ -1,4 +1,5 @@
 // control to print out serial information in debug state via usb serial
+// take care when debugging with Semihosting@STM32 as it will eat a lot CPU cycles
 #define _serial_debug_
 
 #include <stdio.h>
