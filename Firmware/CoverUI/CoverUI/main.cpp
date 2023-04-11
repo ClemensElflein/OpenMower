@@ -1,5 +1,5 @@
 // control to print out serial information in debug state via usb serial
-// #define _serial_debug_
+#define _serial_debug_
 
 #include <stdio.h>
 
@@ -35,7 +35,7 @@
 
 #include <cstring>
 
-#define bufflen 500 // Reduced from 1000 to 500. Q: 1000 looked really huge. Was it a realistic value?
+#define bufflen 1000 // Q: 1000 look really huge! Is it a realistic value?
 
 #ifdef HW_YFC500
 
@@ -197,6 +197,7 @@ void PacketReceived()
     if (message->crc == calc_crc)
     {
       // valid set_leds request
+      printf("Got valid setled call\n");
 #ifdef HW_YFC500
       LedControl.set(message->leds);
 #else // HW Pico
@@ -275,7 +276,6 @@ int getLedForButton(int button)
 }
 
 #ifndef HW_YFC500 // HW Pico (no STM32 button support implemented ATM)
-
 void core1()
 {
   printf("Core 1 started\n");
@@ -359,18 +359,14 @@ void core1()
     }
   }
 }
-
 #endif // HW Pico
 
 int main(void)
 {
 #ifdef HW_YFC500
-
   initMCU();                   // Init STM32 and all peripherals
   start_uart_LL_DMA_receive(); // Ready to start UART-LL DMA receive
-
-#else // HW Pico
-
+#else                          // HW Pico
   uint32_t last_led_update = 0;
   int blink = 0;
   uint8_t cnt = 0;
@@ -386,20 +382,15 @@ int main(void)
   uart_set_fifo_enabled(UART_1, true);
 
   init_button_scan(); // Init hardware for button matix
-  init_LED_driver();
-
+  // init_LED_driver();
 #endif
 
   float ver = (float)FIRMWARE_VERSION / 100.0;
   printf("\n\n\n\rMower Button-LED-Control Version %2.2f\n", ver);
 
 #ifdef HW_YFC500
-
-  // LED blink to say it's alive
-  LedControl.animate();
-
-#else // HW Pico
-
+  LedControl.animate(); // LED blink to say it's alive
+#else                   // HW Pico
   // initialise state machines
   sm_blink = init_run_StateMachine_blink(pio_Block1);    // on board led alive blink
   sm_LEDmux = init_run_StateMachine_LED_mux(pio_Block1); // LED multiplexer
@@ -413,38 +404,36 @@ int main(void)
 
   // LED blink to say it's alive
   LED_animation(pio_Block1, sm_LEDmux);
+
   // buzzer say hello
   Buzzer_set(1, 50, 40);
 
-#endif
+  // Check for button ins permanently pressed e.g. while mounting
 
-  /* FIXME
-    // Check for button ins permanently pressed e.g. while mounting
-
-    u_int32_t n = keypressed();
-    while (n > 0)
-    {
-      mutex_enter_blocking(&mx1);
-      LED_activity = -1;
-      LEDs_refresh(pio_Block1, sm_LEDmux);
-      mutex_exit(&mx1);
-      Buzzer_set(n, 250, 100);
-
-      sleep_ms(10000);
-      n = keypressed();
-    }
-
+  u_int32_t n = keypressed();
+  while (n > 0)
+  {
     mutex_enter_blocking(&mx1);
-    LED_activity = 0;
+    LED_activity = -1;
     LEDs_refresh(pio_Block1, sm_LEDmux);
     mutex_exit(&mx1);
+    Buzzer_set(n, 250, 100);
 
-    // enable other core for button detection
-    multicore_reset_core1();
-    multicore_launch_core1(core1);
+    sleep_ms(10000);
+    n = keypressed();
+  }
 
-    printf("\n\n waiting for commands or button press");
-    */
+  mutex_enter_blocking(&mx1);
+  LED_activity = 0;
+  LEDs_refresh(pio_Block1, sm_LEDmux);
+  mutex_exit(&mx1);
+
+  // enable other core for button detection
+  multicore_reset_core1();
+  multicore_launch_core1(core1);
+
+  printf("\n\n waiting for commands or button press");
+#endif
 
   while (true)
   {
