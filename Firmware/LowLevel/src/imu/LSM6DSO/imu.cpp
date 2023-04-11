@@ -35,7 +35,7 @@ bool imu_read(float *acceleration_mss, float *gyro_rads, float *mag_uT)
 
     gyro_rads[0] = gyroscope[0] * (PI/180.0) / 1000.0;
     gyro_rads[1] = gyroscope[1] * (PI/180.0) / 1000.0;
-    gyro_rads[2] = -gyroscope[2] * (PI/180.0) / 1000.0;
+    gyro_rads[2] = gyroscope[2] * (PI/180.0) / 1000.0;
 
     mag_uT[0] = 0;
     mag_uT[1] = 0;
