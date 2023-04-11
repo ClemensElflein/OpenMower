@@ -43,13 +43,17 @@
     #define PIN_WT901_RX 16
 #endif
 
-#elif HW_0_10_X || HW_0_11_X
+#elif HW_0_10_X || HW_0_11_X || HW_0_12_X
 #define WT901_WIRE Wire
 
 #define PIN_WT901_SDA 8
 #define PIN_WT901_SCL 9
 
 #define PIN_IMU_CS 9
+#define PIN_IMU_MOSI 7
+#define PIN_IMU_MISO 8
+#define PIN_IMU_SCK 6
+
 #define PIN_ANALOG_BATTERY_VOLTAGE 27
 #define PIN_ANALOG_CHARGE_VOLTAGE 26
 #define PIN_ANALOG_CHARGE_CURRENT 28
