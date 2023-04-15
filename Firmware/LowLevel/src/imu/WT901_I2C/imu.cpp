@@ -1,5 +1,5 @@
 #include "imu.h"
-#include "pins.h"
+#include "hw.h"
 #include "Wire.h"
 #include <JY901.h>
 

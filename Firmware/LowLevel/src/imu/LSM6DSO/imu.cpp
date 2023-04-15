@@ -1,5 +1,5 @@
 #include "imu.h"
-#include "pins.h"
+#include "hw.h"
 #include <LSM6DSOSensor.h>
 #include <PioSPI.h>
 

@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <list>
 
-#include <pins.h>
+#include <hw.h>
 #include <DFPlayerMini_Fast.h>
 #include <soundsystem.h>
 

@@ -1,5 +1,5 @@
 #include "imu.h"
-#include "pins.h"
+#include "hw.h"
 #include <JY901.h>
 
 #ifdef WT901_INSTEAD_OF_SOUND

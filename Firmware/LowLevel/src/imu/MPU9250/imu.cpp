@@ -1,5 +1,5 @@
 #include "imu.h"
-#include "pins.h"
+#include "hw.h"
 #include <MPU9250.h>
 
 MPU9250 IMU(SPI, PIN_IMU_CS);

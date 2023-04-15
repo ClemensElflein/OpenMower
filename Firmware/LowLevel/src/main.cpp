@@ -19,7 +19,7 @@
 #include <FastCRC.h>
 #include <PacketSerial.h>
 #include "datatypes.h"
-#include "pins.h"
+#include "hw.h"
 #include "ui_board.h"
 #include "imu.h"
 #ifdef ENABLE_SOUND_MODULE
