@@ -1,6 +1,10 @@
 #ifndef HW_0_10_11_12_H
 #define HW_0_10_11_12_H
 
+#ifdef HW_0_12_X
+#include <PioSPI.h>
+#endif
+
 #define WT901_WIRE Wire
 
 #define PIN_WT901_SDA 8
@@ -40,4 +44,13 @@
 #define PIN_SOUND_TX 16
 #define PIN_SOUND_RX 17
 #endif
+
+
+// In this version we need PIO for the IMU SPI
+PioSPI IMU_SPI(PIN_IMU_MOSI, PIN_IMU_MISO, PIN_IMU_SCK, PIN_IMU_CS, SPI_MODE3, 1000000);
+
+void hw_assign_pins() {
+    // we don't need to assign anything here, since PioSPI has pin assignments in its constructor
+}
+
 #endif

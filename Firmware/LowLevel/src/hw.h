@@ -1,4 +1,6 @@
-#pragma once
+#ifndef HW_H
+#define HW_H
+
 #ifdef HW_0_9_X
 #include <hw_configs/hw_0_9.h>
 #elif HW_0_10_X || HW_0_11_X || HW_0_12_X
@@ -7,4 +9,6 @@
 #include <hw_configs/hw_0_13.h>
 #else
 #error No hardware version defined
+#endif
+
 #endif

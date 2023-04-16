@@ -369,6 +369,9 @@ void loop1()
 
 void setup()
 {
+  // Setup the correct pin mux for the hardware.
+  hw_assign_pins();
+
   //  We do hardware init in this core, so that we don't get invalid states.
   //  Therefore, we pause the other core until setup() was a success
   rp2040.idleOtherCore();

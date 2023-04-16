@@ -1,14 +1,25 @@
 #ifndef HW_0_13_H
 #define HW_0_13_H
 
+#include <SPI.h>
+
+/**
+ * This HW version uses the following Resources:
+ * UART0 - ROS Communication
+ * SPI0 / UART1 - IMU
+ * PIO Neopixel
+ * PIO UART: LED
+ * PIO UART: Sound
+ */
+
 #define WT901_WIRE Wire
 
 #define PIN_WT901_SDA 8
 #define PIN_WT901_SCL 9
 
-#define PIN_IMU_CS 9
+#define PIN_IMU_CS 5
 #define PIN_IMU_MOSI 7
-#define PIN_IMU_MISO 8
+#define PIN_IMU_MISO 4
 #define PIN_IMU_SCK 6
 
 #define PIN_ANALOG_BATTERY_VOLTAGE 27
@@ -33,12 +44,20 @@
 
 #define PIN_NEOPIXEL 10
 
-#define PIN_UI_TX 4
-#define PIN_UI_RX 5
+#define PIN_UI_TX 8
+#define PIN_UI_RX 9
 
 #ifdef ENABLE_SOUND_MODULE
 #define PIN_SOUND_TX 16
 #define PIN_SOUND_RX 17
 #endif
+
+void hw_assign_pins() {
+    // Assign the correct pins to the IMU's hardware SPI.
+    SPI.setCS(PIN_IMU_CS);
+    SPI.setSCK(PIN_IMU_SCK);
+    SPI.setRX(PIN_IMU_MISO);
+    SPI.setTX(PIN_IMU_MOSI);
+}
 
 #endif

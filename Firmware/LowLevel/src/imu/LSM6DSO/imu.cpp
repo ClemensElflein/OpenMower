@@ -1,16 +1,15 @@
 #include "imu.h"
 #include "hw.h"
 #include <LSM6DSOSensor.h>
-#include <PioSPI.h>
 
-PioSPI spiBus(PIN_IMU_MOSI, PIN_IMU_MISO, PIN_IMU_SCK, PIN_IMU_CS, SPI_MODE3, 1000000);
-LSM6DSOSensor IMU(&spiBus, PIN_IMU_CS, 1000000);
+
+LSM6DSOSensor IMU(&IMU_SPI, PIN_IMU_CS, 1000000);
 int32_t accelerometer[3];
 int32_t gyroscope[3];
 
 bool init_imu()
 {
-    spiBus.begin();
+    IMU_SPI.begin();
     int status = IMU.begin();
     if (status != 0)
         return false;
