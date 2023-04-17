@@ -23,6 +23,7 @@
 #define LED_NUM_WIRE 15
 #define LED_NUM_BAT 16
 #define LED_NUM_CHARGE 17
+#define LED_NUM_REAR 18
 
 class LEDcontrol
 {
@@ -51,7 +52,7 @@ private:
         {LED_WIRE_GPIO_Port, LED_WIRE_Pin},
         {LED_BAT_GPIO_Port, LED_BAT_Pin},
         {LED_CHARGE_GPIO_Port, LED_CHARGE_Pin},
-        {LED_SMD_GPIO_Port, LED_SMD_Pin} // LED 19 = SMD LED which seem not to exist on OM-CoverUI
+        {LED_REAR_GPIO_Port, LED_REAR_Pin} // LED 19 = SMD LED which seem not to exist on OM-CoverUI
     };
 
     uint64_t _led_states_bin = 0;                              // Binary representation of all LEDs. Each LED gets three bits (19*3=57) for the current state (see BtnCtrl.h)

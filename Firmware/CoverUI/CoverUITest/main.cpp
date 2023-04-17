@@ -74,7 +74,7 @@ void PacketReceived()
     printf("\nafter decode count = %d values are ",(int)data_size);
     for (int i=0; i<data_size; i++)
     {
-      printf(", 0x%02x",encoded_buffer[i]);
+      printf(", 0x%02x",decoded_buffer[i]);
 
     }
 #endif

@@ -1,12 +1,12 @@
 // control to print out serial information in debug state via usb serial
 // take care when debugging with Semihosting@STM32 as it will eat a lot CPU cycles
-#define _serial_debug_
+// #define _serial_debug_
 
 #include <stdio.h>
 
 #ifdef HW_YFC500
 
-// Header file(s) for original YardForce Classic 500 ButtonBoard/CoverUI
+// Header file for original YardForce Classic 500 ButtonBoard/CoverUI
 #include "yfc500/main.hpp"
 
 #else // HW Pico
@@ -143,7 +143,7 @@ void sendMessage(void *message, size_t size)
 #endif
 
 #ifdef HW_YFC500
-  HAL_UART_Transmit_DMA(&huart2, out_buf, encoded_size);
+  HAL_UART_Transmit_DMA(&HUART_LL, out_buf, encoded_size);
 #else // HW Pico
   for (uint i = 0; i < encoded_size; i++)
   {
@@ -276,7 +276,6 @@ int getLedForButton(int button)
   return 0;
 }
 
-#ifndef HW_YFC500 // HW Pico (no STM32 button support implemented ATM)
 void core1()
 {
   printf("Core 1 started\n");
@@ -312,7 +311,9 @@ void core1()
           for (int i = 0; i < pressed_count; i++)
           {
             mutex_enter_blocking(&mx1);
+#ifndef HW_YFC500 // HW Pico -> FIXME @Apehaenger
             Blink_LED(pio_Block1, sm_LEDmux, led);
+#endif
             mutex_exit(&mx1);
           }
         }
@@ -353,21 +354,21 @@ void core1()
       // confirm pressed button with buzzer.
       // TODO: on rapid button presses, the FIFO gets full and therefore this call is blocking for a long time.
       mutex_enter_blocking(&mx1);
+#ifndef HW_YFC500 // HW Pico. STM32 CoverUI doesn't has a buzzer
       buzzer_program_put_words(pio_Block2, sm_buzz, 1, shortbeep * buzzer_SM_CYCLE / 4000, 40);
+#endif
       mutex_exit(&mx1);
 
-      printf("\n\rsend Button Nr.: %d with count %d", button, pressed_count);
+      printf("sent Button Nr.: %d with count %d\r\n", button, pressed_count);
     }
   }
 }
-#endif // HW Pico
 
 int main(void)
 {
 #ifdef HW_YFC500
-  initMCU();                   // Init STM32 and all peripherals
-  start_uart_LL_DMA_receive(); // Ready to start UART-LL DMA receive
-#else                          // HW Pico
+  init_mcu(); // Init STM32 and all peripherals
+#else         // HW Pico
   uint32_t last_led_update = 0;
   int blink = 0;
   uint8_t cnt = 0;
@@ -390,8 +391,12 @@ int main(void)
   printf("\n\n\n\rMower Button-LED-Control Version %2.2f\n", ver);
 
 #ifdef HW_YFC500
-  LedControl.animate(); // LED blink to say it's alive
-#else                   // HW Pico
+  start_peripherals();
+  // LED blink to say it's alive
+  // (this processing delay is also required to get the debouncer filled with a consistent state (NUM_BUTTON_STATES * 2.5ms)
+  LedControl.animate();
+  LedControl.set(LED_NUM_REAR, LED_state::LED_blink_slow); // We're alive blink. Get switched to manual- fast-blink in the case of an error
+#else // HW Pico
   // initialise state machines
   sm_blink = init_run_StateMachine_blink(pio_Block1);    // on board led alive blink
   sm_LEDmux = init_run_StateMachine_LED_mux(pio_Block1); // LED multiplexer
@@ -438,7 +443,9 @@ int main(void)
 
   while (true)
   {
-#ifndef HW_YFC500 // HW Pico
+#ifdef HW_YFC500
+    core1(); // YFC500's STM32 only has one core, but nothing more todo in main() ;-)
+#else        // HW Pico
     getDataFromBuffer();
 
     uint32_t now = to_ms_since_boot(get_absolute_time());

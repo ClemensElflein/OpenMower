@@ -2,20 +2,25 @@
 #define __YFC500_ERROR_H
 
 #include "main.h"
+#include "LEDcontrol.h"
+
+extern LEDcontrol LedControl;
 
 /**
  * @brief  This function is executed in case of error occurrence.
+ *         TODO: Add some kind of morse code if there will be errors
  * @retval None
  */
 void Error_Handler(void)
 {
-    /* USER CODE BEGIN Error_Handler_Debug */
-    /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
     while (1)
     {
+        // Can't use timers anymore as we're in faulty state. Dummy delay loop
+        for (float i = 0; i < 0xFFF; i++) // something < 100ms
+            ;
+        LedControl.toggle(LED_NUM_REAR);
     }
-    /* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef USE_FULL_ASSERT
