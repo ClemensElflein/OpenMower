@@ -38,9 +38,7 @@
 
 #define bufflen 1000 // Q: 1000 look really huge! Is it a realistic value?
 
-#ifdef HW_YFC500
-
-#else // HW Pico
+#ifndef HW_YFC500 // HW Pico
 
 #include "LEDcontrol.h"
 #include "statemachine.h"
@@ -68,8 +66,7 @@ static uint8_t out_buf[bufflen];
 
 COBS cobs;
 
-#ifndef HW_YFC500 // HW Pico
-// defintion PIO-block and uses statemachines
+// HW_YFC500 doesn't use or has these, but for not polluting code with #ifdef's ...
 PIO pio_Block1 = pio0;
 PIO pio_Block2 = pio1;
 int sm_blink;  // Statemachine onboard LED blinking
@@ -77,7 +74,7 @@ int sm_LEDmux; // Statemachine control LEDSs
 int sm_buzz;   // Statemachine control Buzzer
 
 auto_init_mutex(mx1);
-#endif // HW Pico
+
 
 /****************************************************************************************************
  *
@@ -87,11 +84,9 @@ auto_init_mutex(mx1);
 
 void Buzzer_set(uint32_t anz, uint32_t timeON, uint32_t timeOFF)
 {
-#ifndef HW_YFC500 // HW Pico
   mutex_enter_blocking(&mx1);
   buzzer_program_put_words(pio_Block2, sm_buzz, anz, timeON * buzzer_SM_CYCLE / 4000, timeOFF);
   mutex_exit(&mx1);
-#endif
 }
 
 /****************************************************************************************************
@@ -311,9 +306,7 @@ void core1()
           for (int i = 0; i < pressed_count; i++)
           {
             mutex_enter_blocking(&mx1);
-#ifndef HW_YFC500 // HW Pico -> FIXME @Apehaenger
             Blink_LED(pio_Block1, sm_LEDmux, led);
-#endif
             mutex_exit(&mx1);
           }
         }
@@ -354,9 +347,7 @@ void core1()
       // confirm pressed button with buzzer.
       // TODO: on rapid button presses, the FIFO gets full and therefore this call is blocking for a long time.
       mutex_enter_blocking(&mx1);
-#ifndef HW_YFC500 // HW Pico. STM32 CoverUI doesn't has a buzzer
       buzzer_program_put_words(pio_Block2, sm_buzz, 1, shortbeep * buzzer_SM_CYCLE / 4000, 40);
-#endif
       mutex_exit(&mx1);
 
       printf("sent Button Nr.: %d with count %d\r\n", button, pressed_count);
@@ -396,6 +387,13 @@ int main(void)
   // (this processing delay is also required to get the debouncer filled with a consistent state (NUM_BUTTON_STATES * 2.5ms)
   LedControl.animate();
   LedControl.set(LED_NUM_REAR, LED_state::LED_blink_slow); // We're alive blink. Get switched to manual- fast-blink in the case of an error
+
+/* Button- Force_*() and restore test
+  LedControl.set(7, LED_state::LED_off);
+  LedControl.set(8, LED_state::LED_blink_slow);
+  LedControl.set(9, LED_state::LED_blink_fast);
+  LedControl.set(10, LED_state::LED_on);*/
+
 #else // HW Pico
   // initialise state machines
   sm_blink = init_run_StateMachine_blink(pio_Block1);    // on board led alive blink

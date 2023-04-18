@@ -49,6 +49,12 @@ uint8_t uart_ll_dma_buffer[UART_LL_DMA_BUFFSIZE]; // DMA buffer size has to be a
 extern DMA_HandleTypeDef HDMA_UART_LL_RX;
 extern void getDataFromBuffer(const uint8_t *data, uint16_t size); // defined in main.cpp
 
+// Some dummy Pico-SDK definitions. Not used but by this we'll NOT pollution original code to much
+#define pio0 NULL
+#define pio1 NULL
+typedef bool *PIO;
+#define buzzer_SM_CYCLE 10800
+
 // Main LED controller object
 LEDcontrol LedControl;
 Buttons Btns;
@@ -91,14 +97,14 @@ void start_peripherals()
 }
 
 /**
- * @brief OM wrapper, currently on TODO
+ * @brief OM wrapper
  *
- * @param led
+ * @param led_num
  * @param force
  */
-void Force_LED_off(int led, bool force)
+void Force_LED_off(uint8_t led_num, bool force)
 {
-    // FIXME: Check what's the reason behind this.
+    LedControl.force_off(led_num, force);               // This only effect blink states
 }
 
 /**
@@ -108,10 +114,22 @@ void Force_LED_off(int led, bool force)
  * @param statemachine
  * @param led
  */
-/*void Blink_LED(PIO pioBlock, int statemachine, int led)
+void Blink_LED(PIO dummy, int dummy2, int led_num)
 {
-    // FIXME: Not yet checked in detail for what it should be
-}*/
+    LedControl.identify(led_num);
+}
+
+/**
+ * @brief OM wrapper
+ * 
+ * @param anz 
+ * @param timeON 
+ * @param timeOFF 
+ */
+static inline void buzzer_program_put_words(PIO pio, uint sm, uint32_t repeat, uint32_t duration, uint32_t gap)
+{
+    // YFC500 doesn't has a buzzer on CoverUI
+}
 
 /**
  * @brief OM wrapper for original function call to STM's Buttons class implementation

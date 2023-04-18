@@ -55,18 +55,26 @@ private:
         {LED_REAR_GPIO_Port, LED_REAR_Pin} // LED 19 = SMD LED which seem not to exist on OM-CoverUI
     };
 
-    uint64_t _led_states_bin = 0;                              // Binary representation of all LEDs. Each LED gets three bits (19*3=57) for the current state (see BtnCtrl.h)
-    void _change_led_states(uint8_t led_num, LED_state state); // Change _led_states_bin for the given LED num and state
+    uint64_t _led_states_bin = 0; // Binary representation of all LEDs. Each LED gets three bits (19*3=57) for the current state (see BtnCtrl.h)
+    uint32_t _force_led_on = 0;   // Binary representation of a "forced LED on" _led_states_bin overrule
+    uint32_t _force_led_off = 0;  // Binary representation of a "forced LED off" _led_states_bin overrule
+
+    void _change_led_states(uint8_t led_num, LED_state state);       // Change _led_states_bin for the given LED num and state
+    void _force(uint8_t led_num, bool force, uint32_t *_force_type); // Switch/force LED num on or off, independent on it's running state
 
 public:
     LEDcontrol();
 
-    void animate();                                                  // A short LED Animation
-    void blink_timer_elapsed(LED_state blink_state);                 // Get called by responsible blink timer
-    bool is_led_state(uint8_t led_num, LED_state state);             // Comparison if the given LED has the given state (in _led_states_bin)
-    void set(uint8_t led_num, LED_state state = LED_state::LED_off); // Set any of known LED_state states for a specific LED
-    void set(uint64_t all_state);                                    // Set any of known LED_state states for all LEDs by binary state value
-    void toggle(uint8_t led_num);                                    // Toggle on->off or off->on
+    void animate();                                                                            // A short LED Animation
+    void blink_timer_elapsed(LED_state blink_state);                                           // Get called by responsible blink timer
+    void force_off(uint8_t led_num, bool force);                                               // Switch/force LED num off, independent on it's running state
+    void force_on(uint8_t led_num, bool force);                                                // Switch/force LED num on, independent on it's running state
+    LED_state get(uint8_t led_num);                                                            // Get state from _led_states_bin for the given led
+    void identify(uint8_t led_num);                                                            // Identify the given LED by a special signalling
+    bool has_state(uint8_t led_num, LED_state state);                                          // Comparison if the given LED has the given state (in _led_states_bin)
+    void set(uint8_t led_num, LED_state state = LED_state::LED_off, bool change_state = true); // Set any of known LED_state states for a specific LED
+    void set(uint64_t all_state);                                                              // Set any of known LED_state states for all LEDs by binary state value
+    void toggle(uint8_t led_num);                                                              // Toggle on->off or off->on
 };
 
 #endif /* YFC500_LEDCONTROL_H */

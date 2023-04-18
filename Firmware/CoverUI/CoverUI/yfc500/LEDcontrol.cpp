@@ -15,23 +15,31 @@
 
 LEDcontrol::LEDcontrol() {}
 
-void LEDcontrol::set(uint8_t led_num, LED_state state)
+/**
+ * @brief Set any of known LED_state states for the given LED num.
+ *
+ * @param led_num
+ * @param state
+ * @param change_state Indicate if the state get written to _led_states_bin buffer.
+ *      This got implemented for synchronous blinking LEDs as well as Force_LED_on|off() replacement.
+ */
+void LEDcontrol::set(uint8_t led_num, LED_state state, bool change_state)
 {
     switch (state)
     {
     case LED_state::LED_on:
         HAL_GPIO_WritePin(_leds[led_num].port, _leds[led_num].pin, GPIO_PIN_SET);
-        _change_led_states(led_num, state); // On state not used here atm. here, but follow original code
         break;
     case LED_state::LED_off:
         HAL_GPIO_WritePin(_leds[led_num].port, _leds[led_num].pin, GPIO_PIN_RESET);
-        _change_led_states(led_num, state); // Off state not used here atm. here, but follow original code
         break;
     case LED_state::LED_blink_slow:
     case LED_state::LED_blink_fast:
-        _change_led_states(led_num, state); // used by TIM_BLINK_* timer
+        // Get handled by timer
         break;
     }
+    if (change_state)
+        _change_led_states(led_num, state);
 }
 
 void LEDcontrol::set(uint64_t all_state)
@@ -41,6 +49,39 @@ void LEDcontrol::set(uint64_t all_state)
         uint8_t led_state = (all_state >> (3 * led)) & 0b111;
         set(led, static_cast<LED_state>(led_state));
     }
+}
+
+LED_state LEDcontrol::get(uint8_t led_num)
+{
+    return (LED_state)((_led_states_bin >> (3 * led_num)) & 0b111);
+}
+
+void LEDcontrol::_force(uint8_t led_num, bool force, uint32_t *_force_type)
+{
+    uint32_t led_bin = 1 << led_num;
+
+    if (force)
+        *_force_type |= led_bin;
+    else
+        *_force_type &= ~led_bin;
+}
+
+void LEDcontrol::force_off(uint8_t led_num, bool force)
+{
+    _force(led_num, force, &_force_led_off);
+    if (force)
+        set(led_num, LED_state::LED_off, false); // Directly set without changing state
+    else
+        set(led_num, get(led_num), false); // Restore state
+}
+
+void LEDcontrol::force_on(uint8_t led_num, bool force)
+{
+    _force(led_num, force, &_force_led_on);
+    if (force)
+        set(led_num, LED_state::LED_on, false); // Directly set without changing state
+    else
+        set(led_num, get(led_num), false); // Restore state
 }
 
 void LEDcontrol::toggle(uint8_t led_num)
@@ -54,7 +95,7 @@ void LEDcontrol::_change_led_states(uint8_t led_num, LED_state state)
     _led_states_bin |= (uint64_t)(state) << (3 * led_num);    // Set new state
 }
 
-bool LEDcontrol::is_led_state(uint8_t led_num, LED_state state)
+bool LEDcontrol::has_state(uint8_t led_num, LED_state state)
 {
     return (_led_states_bin >> (3 * led_num) & (uint64_t)(0b111)) == (uint64_t)(state);
 }
@@ -62,28 +103,28 @@ bool LEDcontrol::is_led_state(uint8_t led_num, LED_state state)
 void LEDcontrol::blink_timer_elapsed(LED_state blink_state)
 {
     // Sync blink vars are only for cosmetic nature, probably only interesting for a nice looking CoverUITest
-    static std::map<LED_state, GPIO_PinState> sync_blink_map = {
-        {LED_state::LED_blink_slow, GPIO_PIN_SET},
-        {LED_state::LED_blink_fast, GPIO_PIN_SET}};
+    static std::map<LED_state, LED_state> sync_blink_map = {
+        {LED_state::LED_blink_slow, LED_state::LED_on},
+        {LED_state::LED_blink_fast, LED_state::LED_on}};
 
     if (blink_state != LED_state::LED_blink_fast && blink_state != LED_state::LED_blink_slow) // Ensure that this method only get called for blinking LED states
         return;
 
     for (uint8_t led_num = 0; led_num < NUM_LEDS; led_num++) // FIXME: Find some more efficient instead of looping through all NUM_LEDS
     {
-        if (is_led_state(led_num, blink_state))
+        if (has_state(led_num, blink_state) && !(_force_led_off & (1 << led_num)))
         {
-            // toggle() may blink in push-pull
+            // toggle() might blink in push-pull/reverse than other LEDs with the same blink-rate
             // toggle(led_num);
-            // Directly set LED without going over set() which would change the LED_state
-            HAL_GPIO_WritePin(_leds[led_num].port, _leds[led_num].pin, sync_blink_map[blink_state]);
+            // Directly set LED without changing state
+            set(led_num, sync_blink_map[blink_state], false);
         }
     }
     // Synchronous toggle
-    if (sync_blink_map[blink_state] == GPIO_PIN_SET)
-        sync_blink_map[blink_state] = GPIO_PIN_RESET;
+    if (sync_blink_map[blink_state] == LED_state::LED_on)
+        sync_blink_map[blink_state] = LED_state::LED_off;
     else
-        sync_blink_map[blink_state] = GPIO_PIN_SET;
+        sync_blink_map[blink_state] = LED_state::LED_on;
 }
 
 void LEDcontrol::animate()
@@ -99,4 +140,24 @@ void LEDcontrol::animate()
         set(led, LED_state::LED_off);
         HAL_Delay(15);
     }
+}
+
+/**
+ * @brief Identify LED by short blink code
+ * 
+ * @param led_num 
+ */
+void LEDcontrol::identify(uint8_t led_num)
+{
+    force_off(led_num, false);
+    force_on(led_num, true);
+    HAL_Delay(100);
+
+    force_off(led_num, true);
+    force_on(led_num, false);
+    HAL_Delay(100);
+
+    // stop with forced off
+    force_off(led_num, true); // FIXME: This doesn't stop force off!
+    force_on(led_num, false);
 }
