@@ -70,7 +70,7 @@ SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 // Emergency will be engaged, if no heartbeat was received in this time frame.
 #define HEARTBEAT_MILLIS 500
 
-NeoPixelConnect p(PIN_NEOPIXEL, 1, pio1, 0); // use state machine 1, sm 0 is used by hardwareserial class
+NeoPixelConnect p(PIN_NEOPIXEL, 1);
 uint8_t led_blink_counter = 0;
 
 PacketSerial packetSerial; // COBS communication PICO <> Raspi
