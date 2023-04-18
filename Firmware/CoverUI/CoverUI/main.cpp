@@ -383,16 +383,22 @@ int main(void)
 
 #ifdef HW_YFC500
   start_peripherals();
-  // LED blink to say it's alive
-  // (this processing delay is also required to get the debouncer filled with a consistent state (NUM_BUTTON_STATES * 2.5ms)
-  LedControl.animate();
   LedControl.set(LED_NUM_REAR, LED_state::LED_blink_slow); // We're alive blink. Get switched to manual- fast-blink in the case of an error
 
-/* Button- Force_*() and restore test
-  LedControl.set(7, LED_state::LED_off);
-  LedControl.set(8, LED_state::LED_blink_slow);
-  LedControl.set(9, LED_state::LED_blink_fast);
-  LedControl.set(10, LED_state::LED_on);*/
+  // "Hi there" and jammed button mounting detection
+  bool tmp;
+  do
+  {
+    // LED blink to say it's alive
+    // (this processing delay is also required to get the debouncer filled with a consistent state (NUM_BUTTON_STATES * 2.5ms)
+    LedControl.animate();
+  } while (bit_getbutton(500, tmp));
+
+  /* Button- Force_*() and restore test
+    LedControl.set(7, LED_state::LED_off);
+    LedControl.set(8, LED_state::LED_blink_slow);
+    LedControl.set(9, LED_state::LED_blink_fast);
+    LedControl.set(10, LED_state::LED_on);*/
 
 #else // HW Pico
   // initialise state machines

@@ -129,13 +129,13 @@ void LEDcontrol::blink_timer_elapsed(LED_state blink_state)
 
 void LEDcontrol::animate()
 {
-    for (int led = 0; led < NUM_LEDS; led++)
+    for (int led = 0; led < NUM_LEDS - 1; led++)
     {
         set(led, LED_state::LED_on);
         HAL_Delay(15);
     }
 
-    for (int led = 0; led < NUM_LEDS; led++)
+    for (int led = 0; led < NUM_LEDS - 1; led++)
     {
         set(led, LED_state::LED_off);
         HAL_Delay(15);
@@ -144,8 +144,8 @@ void LEDcontrol::animate()
 
 /**
  * @brief Identify LED by short blink code
- * 
- * @param led_num 
+ *
+ * @param led_num
  */
 void LEDcontrol::identify(uint8_t led_num)
 {

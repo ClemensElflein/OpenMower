@@ -138,7 +138,7 @@ static inline void buzzer_program_put_words(PIO pio, uint sm, uint32_t repeat, u
  * @param still_pressed
  * @return unsigned int
  */
-unsigned int bit_getbutton(uint32_t press_timeout, bool &still_pressed)
+uint8_t bit_getbutton(uint32_t press_timeout, bool &still_pressed)
 {
     still_pressed = false;
 
