@@ -43,7 +43,4 @@
     #define PIN_WT901_RX 16
 #endif
 
-void hw_assign_pins() {
-}
-
 #endif

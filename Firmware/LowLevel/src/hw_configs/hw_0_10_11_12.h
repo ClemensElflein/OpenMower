@@ -49,8 +49,6 @@
 // In this version we need PIO for the IMU SPI
 PioSPI IMU_SPI(PIN_IMU_MOSI, PIN_IMU_MISO, PIN_IMU_SCK, PIN_IMU_CS, SPI_MODE3, 1000000);
 
-void hw_assign_pins() {
-    // we don't need to assign anything here, since PioSPI has pin assignments in its constructor
-}
+
 
 #endif
