@@ -85,10 +85,10 @@
 #endif
 
 #elif HW_0_13_X
-#define PIN_IMU_SCK 4
-#define PIN_IMU_TX 5
-#define PIN_IMU_RX 6
-#define PIN_IMU_CS 7
+#define PIN_IMU_SCK 6
+#define PIN_IMU_TX 7
+#define PIN_IMU_RX 4
+#define PIN_IMU_CS 5
 
 #define PIN_ANALOG_BATTERY_VOLTAGE 27
 #define PIN_ANALOG_CHARGE_VOLTAGE 26
@@ -112,8 +112,8 @@
 
 #define PIN_NEOPIXEL 10
 
-#define PIN_UI_TX 8 // 4
-#define PIN_UI_RX 9 // 5
+#define PIN_UI_TX 8
+#define PIN_UI_RX 9
 
 #ifdef ENABLE_SOUND_MODULE
 #define PIN_SOUND_TX 16
