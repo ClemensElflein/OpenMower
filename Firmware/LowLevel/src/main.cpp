@@ -24,10 +24,7 @@
 #include "imu.h"
 
 #ifdef ENABLE_SOUND_MODULE
-
-#include <DFPlayerMini_Fast.h>
 #include <soundsystem.h>
-
 #endif
 
 #define IMU_CYCLETIME 20          // cycletime for refresh IMU data
@@ -46,7 +43,6 @@
 #define DEBUG_SERIAL Serial
 #endif
 #define PACKET_SERIAL Serial1
-
 SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 
 #define UI1_SERIAL uiSerial
@@ -333,6 +329,10 @@ void setup() {
     //  Therefore, we pause the other core until setup() was a success
     rp2040.idleOtherCore();
 
+#ifdef USB_DEBUG
+    DEBUG_SERIAL.begin(9600);
+#endif
+
     emergency_latch = true;
     ROS_running = false;
 
@@ -372,10 +372,6 @@ void setup() {
 
     analogReadResolution(12);
 
-#ifdef USB_DEBUG
-    DEBUG_SERIAL.begin(115200);
-#endif
-
     // init serial com to RasPi
     PACKET_SERIAL.begin(115200);
     packetSerial.setStream(&PACKET_SERIAL);
@@ -395,13 +391,14 @@ void setup() {
         DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
 #endif
         status_message.status_bitmask = 0;
-        while (1) { // Blink RED
+        while (1) { // Blink RED for IMU failure
             p.neoPixelSetValue(0, 255, 0, 0, true);
             delay(500);
             p.neoPixelSetValue(0, 0, 0, 0, true);
             delay(500);
         }
     }
+    p.neoPixelSetValue(0, 255, 255, 255, true);     // White for IMU Success
 
 #ifdef USB_DEBUG
     DEBUG_SERIAL.println("Imu initialized");
@@ -426,8 +423,6 @@ void setup() {
             delay(200);
         }
     }
-#else
-    sound_available = false;
 #endif
 
     rp2040.resumeOtherCore();
@@ -436,6 +431,9 @@ void setup() {
     leds_message.type = Set_LEDs;
     leds_message.leds = 0;
     sendUIMessage(&leds_message, sizeof(leds_message));
+
+    p.neoPixelSetValue(0, 255, 255, 255, true);     // White 1s final success
+    delay(1000);
 }
 
 void onUIPacketReceived(const uint8_t *buffer, size_t size) {
