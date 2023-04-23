@@ -6,9 +6,8 @@
 # v0.3 eddi 20230423
 #  - changes: switch from polygon PathPatch
 #  - obstacle integration
-# status: x,y-points in one mow area including 0 to n obstacles can be moved and saved to a new map (output.bag)
+# state: x,y-points in one ore more mow areas including 0 to n obstacles can be moved and saved to a new map (output.bag)
 # to do:
-# - integration of additional mowing areas
 # - integration of transportation area
 # - possibilty of adding and deleting points (first and last points of a circle MUST NOT be deleted!)
 # - integration of docking station
@@ -163,9 +162,7 @@ class PathInteractor:
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    import shapely.geometry as sg
     import matplotlib.patches as patches
-    from matplotlib.patches import Polygon
     from matplotlib.patches import PathPatch
     
     
