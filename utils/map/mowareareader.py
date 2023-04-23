@@ -134,13 +134,13 @@ class PathInteractor:
             self.line.set_visible(self.showverts)
             if not self.showverts:
                 self._ind = None
-        ###Loeschen funktioniert noch nicht !###
-        elif event.key == 'd':
-            ind = self.get_ind_under_point(event)
-            if ind is not None:
-                self.pathpatch.get_path().vertices = np.delete(self.pathpatch.get_path().vertices,
-                                         ind, axis=0)
-                self.line.set_data(zip(*self.pathpatch.get_path().vertices))
+        ###delete doesn't work - work in progress!###
+        #elif event.key == 'd':
+        #    ind = self.get_ind_under_point(event)
+        #    if ind is not None:
+        #        self.pathpatch.get_path().vertices = np.delete(self.pathpatch.get_path().vertices,
+        #                                 ind, axis=0)
+        #        self.line.set_data(zip(*self.pathpatch.get_path().vertices))
         self.canvas.draw()
 
     def on_mouse_move(self, event):
