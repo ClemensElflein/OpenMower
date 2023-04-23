@@ -11,6 +11,7 @@
 # - integration of transportation area
 # - possibilty of adding and deleting points (first and last points of a circle MUST NOT be deleted!)
 # - integration of docking station
+# you need a python runtime and at least bagpy-package (pip3 install bagpy)
 #########################################################################################################
 
 
