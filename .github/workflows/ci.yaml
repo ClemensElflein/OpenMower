@@ -49,6 +49,11 @@ jobs:
         run: |
 
           mkdir artifacts
+
+          mkdir ./artifacts/0_13_X
+          cp Firmware/LowLevel/.pio/build/0_13_X/firmware.elf ./artifacts/0_13_X
+          cp Firmware/LowLevel/.pio/build/0_13_X/firmware.uf2 ./artifacts/0_13_X
+          
           mkdir ./artifacts/0_12_X_LSM6DSO
           cp Firmware/LowLevel/.pio/build/0_12_X/firmware.elf ./artifacts/0_12_X_LSM6DSO
           cp Firmware/LowLevel/.pio/build/0_12_X/firmware.uf2 ./artifacts/0_12_X_LSM6DSO
@@ -99,10 +104,6 @@ jobs:
         with:
           config: Hardware/DockStation/mower_PowerDeviceCarrier.kibot.yaml
           board: Hardware/DockStation/mower_PowerDeviceCarrier.kicad_pcb
-      - uses: INTI-CMNB/KiBot@v2_k6
-        with:
-          config: Hardware/CoverUI/CoverUI.kibot.yaml
-          board: Hardware/CoverUI/CoverUI.kicad_pcb
 
       - name: 'Fix permissions on release/'
         run: sudo chmod 0777 release
