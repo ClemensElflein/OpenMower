@@ -44,9 +44,10 @@ Component,Description,Part,References,Value,Footprint,Quantity Per PCB,Datasheet
 43,Resistor,R,R1 R2 R4 R12 R26 R28 R40 R42 R48 R50,10k,R_0805_2012Metric_Pad1.20x1.40mm_HandSolder,10,~,738-RMCF0805FG10K0CT-ND,C17414,,RMCF0805FG10K0,R-805-10K-.125W-1%,,,,,,,,
 44,Resistor,R,R44 R46,47k,R_0805_2012Metric_Pad1.20x1.40mm_HandSolder,2,~,311-47.0KCRCT-ND,C126351,,RC0805FR-0747KL,R-805-47K-.125W-1%,,,,,,,,
 45,Resistor,R,R11,53k6 1%,R_0805_2012Metric_Pad1.20x1.40mm_HandSolder,1,~,RMCF0805FT53K6CT-ND,,,RMCF0805FT53K6,R-805-53.6K-.125W-1%,,,,,,,,
-46,,MK-11C04-G013,SW1,MK-11C04-G013,SW-SMD_MK-11C04-G013,1,https://lcsc.com/product-detail/Toggle-Switches_G-Switch-MK-11C04-G013_C778185.html,,C778185,,,,,,,,,Extended Part,C778185,G-Switch
-47,"8-channel analog multiplexer/demultiplexer, DIP-16/SOIC-16/TSSOP-16",74HC4051,U9 U10,74HC4051,SSOP-16_4.4x5.2mm_P0.65mm,2,http://www.ti.com/lit/ds/symlink/cd74hc4051.pdf,1727-3064-1-ND,C5645,,"74HC4051PW,118",U-74HC4051,,,,,,,,
-48,"Quad 2.7V to 6.0V Single Supply CMOS Op Amps, DIP-14/SOIC-14/TSSOP-14",MCP604,U2,MCP604,SOIC-14_3.9x8.7mm_P1.27mm,1,http://ww1.microchip.com/downloads/en/DeviceDoc/21314g.pdf,MCP604T-E/SLCT-ND,,,MCP604T-E/SL,U-MCP604T-E/SL,,,,,,,,
-49,"Raspberry Pi Pico W, RP2040-based microcontroller board with wireless",RaspberryPi-PicoW,U11,Pico,Raspberry_Pi_Pico_SMT_THT,1,https://datasheets.raspberrypi.com/picow/pico-w-datasheet.pdf,2648-SC0915CT-ND,,,SC0915,U-RP2040-PCB,,,,,,,,
-50,,SIP32509DT,U3,SIP32509DT,SOT-23-6_Handsoldering,1,,SIP32509DT-T1-GE3CT-ND,C335619,,SIP32509DT-T1-GE3,U-SIP32509,,,,,,,,
-51,"Single Power Supply, Single Buffer GATE, CMOS Logic, Level Shifter, SOT-23-5",SN74LV1T34DBV,U7,SN74LV1T34DBV,SOT-23-5,1,https://www.ti.com/lit/ds/symlink/sn74lv1t34.pdf,296-SN74LV1T34DBVRG4CT-ND,C1848228,,SN74LV1T34DBVRG4,U-SN74LV1T34,,,,,,,,
+46,,DA-01BP,SW2,DA-01BP,SW-TH_DA-01BP,1,https://lcsc.com/product-detail/DIP-Switches_blue1PINswitch_C129030.html,,,,,,,,,,,Extended Part,C129030,韩国韩荣
+47,,MK-11C04-G013,SW1,MK-11C04-G013,SW-SMD_MK-11C04-G013,1,https://lcsc.com/product-detail/Toggle-Switches_G-Switch-MK-11C04-G013_C778185.html,,C778185,,,,,,,,,Extended Part,C778185,G-Switch
+48,"8-channel analog multiplexer/demultiplexer, DIP-16/SOIC-16/TSSOP-16",74HC4051,U9 U10,74HC4051,SSOP-16_4.4x5.2mm_P0.65mm,2,http://www.ti.com/lit/ds/symlink/cd74hc4051.pdf,1727-3064-1-ND,C5645,,"74HC4051PW,118",U-74HC4051,,,,,,,,
+49,"Quad 2.7V to 6.0V Single Supply CMOS Op Amps, DIP-14/SOIC-14/TSSOP-14",MCP604,U2,MCP604,SOIC-14_3.9x8.7mm_P1.27mm,1,http://ww1.microchip.com/downloads/en/DeviceDoc/21314g.pdf,MCP604T-E/SLCT-ND,,,MCP604T-E/SL,U-MCP604T-E/SL,,,,,,,,
+50,"Raspberry Pi Pico W, RP2040-based microcontroller board with wireless",RaspberryPi-PicoW,U11,Pico,Raspberry_Pi_Pico_SMT_THT,1,https://datasheets.raspberrypi.com/picow/pico-w-datasheet.pdf,2648-SC0915CT-ND,,,SC0915,U-RP2040-PCB,,,,,,,,
+51,,SIP32509DT,U3,SIP32509DT,SOT-23-6_Handsoldering,1,,SIP32509DT-T1-GE3CT-ND,C335619,,SIP32509DT-T1-GE3,U-SIP32509,,,,,,,,
+52,"Single Power Supply, Single Buffer GATE, CMOS Logic, Level Shifter, SOT-23-5",SN74LV1T34DBV,U7,SN74LV1T34DBV,SOT-23-5,1,https://www.ti.com/lit/ds/symlink/sn74lv1t34.pdf,296-SN74LV1T34DBVRG4CT-ND,C1848228,,SN74LV1T34DBVRG4,U-SN74LV1T34,,,,,,,,
