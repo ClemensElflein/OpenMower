@@ -25,7 +25,9 @@ enum TYPE
     Get_Version = 0xB0,
     Set_Buzzer = 0xB1,
     Set_LEDs = 0xB2,
-    Get_Button = 0xB3
+    Get_Button = 0xB3,
+    Get_Emergency = 0xB4, // Stock-CoverUI
+    Get_Rain = 0xB5       // Stock-CoverUI
 };
 
 
@@ -57,6 +59,16 @@ enum LED_state {
     LED_blink_slow = 0b101,
     LED_blink_fast = 0b110,
     LED_on = 0b111
+};
+
+// Stock-CoverUI (same bitmask as in ll_status.emergency_bitmask of datatypes.h)
+enum Emergency_state
+{
+    Emergency_latch = 0b00001,
+    Emergency_stop1 = 0b00010,
+    Emergency_stop2 = 0b00100,
+    Emergency_lift1 = 0b01000,
+    Emergency_lift2 = 0b10000
 };
 
 #pragma pack(push, 1)
@@ -114,6 +126,27 @@ struct msg_event_button
 } __attribute__((packed));
 #pragma pack(pop)
 
+// Stock-CoverUI
+#pragma pack(push, 1)
+struct msg_event_rain
+{
+    uint8_t type;     // Command type
+    uint8_t reserved; // Padding
+    uint32_t value;
+    uint32_t threshold; // If value < threshold then it rains. Why a threshold? Cause there might be a future option to make it configurable on Stock-CoverUI
+    uint16_t crc;       // CRC 16
+} __attribute__((packed));
+#pragma pack(pop)
+
+// Stock-CoverUI
+#pragma pack(push, 1)
+struct msg_event_emergency
+{
+    uint8_t type;  // Command type
+    uint8_t state; // Same as in ll_status.emergency_bitmask of datatypes.h
+    uint16_t crc;  // CRC 16
+} __attribute__((packed));
+#pragma pack(pop)
 
 void setLed(struct msg_set_leds &msg, int led, uint8_t state);
 

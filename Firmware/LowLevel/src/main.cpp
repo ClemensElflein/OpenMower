@@ -88,6 +88,10 @@ unsigned long last_UILED_millis = 0;
 unsigned long lift_emergency_started = 0;
 unsigned long button_emergency_started = 0;
 
+// Stock UI
+uint8_t stock_ui_emergency_state = 0; // Get set by received Get_Emergency packet
+bool stock_ui_rain = false;           // Get set by received Get_Rain packet
+
 // Predefined message buffers, so that we don't need to allocate new ones later.
 struct ll_imu imu_message = {0};
 struct ll_status status_message = {0};
@@ -130,10 +134,10 @@ void updateEmergency() {
     uint8_t last_emergency = status_message.emergency_bitmask & 1;
 
     // Mask the emergency bits. 2x Lift sensor, 2x Emergency Button
-    bool emergency1 = !gpio_get(PIN_EMERGENCY_1);
-    bool emergency2 = !gpio_get(PIN_EMERGENCY_2);
-    bool emergency3 = !gpio_get(PIN_EMERGENCY_3);
-    bool emergency4 = !gpio_get(PIN_EMERGENCY_4);
+    bool emergency1 = !gpio_get(PIN_EMERGENCY_1) | (stock_ui_emergency_state & Emergency_state::Emergency_lift1);
+    bool emergency2 = !gpio_get(PIN_EMERGENCY_2) | (stock_ui_emergency_state & Emergency_state::Emergency_lift2);
+    bool emergency3 = !gpio_get(PIN_EMERGENCY_3) | (stock_ui_emergency_state & Emergency_state::Emergency_stop1);
+    bool emergency4 = !gpio_get(PIN_EMERGENCY_4) | (stock_ui_emergency_state & Emergency_state::Emergency_stop2);
 
     uint8_t emergency_state = 0;
 
@@ -299,7 +303,7 @@ void loop1() {
             case 5:
                 mutex_enter_blocking(&mtx_status_message);
 
-                if (state) {
+                if (state || stock_ui_rain) {
                     status_message.status_bitmask |= 0b00010000;
                 } else {
                     status_message.status_bitmask &= 0b11101111;
@@ -459,6 +463,16 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         ui_event.button_id = msg->button_id;
         ui_event.press_duration = msg->press_duration;
         sendMessage(&ui_event, sizeof(ui_event));
+    }
+    else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency))
+    {
+        struct msg_event_emergency *msg = (struct msg_event_emergency *)buffer;
+        stock_ui_emergency_state = msg->state;
+    }
+    else if (buffer[0] == Get_Rain && size == sizeof(struct msg_event_rain))
+    {
+        struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
+        stock_ui_rain = (msg->value < msg->threshold);
     }
 }
 
