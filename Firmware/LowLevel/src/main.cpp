@@ -22,6 +22,7 @@
 #include "pins.h"
 #include "ui_board.h"
 #include "imu.h"
+#include "debug.h"
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -34,20 +35,10 @@
 #define LIFT_EMERGENCY_MILLIS 500  // Time for wheels to be lifted in order to count as emergency. This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
-// Define to stream debugging messages via USB
-// #define USB_DEBUG
-
-// Only define DEBUG_SERIAL if USB_DEBUG is actually enabled.
-// This enforces compile errors if it's used incorrectly.
-#ifdef USB_DEBUG
-#define DEBUG_SERIAL Serial
-#endif
 #define PACKET_SERIAL Serial1
 SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 
 #define UI1_SERIAL uiSerial
-
-#define ANZ_SOUND_SD_FILES 3
 
 // Millis after charging is retried
 #define CHARGING_RETRY_MILLIS 10000
@@ -77,7 +68,7 @@ PacketSerial UISerial;     // COBS communication PICO UI-Board
 FastCRC16 CRC16;
 
 #ifdef ENABLE_SOUND_MODULE
-MP3Sound my_sound; // Soundsystem
+MP3Sound *my_sound = MP3Sound::GetInstance(); // Soundsystem
 #endif
 
 unsigned long last_imu_millis = 0;
@@ -333,9 +324,7 @@ void setup() {
     //  Therefore, we pause the other core until setup() was a success
     rp2040.idleOtherCore();
 
-#ifdef USB_DEBUG
-    DEBUG_SERIAL.begin(9600);
-#endif
+    DEBUG_BEGIN(9600);
 
     emergency_latch = true;
     ROS_running = false;
@@ -413,11 +402,11 @@ void setup() {
 #ifdef ENABLE_SOUND_MODULE
     p.neoPixelSetValue(0, 0, 255, 255, true);
 
-    sound_available = my_sound.begin();
+    sound_available = my_sound->begin();
     if (sound_available) {
         p.neoPixelSetValue(0, 0, 0, 255, true);
-        my_sound.setvolume(100);
-        my_sound.playSoundAdHoc(1);
+        my_sound->setVolume(100);
+        my_sound->playSoundAdHoc(1);
         p.neoPixelSetValue(0, 255, 255, 0, true);
     } else {
         for (uint8_t b = 0; b < 3; b++) {
@@ -630,7 +619,7 @@ void loop() {
         last_UILED_millis = now;
 #ifdef ENABLE_SOUND_MODULE
         if (sound_available) {
-            my_sound.processSounds();
+            my_sound->processSounds();
         }
 #endif
     }

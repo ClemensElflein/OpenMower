@@ -1,0 +1,1 @@
+Copy all these files and folder to your (<= 32GB) SD-Card

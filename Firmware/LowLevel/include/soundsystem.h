@@ -17,53 +17,51 @@
 #ifndef _SOUND_SYSTEM_H_
 #define _SOUND_SYSTEM_H_
 
-//#include <Arduino.h>
+#include <Arduino.h>
 #include <stdint.h>
 #include <list>
 
-#include <pins.h>
-#include <DFPlayerMini_Fast.h>
-#include <soundsystem.h>
-
+#include "pins.h"
+#include <DFMiniMp3.h>
 
 #define BUFFERSIZE 100
+#define DFP_ONLINE_TIMEOUT 5000
 
+class MP3Sound;                               // forward declaration ...
+typedef DFMiniMp3<SerialPIO, MP3Sound> DfMp3; // ... for a more readable/shorter DfMp3 typedef
 
+// Non thread safe singleton MP3Sound class
 class MP3Sound
 {
+protected:
+    MP3Sound(); // Singleton constructors always should be private to prevent direct construction via 'new'
 
-   
-   
+public:
+    bool playing;
 
-    public:
+    static MP3Sound *GetInstance();
+    MP3Sound(MP3Sound &other) = delete;        // Singletons should not be cloneable
+    void operator=(const MP3Sound &) = delete; // Singletons should not be assignable
 
-                int16_t anzSoundfiles;          // number of files stored on the SD-card
-                bool     playing;
+    bool begin();                          // Init serial stream, soundmodule and sound_available_
+    void playSound(int soundNr);           // play soundfile number. This method writes soundfile nr in a list, the method processSounds() (has to run in loop) will play
+                                           // the sounds according to the list
+    void playSoundAdHoc(uint16_t t_track); // Play sound track number immediately without waiting until the end of sound
+    void setVolume(uint8_t t_vol);         // Scales loudness from 0 to 100 %
+    int sounds2play();                     // returns the number if sounds to play in the list
+    int processSounds();                   // play all sounds from the list. This method has to be calles cyclic, e.g. every second.
 
-                MP3Sound();
+    // DFMiniMP3 specific notification methods
+    static void OnError(DfMp3 &mp3, uint16_t errorCode);
+    static void OnPlayFinished(DfMp3 &mp3, DfMp3_PlaySources source, uint16_t track);
+    static void OnPlaySourceOnline(DfMp3 &mp3, DfMp3_PlaySources source);
+    static void OnPlaySourceInserted(DfMp3 &mp3, DfMp3_PlaySources source);
+    static void OnPlaySourceRemoved(DfMp3 &mp3, DfMp3_PlaySources source);
 
-                bool begin();      // init serial stream and soundmodule, anzsoundOnSD : maximum number of available soundfiles on the SD-card
-                
-                void playSound(int soundNr);        // play soundfile number. This method writes soundfile nr in a list, the method processSounds() (has to run in loop) will play 
-                                                    // the sounds according to the list
-
-                void playSoundAdHoc(int soundNr);   // play soundfile number immediately whithout waiting until the end of sound
-
-                void setvolume(int vol);            // scales loudness from 0 to 100 %
-
-                int sounds2play();                  // returns the number if sounds to play in the list
-
-                int processSounds();                // play all sounds from the list. This method has to be calles cyclic, e.g. every second.
-
-                
-    private:
-                std::list <int> active_sounds;
-                bool sound_available;
-                
-
-   
-
+private:
+    std::list<int> active_sounds_;
+    bool sound_available_; // Sound module available and SD-Card with files
+    uint16_t last_error_code_ = 0;
 };
-
 
 #endif // _SOUND_SYSTEM_H_  HEADER_FILE
