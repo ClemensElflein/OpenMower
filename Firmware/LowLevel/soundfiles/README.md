@@ -1,5 +1,5 @@
 ## Install
-Copy all these files and folder to your (<= 32GB) SD-Card
+Copy all files and folder to your (<= 32GB) SD-Card
 
 ## Folder/Track Structure Description
 
@@ -10,3 +10,5 @@ Copy all these files and folder to your (<= 32GB) SD-Card
   sound, as well as someone might prefer no background sounds at all, the 'advert' sounds got
   also copied to a `playFolderTrack16()`.
   At the moment only folder '01' (USA), but a folder like '49' (German) might follow some days.
+- The single sound in the root folder, is used/required for those
+  DFPlayer types (i.e. DFRobot), which start autoplaying directly after power on, or by reset() during initialize.
