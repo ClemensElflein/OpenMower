@@ -406,7 +406,7 @@ void setup() {
     if (sound_available) {
         p.neoPixelSetValue(0, 0, 0, 255, true);
         my_sound->setVolume(100);
-        my_sound->playSoundAdHoc(1);
+        my_sound->playSoundAdHoc({num : 1, type : MP3Sound::TrackTypes::advert});
         p.neoPixelSetValue(0, 255, 255, 0, true);
     } else {
         for (uint8_t b = 0; b < 3; b++) {
@@ -594,7 +594,7 @@ void loop() {
         mutex_exit(&mtx_status_message);
 
         last_status_update_millis = now;
-#ifdef USB_DEBUG
+/*#ifdef USB_DEBUG
         DEBUG_SERIAL.print("status: 0b");
         DEBUG_SERIAL.print(status_message.status_bitmask, BIN);
         DEBUG_SERIAL.print("\t");
@@ -611,7 +611,7 @@ void loop() {
         DEBUG_SERIAL.print("emergency: 0b");
         DEBUG_SERIAL.print(status_message.emergency_bitmask, BIN);
         DEBUG_SERIAL.println();
-#endif
+#endif*/
     }
 
     if (now - last_UILED_millis > UI_SET_LED_CYCLETIME) {
@@ -619,7 +619,7 @@ void loop() {
         last_UILED_millis = now;
 #ifdef ENABLE_SOUND_MODULE
         if (sound_available) {
-            my_sound->processSounds();
+            my_sound->processSounds(status_message);
         }
 #endif
     }

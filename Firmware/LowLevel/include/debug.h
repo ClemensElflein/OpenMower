@@ -21,7 +21,7 @@
 
 #ifdef USB_DEBUG
 #define DEBUG_SERIAL Serial
-#define DfMiniMp3Debug DEBUG_SERIAL
+//#define DfMiniMp3Debug DEBUG_SERIAL
 // Some bloody simple debug wrapper which superfluous '#ifdef USB_DEBUG' ...
 #define DEBUG_BEGIN(b) DEBUG_SERIAL.begin(b);
 #define DEBUG_PRINTF(fmt, ...)                   \
@@ -31,7 +31,12 @@
     } while (0)
 #else
 #define DEBUG_BEGIN(b)
-#define DEBUG_PRINTF(fmt, ...) 
+#define DEBUG_PRINTF(fmt, ...)
 #endif
+
+#define PRINTF_BINARY_PATTERN_INT8 "%c%c%c%c%c%c%c%c"
+#define PRINTF_BYTE_TO_BINARY_INT8(i)                                                                               \
+    (((i)&0x80ll) ? '1' : '0'), (((i)&0x40ll) ? '1' : '0'), (((i)&0x20ll) ? '1' : '0'), (((i)&0x10ll) ? '1' : '0'), \
+        (((i)&0x08ll) ? '1' : '0'), (((i)&0x04ll) ? '1' : '0'), (((i)&0x02ll) ? '1' : '0'), (((i)&0x01ll) ? '1' : '0')
 
 #endif // _DEBUG_H_
