@@ -619,7 +619,7 @@ void loop() {
         last_UILED_millis = now;
 #ifdef ENABLE_SOUND_MODULE
         if (sound_available) {
-            my_sound->processSounds(status_message);
+            my_sound->processSounds(status_message, last_high_level_state);
         }
 #endif
     }

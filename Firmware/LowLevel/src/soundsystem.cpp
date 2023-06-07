@@ -162,7 +162,7 @@ void MP3Sound::playSound(TrackDef t_track_def)
     active_sounds_.push_front(t_track_def);
 }
 
-void MP3Sound::processSounds(ll_status t_status_message)
+void MP3Sound::processSounds(ll_status t_status_message, ll_high_level_state t_high_level_state)
 {
     myMP3.loop();
 
