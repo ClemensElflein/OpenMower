@@ -32,6 +32,19 @@ enum HighLevelMode {
     MODE_RECORDING = 3 // ROS connected, Manual mode during recording etc
 };
 
+// I'm a old man, like to use names, have no space left which bit is what
+enum StatusBitmasks : uint8_t
+{
+    StatusBitmask_initialized = 0x01,
+    StatusBitmask_raspi_power = 0x02,
+    StatusBitmask_charging = 0x04,
+    StatusBitmask_free = 0x08,
+    StatusBitmask_rain = 0x10,
+    StatusBitmask_sound_avail = 0x20,
+    StatusBitmask_sound_busy = 0x40,
+    StatusBitmask_uiboard = 0x80,
+};
+
 #pragma pack(push, 1)
 struct ll_status {
     // Type of this message. Has to be PACKET_ID_LL_STATUS.

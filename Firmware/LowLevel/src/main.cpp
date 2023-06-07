@@ -406,7 +406,7 @@ void setup() {
     if (sound_available) {
         p.neoPixelSetValue(0, 0, 0, 255, true);
         my_sound->setVolume(100);
-        my_sound->playSoundAdHoc({num : 1, type : MP3Sound::TrackTypes::advert});
+        my_sound->playSoundAdHoc({num : 1, type : MP3Sound::TrackTypes::advert, pause_after : 1}); // Hi I'm steve
         p.neoPixelSetValue(0, 255, 255, 0, true);
     } else {
         for (uint8_t b = 0; b < 3; b++) {

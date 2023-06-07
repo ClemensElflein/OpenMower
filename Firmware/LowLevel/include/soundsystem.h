@@ -54,7 +54,8 @@ public:
     {
         uint16_t num;
         TrackTypes type;
-        uint8_t flags = 0;
+        uint8_t flags = 0;       // See TrackFlags
+        uint8_t pause_after = 0; // Cosmetic pause in seconds, after advert track got played, before the next get processed
     };
 
     bool playing;
@@ -68,7 +69,6 @@ public:
                                                     // will play the sounds according to the list
     void playSoundAdHoc(TrackDef t_track_def);      // Play sound track number immediately without waiting until the end of sound
     void setVolume(uint8_t t_vol);                  // Scales loudness from 0 to 100 %
-    int sounds2play();                              // returns the number if sounds to play in the list
     void processSounds(ll_status t_status_message); // This method has to be called cyclic, e.g. every second.
 
     // DFMiniMP3 specific notification methods
@@ -82,9 +82,10 @@ private:
     std::list<TrackDef> active_sounds_;
     bool sound_available_; // Sound module available as well as SD-Card with some kind of files
     uint16_t last_error_code_ = 0;
-    ll_status status_message_ = {0};      // Last processed LowLevel status message
-    TrackDef background_track_def_ = {0}; // Current/last background track num
-    TrackDef current_track_def_ = {0};    // Current playing background track num
+    ll_status status_message_ = {0};           // Last processed LowLevel status message
+    TrackDef background_track_def_ = {0};      // Current/last background track
+    TrackDef advert_track_def_ = {0};          // Current/last playing advert track
+    bool current_playing_is_background_ = true; // Current/last playing sound is a background sound
 };
 
 #endif // _SOUND_SYSTEM_H_  HEADER_FILE

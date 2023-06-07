@@ -100,7 +100,7 @@ bool MP3Sound::begin()
 
     myMP3.setRepeatPlayCurrentTrack(false);
     myMP3.setRepeatPlayAllInRoot(false);
-    playSoundAdHoc({num : 2, type : TrackTypes::background, flags : TrackFlags::repeat});
+    playSoundAdHoc({num : 2, type : TrackTypes::background, flags : TrackFlags::repeat}); // Heartbeat "success" sound
     return this->sound_available_;
 }
 
@@ -125,11 +125,15 @@ void MP3Sound::playSoundAdHoc(TrackDef t_track_def)
         background_track_def_ = t_track_def;
         myMP3.stop();
         myMP3.playMp3FolderTrack(background_track_def_.num);
+        background_track_def_ = t_track_def;
+        current_playing_is_background_ = true;
         break;
 
     case TrackTypes::advert:
         myMP3.stop();
         myMP3.playFolderTrack16(DFP_ADVERT_FOLDER, t_track_def.num);
+        advert_track_def_ = t_track_def;
+        current_playing_is_background_ = false;
         break;
 
     default:
@@ -137,9 +141,8 @@ void MP3Sound::playSoundAdHoc(TrackDef t_track_def)
         return;
         break;
     }
-    current_track_def_ = t_track_def;
 
-    // FIXME: Does NOT work yet! Why?
+    // FIXME: Does NOT work! Why?
     if (t_track_def.flags & TrackFlags::repeat)
     {
         myMP3.setRepeatPlayCurrentTrack(true);
@@ -159,11 +162,6 @@ void MP3Sound::playSound(TrackDef t_track_def)
     active_sounds_.push_front(t_track_def);
 }
 
-int MP3Sound::sounds2play()
-{
-    return active_sounds_.size();
-}
-
 void MP3Sound::processSounds(ll_status t_status_message)
 {
     myMP3.loop();
@@ -174,9 +172,17 @@ void MP3Sound::processSounds(ll_status t_status_message)
     DEBUG_PRINTF(" XOR last status " PRINTF_BINARY_PATTERN_INT8 ")\n", PRINTF_BYTE_TO_BINARY_INT8(status_message_.status_bitmask));
 
     // status_bitmask handling
-    if (changed_status & 0b1)
+    if (changed_status & StatusBitmask_initialized)
     {
-        playSound({num : 2, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // OM startup successful
+        playSound({num : 2, type : TrackTypes::advert, pause_after : 1}); // OM startup successful
+    }
+    if (changed_status & StatusBitmask_raspi_power)
+    {
+        playSound({num : 3, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // Initializing ROS
+        // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
+        // TODO: should be "TrackFlags::repeat", but have no ROS ready yet
+        // playSound({num : 1, type : TrackTypes::background, flags : TrackFlags::repeat});
+        playSound({num : 1, type : TrackTypes::background});
     }
 
     status_message_.status_bitmask = t_status_message.status_bitmask;
@@ -190,10 +196,20 @@ void MP3Sound::processSounds(ll_status t_status_message)
     uint16_t current_track = myMP3.getCurrentTrack();
     DEBUG_PRINTF("Status %#04x, track %d\n", status.state, current_track);
 
-    if (current_track_def_.type != TrackTypes::background &&
+    // Do not interrupt advert sound if still playing
+    if (!current_playing_is_background_ &&
         (status.state == DfMp3_StatusState_Playing || status.state == DfMp3_StatusState_Shuffling))
         return;
 
+    // Cosmetic pause after advert sound
+    if (advert_track_def_.pause_after)
+    {
+        DEBUG_PRINTF("Pause left %d\n", advert_track_def_.pause_after);
+        advert_track_def_.pause_after--;
+        return;
+    }
+
+    // Play next in queue
     TrackDef track_def = active_sounds_.back();
     DEBUG_PRINTF("Next (num %d, type %d, flags " PRINTF_BINARY_PATTERN_INT8 ")\n", track_def.num, track_def.type, PRINTF_BYTE_TO_BINARY_INT8(track_def.flags));
     playSoundAdHoc(track_def);
@@ -212,7 +228,7 @@ void MP3Sound::OnPlayFinished(DfMp3 &mp3, DfMp3_PlaySources source, uint16_t tra
 {
     DEBUG_PRINTF("DFPlayer finished track %d\n", track);
     MP3Sound *snd = MP3Sound::GetInstance();
-    if (snd->background_track_def_.num)
+    if (snd->background_track_def_.num && snd->background_track_def_.flags & TrackFlags::repeat)
     {
         snd->playSoundAdHoc(snd->background_track_def_);
     }
