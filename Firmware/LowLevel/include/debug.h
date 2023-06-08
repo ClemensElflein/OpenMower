@@ -17,12 +17,13 @@
 #define _DEBUG_H_
 
 // Define to stream debugging messages via USB
-//#define USB_DEBUG
+#define USB_DEBUG
 
 #ifdef USB_DEBUG
 #define DEBUG_SERIAL Serial
-//#define DfMiniMp3Debug DEBUG_SERIAL
-// Some bloody simple debug wrapper which superfluous '#ifdef USB_DEBUG' ...
+//#define DfMiniMp3Debug DEBUG_SERIAL // Also output DFPlayer IN/OUT cmd data 
+
+// Some bloody simple debug macros which superfluous '#ifdef USB_DEBUG' ...
 #define DEBUG_BEGIN(b) DEBUG_SERIAL.begin(b);
 #define DEBUG_PRINTF(fmt, ...)                   \
     do                                           \

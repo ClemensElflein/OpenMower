@@ -49,12 +49,6 @@
 SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX, 250);
 DfMp3 myMP3(soundSerial);
 
-MP3Sound::MP3Sound()
-{
-    this->playing = false;
-    this->sound_available_ = false;
-}
-
 bool MP3Sound::begin()
 {
     myMP3.begin();
@@ -122,9 +116,8 @@ void MP3Sound::playSoundAdHoc(TrackDef t_track_def)
     switch (t_track_def.type)
     {
     case TrackTypes::background:
-        background_track_def_ = t_track_def;
         myMP3.stop();
-        myMP3.playMp3FolderTrack(background_track_def_.num);
+        myMP3.playMp3FolderTrack(t_track_def.num);
         background_track_def_ = t_track_def;
         current_playing_is_background_ = true;
         break;
@@ -142,7 +135,6 @@ void MP3Sound::playSoundAdHoc(TrackDef t_track_def)
         break;
     }
 
-    // FIXME: Does NOT work! Why?
     if (t_track_def.flags & TrackFlags::repeat)
     {
         myMP3.setRepeatPlayCurrentTrack(true);
@@ -174,7 +166,7 @@ void MP3Sound::processSounds(ll_status t_status_message, ll_high_level_state t_h
     // status_bitmask handling
     if (changed_status & StatusBitmask_initialized)
     {
-        playSound({num : 2, type : TrackTypes::advert, pause_after : 1}); // OM startup successful
+        playSound({num : 2, type : TrackTypes::advert, pauseAfter : 1}); // OM startup successful
     }
     if (changed_status & StatusBitmask_raspi_power)
     {
@@ -182,7 +174,7 @@ void MP3Sound::processSounds(ll_status t_status_message, ll_high_level_state t_h
         // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
         // TODO: should be "TrackFlags::repeat", but have no ROS ready yet
         // playSound({num : 1, type : TrackTypes::background, flags : TrackFlags::repeat});
-        playSound({num : 1, type : TrackTypes::background});
+        playSound({num : 5, type : TrackTypes::background});
     }
 
     status_message_.status_bitmask = t_status_message.status_bitmask;
@@ -202,10 +194,10 @@ void MP3Sound::processSounds(ll_status t_status_message, ll_high_level_state t_h
         return;
 
     // Cosmetic pause after advert sound
-    if (advert_track_def_.pause_after)
+    if (advert_track_def_.pauseAfter)
     {
-        DEBUG_PRINTF("Pause left %d\n", advert_track_def_.pause_after);
-        advert_track_def_.pause_after--;
+        DEBUG_PRINTF("Pause left %d\n", advert_track_def_.pauseAfter);
+        advert_track_def_.pauseAfter--;
         return;
     }
 

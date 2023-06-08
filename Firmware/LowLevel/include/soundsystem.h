@@ -30,32 +30,33 @@
 
 class MP3Sound;                               // forward declaration ...
 typedef DFMiniMp3<SerialPIO, MP3Sound> DfMp3; // ... for a more readable/shorter DfMp3 typedef
+// typedef DFMiniMp3<SerialPIO, MP3Sound, Mp3ChipMH2024K16SS> DfMp3; // Need to be tested
 
 // Non thread safe singleton MP3Sound class
 class MP3Sound
 {
 protected:
-    MP3Sound(); // Singleton constructors always should be private to prevent direct construction via 'new'
+    MP3Sound(){}; // Singleton constructors always should be private to prevent direct construction via 'new'
 
 public:
     enum TrackTypes : uint8_t
     {
         background = 1, // Background tracks are stored in folder mp3 and might be interrupted/aborted by higher priority sounds
         advert,         // Advert tracks are stored in language specific folder, i.e. "01" US or "49" German, and interrupt/stop background sounds
-        advert_raw,     // Raw-Advert tracks are stored in folder advert and interrupt/stop background or advert sounds.
+        advertRaw,      // Raw-Advert tracks are stored in folder advert and interrupt/stop background or advert sounds.
                         // Due to DFPlayer incompatibilities, advert_raw should only be used if you know their drawbacks!
     };
     enum TrackFlags : uint8_t
     {
-        repeat = 0x01,         // Repeat this track, till a new sound get played
-        stopBackground = 0x02, // Stop replay of current running background track after this sound got played
+        repeat = 0x01,         // Repeat this track. This flag is limited to background sounds!
+        stopBackground = 0x02, // Stop replaying of a current running background track after this sound got played
     };
     struct TrackDef
     {
         uint16_t num;
         TrackTypes type;
-        uint8_t flags = 0;       // See TrackFlags
-        uint8_t pause_after = 0; // Cosmetic pause in seconds, after advert track got played, before the next get processed
+        uint8_t flags = 0;      // See TrackFlags
+        uint8_t pauseAfter = 0; // Cosmetic pause in seconds, after advert track got played, before the next get processed
     };
 
     bool playing;
@@ -80,12 +81,12 @@ public:
 
 private:
     std::list<TrackDef> active_sounds_;
-    bool sound_available_; // Sound module available as well as SD-Card with some kind of files
-    uint16_t last_error_code_ = 0;
-    ll_status status_message_ = {0};            // Last processed LowLevel status message
-    TrackDef background_track_def_ = {0};       // Current/last background track
-    TrackDef advert_track_def_ = {0};           // Current/last playing advert track
-    bool current_playing_is_background_ = true; // Current/last playing sound is a background sound
+    bool sound_available_ = false;        // Sound module available as well as SD-Card with some kind of files
+    uint16_t last_error_code_ = 0;        // Last DFPlayer error code
+    ll_status status_message_ = {0};      // Last processed LowLevel status message
+    TrackDef background_track_def_ = {0}; // Current/last background track
+    TrackDef advert_track_def_ = {0};     // Current/last playing advert track
+    bool current_playing_is_background_;  // Current/last playing sound is a background sound
 };
 
 #endif // _SOUND_SYSTEM_H_  HEADER_FILE
