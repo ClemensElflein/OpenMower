@@ -719,7 +719,7 @@ void loop()
 #ifdef ENABLE_SOUND_MODULE
         if (sound_available)
         {
-            my_sound->processSounds(status_message, last_high_level_state);
+            my_sound->processSounds(status_message.status_bitmask, last_high_level_state.current_mode);
         }
 #endif
     }

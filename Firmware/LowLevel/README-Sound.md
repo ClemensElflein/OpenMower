@@ -28,7 +28,9 @@ Due to some incompatibilities with the clone chips, we unfortunately can't use D
 So we had to trick a little bit with the folder structure:
 
 - OM's old original sounds are now in subfolder 'advert' as they're typically spoken adverts, which may interrupt background sounds like noises or music. But they're here mainly for future usage, for the case that the internal "advert" limitations could be fixed or worked around some time
-- Folder 'mp3' contains background sounds (noises, music)
+- Folder 'mp3/000?' contains background sounds (noises, music), which are hardcoded within the sources
+- Folder 'mp3/02??' contains background sounds (noises, music), which get played randomly
+  during HighLevelMode-Autonomous. If you add sounds here, you also need to change `#define ???`
 - Due to the case that some DFPlayer don't play 'adverts' without a current running background sound, as well as someone might prefer no background sounds at all, the 'advert' sounds got also copied to a `playFolderTrack16()`.
   At the moment only folder '01' (US English), but a folder like '49' (German) might follow some day, or get added by you when customizing
 - The single sound in the root folder, is used/required for those

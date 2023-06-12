@@ -15,4 +15,4 @@
 0013                  	ups, I did it again
 0014					Hallo, ich bin Tobi, dein intelligenter Rasemäher, Rasenpflege ist mein Beruf
 0015					Hello, I am Tobi, your smart mower, green care ist my profession
-
+0016                    Robot operating system start up successful

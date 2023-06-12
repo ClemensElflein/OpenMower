@@ -104,6 +104,7 @@ void MP3Sound::setVolume(uint8_t t_vol) // scales from 0 to 100 %
     uint8_t val = (uint8_t)(30.0 / 100.0 * (double)t_vol);
     DEBUG_PRINTF("Set volume %d\n", val);
     myMP3.setVolume(val);
+    delay(50); // Still (sometimes) required for "DFR LISP3"
 }
 
 void MP3Sound::playSoundAdHoc(TrackDef t_track_def)
@@ -154,14 +155,15 @@ void MP3Sound::playSound(TrackDef t_track_def)
     active_sounds_.push_front(t_track_def);
 }
 
-void MP3Sound::processSounds(ll_status t_status_message, ll_high_level_state t_high_level_state)
+void MP3Sound::processSounds(uint8_t t_status_bitmask, uint8_t t_high_level_mode)
 {
     myMP3.loop();
 
-    const uint8_t changed_status = t_status_message.status_bitmask ^ status_message_.status_bitmask;
+    const uint8_t changed_status = t_status_bitmask ^ status_bitmask_;
     DEBUG_PRINTF("Changed status " PRINTF_BINARY_PATTERN_INT8 "\t", PRINTF_BYTE_TO_BINARY_INT8(changed_status));
-    DEBUG_PRINTF("(new status " PRINTF_BINARY_PATTERN_INT8, PRINTF_BYTE_TO_BINARY_INT8(t_status_message.status_bitmask));
-    DEBUG_PRINTF(" XOR last status " PRINTF_BINARY_PATTERN_INT8 ")\n", PRINTF_BYTE_TO_BINARY_INT8(status_message_.status_bitmask));
+    DEBUG_PRINTF("(new status " PRINTF_BINARY_PATTERN_INT8, PRINTF_BYTE_TO_BINARY_INT8(t_status_bitmask));
+    DEBUG_PRINTF(" XOR last status " PRINTF_BINARY_PATTERN_INT8 "), ", PRINTF_BYTE_TO_BINARY_INT8(status_bitmask_));
+    DEBUG_PRINTF("high level mode %d\n", t_high_level_mode);
 
     // status_bitmask handling
     if (changed_status & StatusBitmask_initialized)
@@ -172,12 +174,19 @@ void MP3Sound::processSounds(ll_status t_status_message, ll_high_level_state t_h
     {
         playSound({num : 3, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // Initializing ROS
         // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
-        // TODO: should be "TrackFlags::repeat", but have no ROS ready yet
-        // playSound({num : 1, type : TrackTypes::background, flags : TrackFlags::repeat});
-        playSound({num : 5, type : TrackTypes::background});
+        playSound({num : 5, type : TrackTypes::background, flags : TrackFlags::repeat});
     }
+    status_bitmask_ = t_status_bitmask;
 
-    status_message_.status_bitmask = t_status_message.status_bitmask;
+    // High level mode handling
+    if(t_high_level_mode != high_level_mode_) {
+        if(high_level_mode_ == 0 && t_high_level_mode > 0)
+        {
+            playSound({num : 16, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // ROS startup successful
+        }
+
+    }
+    high_level_mode_ = t_high_level_mode;
 
     // Process sound queue
     int n = active_sounds_.size();
