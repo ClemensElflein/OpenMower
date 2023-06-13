@@ -27,6 +27,8 @@
 #define DFP_ADVERT_FOLDER 1U
 #define DFP_ONLINE_TIMEOUT 5000
 #define BUFFERSIZE 100
+#define PROCESS_CYCLETIME 500
+#define GPS_SOUND_CYCLETIME 3000
 
 class MP3Sound;                               // forward declaration ...
 typedef DFMiniMp3<SerialPIO, MP3Sound> DfMp3; // ... for a more readable/shorter DfMp3 typedef
@@ -55,8 +57,8 @@ public:
     {
         uint16_t num;
         TrackTypes type;
-        uint8_t flags = 0;      // See TrackFlags
-        uint8_t pauseAfter = 0; // Cosmetic pause in seconds, after advert track got played, before the next get processed
+        uint8_t flags = 0;            // See TrackFlags
+        unsigned long pauseAfter = 0; // Cosmetic pause in ms, after advert track got played, before the next sound get processed from queue.
     };
 
     bool playing;
@@ -65,12 +67,12 @@ public:
     MP3Sound(MP3Sound &other) = delete;        // Singletons should not be cloneable
     void operator=(const MP3Sound &) = delete; // Singletons should not be assignable
 
-    bool begin();                                                            // Init serial stream, soundmodule and sound_available_
-    void playSound(TrackDef t_track_def);                                    // Play sound track number. This method writes sound track nr in a list, the method processSounds() (has to run in loop)
-                                                                             // will play the sounds according to the list
-    void playSoundAdHoc(TrackDef t_track_def);                               // Play sound track number immediately without waiting until the end of sound
-    void setVolume(uint8_t t_vol);                                           // Scales loudness from 0 to 100 %
-    void processSounds(uint8_t t_status_bitmask, uint8_t t_high_level_mode); // This method has to be called cyclic, e.g. every second.
+    bool begin();                                                             // Init serial stream, soundmodule and sound_available_
+    void playSound(TrackDef t_track_def);                                     // Play sound track number. This method writes sound track nr in a list, the method processSounds() (has to run in loop)
+                                                                              // will play the sounds according to the list
+    void playSoundAdHoc(TrackDef t_track_def);                                // Play sound track number immediately without waiting until the end of sound
+    void setVolume(uint8_t t_vol);                                            // Scales loudness from 0 to 100 %
+    void processSounds(ll_status t_ll_state, ll_high_level_state t_hl_state); // This method has to be called cyclic, e.g. every second.
 
     // DFMiniMP3 specific notification methods
     static void OnError(DfMp3 &mp3, uint16_t errorCode);
@@ -81,13 +83,17 @@ public:
 
 private:
     std::list<TrackDef> active_sounds_;
-    bool sound_available_ = false;        // Sound module available as well as SD-Card with some kind of files
-    uint16_t last_error_code_ = 0;        // Last DFPlayer error code
-    uint8_t status_bitmask_ = {0};        // Last processed LowLevel status bitmask
-    uint8_t high_level_mode_ = 0;         // Last processed high level mode
-    TrackDef background_track_def_ = {0}; // Current/last background track
-    TrackDef advert_track_def_ = {0};     // Current/last playing advert track
-    bool current_playing_is_background_;  // Current/last playing sound is a background sound
+    bool sound_available_ = false;                  // Sound module available as well as SD-Card with some kind of files
+    uint16_t last_error_code_ = 0;                  // Last DFPlayer error code
+    ll_status last_ll_state_ = {0};                 // Last processed low-level state
+    ll_high_level_state last_hl_state_ = {0};       // Last processed high-level state
+    TrackDef background_track_def_ = {0};           // Current/last background track
+    TrackDef advert_track_def_ = {0};               // Current/last playing advert track
+    bool current_playing_is_background_;            // Current/last playing sound is a background sound
+    unsigned long hl_mode_started_;                 // Millis when the last high-level mode started. 0 if idle.
+    unsigned long next_process_cycle_ = millis();   // Next cycle for sound processing
+    unsigned long next_gps_sound_cycle_ = millis(); // Next cycle when a GPS ping sound got played
+    unsigned long last_advert_end_;                 // Millis when the last played advert sound ended. Used for pauseAfter calculation
 };
 
 #endif // _SOUND_SYSTEM_H_  HEADER_FILE

@@ -104,7 +104,7 @@ void MP3Sound::setVolume(uint8_t t_vol) // scales from 0 to 100 %
     uint8_t val = (uint8_t)(30.0 / 100.0 * (double)t_vol);
     DEBUG_PRINTF("Set volume %d\n", val);
     myMP3.setVolume(val);
-    delay(50); // Still (sometimes) required for "DFR LISP3"
+    delay(50); // (sometimes) required for "DFR LISP3"
 }
 
 void MP3Sound::playSoundAdHoc(TrackDef t_track_def)
@@ -118,14 +118,18 @@ void MP3Sound::playSoundAdHoc(TrackDef t_track_def)
     {
     case TrackTypes::background:
         myMP3.stop();
+        delay(50); // (sometimes) required for "MH2024K-24SS"
         myMP3.playMp3FolderTrack(t_track_def.num);
+        delay(50); // (sometimes) required for "MH2024K-24SS"
         background_track_def_ = t_track_def;
         current_playing_is_background_ = true;
         break;
 
     case TrackTypes::advert:
         myMP3.stop();
+        delay(50); // (sometimes) required for "MH2024K-24SS"
         myMP3.playFolderTrack16(DFP_ADVERT_FOLDER, t_track_def.num);
+        delay(50); // (sometimes) required for "MH2024K-24SS"
         advert_track_def_ = t_track_def;
         current_playing_is_background_ = false;
         break;
@@ -149,26 +153,37 @@ void MP3Sound::playSoundAdHoc(TrackDef t_track_def)
 
 void MP3Sound::playSound(TrackDef t_track_def)
 {
+    DEBUG_PRINTF("playSound(num %d, type %d, flags " PRINTF_BINARY_PATTERN_INT8 ")\n", t_track_def.num, t_track_def.type, PRINTF_BYTE_TO_BINARY_INT8(t_track_def.flags));
+
     if (!this->sound_available_ || (active_sounds_.size() == BUFFERSIZE))
         return;
 
     active_sounds_.push_front(t_track_def);
 }
 
-void MP3Sound::processSounds(uint8_t t_status_bitmask, uint8_t t_high_level_mode)
+void MP3Sound::processSounds(ll_status t_ll_state, ll_high_level_state t_hl_state)
 {
+    if (!this->sound_available_)
+        return;
+
     myMP3.loop();
 
-    const uint8_t changed_status = t_status_bitmask ^ status_bitmask_;
-    DEBUG_PRINTF("Changed status " PRINTF_BINARY_PATTERN_INT8 "\t", PRINTF_BYTE_TO_BINARY_INT8(changed_status));
-    DEBUG_PRINTF("(new status " PRINTF_BINARY_PATTERN_INT8, PRINTF_BYTE_TO_BINARY_INT8(t_status_bitmask));
-    DEBUG_PRINTF(" XOR last status " PRINTF_BINARY_PATTERN_INT8 "), ", PRINTF_BYTE_TO_BINARY_INT8(status_bitmask_));
-    DEBUG_PRINTF("high level mode %d\n", t_high_level_mode);
+    if (millis() < next_process_cycle_)
+    {
+        return;
+    }
+    next_process_cycle_ = millis() + PROCESS_CYCLETIME;
 
-    // status_bitmask handling
+    const uint8_t changed_status = t_ll_state.status_bitmask ^ last_ll_state_.status_bitmask;
+    DEBUG_PRINTF("Changed status_bitmask " PRINTF_BINARY_PATTERN_INT8 " ", PRINTF_BYTE_TO_BINARY_INT8(changed_status));
+    DEBUG_PRINTF("(new status " PRINTF_BINARY_PATTERN_INT8, PRINTF_BYTE_TO_BINARY_INT8(t_ll_state.status_bitmask));
+    DEBUG_PRINTF(" XOR last status " PRINTF_BINARY_PATTERN_INT8 "), ", PRINTF_BYTE_TO_BINARY_INT8(last_ll_state_.status_bitmask));
+    DEBUG_PRINTF(", HL mode %d\n", t_hl_state.current_mode);
+
+    // LL status_bitmask changed
     if (changed_status & StatusBitmask_initialized)
     {
-        playSound({num : 2, type : TrackTypes::advert, pauseAfter : 1}); // OM startup successful
+        playSound({num : 2, type : TrackTypes::advert, pauseAfter : 1500}); // OM startup successful
     }
     if (changed_status & StatusBitmask_raspi_power)
     {
@@ -176,17 +191,60 @@ void MP3Sound::processSounds(uint8_t t_status_bitmask, uint8_t t_high_level_mode
         // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
         playSound({num : 5, type : TrackTypes::background, flags : TrackFlags::repeat});
     }
-    status_bitmask_ = t_status_bitmask;
+    last_ll_state_.status_bitmask = t_ll_state.status_bitmask;
 
-    // High level mode handling
-    if(t_high_level_mode != high_level_mode_) {
-        if(high_level_mode_ == 0 && t_high_level_mode > 0)
+    // HL mode changed
+    if (t_hl_state.current_mode != last_hl_state_.current_mode)
+    {
+        if (last_hl_state_.current_mode == 0 && t_hl_state.current_mode > 0)
         {
             playSound({num : 16, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // ROS startup successful
         }
+        switch (t_hl_state.current_mode)
+        {
+        case MODE_RECORDING:
+            hl_mode_started_ = millis();
+            playSoundAdHoc({num : 4, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // Starting map area recording
+            playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500});                       // Waiting for RTK GPS signal
+            break;
 
+        case MODE_AUTONOMOUS:
+            hl_mode_started_ = millis();
+            playSoundAdHoc({num : 12, type : TrackTypes::advert, flags : TrackFlags::stopBackground, pauseAfter : 1500}); // Stay back, autonomous robot mower in use
+            playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500});                                           // Waiting for RTK GPS signal
+            break;
+
+        default:
+            hl_mode_started_ = 0;
+            break;
+        }
     }
-    high_level_mode_ = t_high_level_mode;
+    last_hl_state_.current_mode = t_hl_state.current_mode;
+
+    // GPS quality handling
+    if (t_hl_state.gps_quality != last_hl_state_.gps_quality)
+    {
+        if (millis() >= next_gps_sound_cycle_)
+        {
+            if (t_hl_state.gps_quality < 50)
+            {
+                playSound({num : 20, type : TrackTypes::background}); // GPS poor ping
+            }
+            else if (t_hl_state.gps_quality < 75)
+            {
+                playSound({num : 21, type : TrackTypes::background}); // GPS acceptable ping
+            }
+            else
+            {
+                playSound({num : 22, type : TrackTypes::background}); // GPS good ping
+            }
+        }
+        else
+        {
+            next_gps_sound_cycle_ = millis() + GPS_SOUND_CYCLETIME;
+        }
+    }
+    last_hl_state_.gps_quality = t_hl_state.gps_quality;
 
     // Process sound queue
     int n = active_sounds_.size();
@@ -203,10 +261,8 @@ void MP3Sound::processSounds(uint8_t t_status_bitmask, uint8_t t_high_level_mode
         return;
 
     // Cosmetic pause after advert sound
-    if (advert_track_def_.pauseAfter)
+    if (advert_track_def_.pauseAfter && last_advert_end_ + advert_track_def_.pauseAfter > millis())
     {
-        DEBUG_PRINTF("Pause left %d\n", advert_track_def_.pauseAfter);
-        advert_track_def_.pauseAfter--;
         return;
     }
 
@@ -229,6 +285,10 @@ void MP3Sound::OnPlayFinished(DfMp3 &mp3, DfMp3_PlaySources source, uint16_t tra
 {
     DEBUG_PRINTF("DFPlayer finished track %d\n", track);
     MP3Sound *snd = MP3Sound::GetInstance();
+    if (!snd->current_playing_is_background_)
+    {
+        snd->last_advert_end_ = millis();
+    }
     if (snd->background_track_def_.num && snd->background_track_def_.flags & TrackFlags::repeat)
     {
         snd->playSoundAdHoc(snd->background_track_def_);

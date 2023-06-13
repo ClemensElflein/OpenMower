@@ -205,13 +205,13 @@ void updateEmergency()
 #ifdef ENABLE_SOUND_MODULE
         if (emergency_state & 0b11000 & (last_emergency & 0b11000) != (emergency_state & 0b11000))
         {
-            my_sound->playSoundAdHoc({num : 9, type : MP3Sound::TrackTypes::advert, pauseAfter : 1}); // Emergency wheel lift sensor triggered
-            my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                  // "Bee daa, Bee daa" Minion fire alarm
+            my_sound->playSoundAdHoc({num : 9, type : MP3Sound::TrackTypes::advert, pauseAfter : 1500}); // Emergency wheel lift sensor triggered
+            my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                     // "Bee daa, Bee daa" Minion fire alarm
         }
         if (emergency_state & 0b00110 & (last_emergency & 0b00110) != (emergency_state & 0b00110))
         {
-            my_sound->playSoundAdHoc({num : 8, type : MP3Sound::TrackTypes::advert, pauseAfter : 1}); // Emergency stop button triggered
-            my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                  // "Bee daa, Bee daa" Minion fire alarm
+            my_sound->playSoundAdHoc({num : 8, type : MP3Sound::TrackTypes::advert, pauseAfter : 1500}); // Emergency stop button triggered
+            my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                     // "Bee daa, Bee daa" Minion fire alarm
         }
 #endif
     }
@@ -473,7 +473,7 @@ void setup()
     {
         p.neoPixelSetValue(0, 0, 0, 255, true);
         my_sound->setVolume(100);
-        my_sound->playSoundAdHoc({num : 1, type : MP3Sound::TrackTypes::advert, pauseAfter : 1}); // Hi I'm steve
+        my_sound->playSoundAdHoc({num : 1, type : MP3Sound::TrackTypes::advert, pauseAfter : 1500}); // Hi I'm steve
         p.neoPixelSetValue(0, 255, 255, 0, true);
     }
     else
@@ -716,13 +716,11 @@ void loop()
     {
         manageUILEDS();
         last_UILED_millis = now;
-#ifdef ENABLE_SOUND_MODULE
-        if (sound_available)
-        {
-            my_sound->processSounds(status_message.status_bitmask, last_high_level_state.current_mode);
-        }
-#endif
     }
+
+#ifdef ENABLE_SOUND_MODULE
+    my_sound->processSounds(status_message, last_high_level_state);
+#endif
 }
 
 void sendMessage(void *message, size_t size)
