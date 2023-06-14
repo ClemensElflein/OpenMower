@@ -719,7 +719,7 @@ void loop()
     }
 
 #ifdef ENABLE_SOUND_MODULE
-    my_sound->processSounds(status_message, last_high_level_state);
+    my_sound->processSounds(status_message, ROS_running, last_high_level_state);
 #endif
 }
 

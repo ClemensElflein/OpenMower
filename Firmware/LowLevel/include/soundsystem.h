@@ -26,6 +26,7 @@
 
 #define DFP_ADVERT_FOLDER 1U
 #define DFP_ONLINE_TIMEOUT 5000
+#define DFP_REDUNDANT_ONPLAYFINISH_CB_MAX 300 // Max. ms to detect a recurring OnPlayFinish() CB call as redundant
 #define BUFFERSIZE 100
 #define PROCESS_CYCLETIME 500
 #define GPS_SOUND_CYCLETIME 3000
@@ -67,12 +68,12 @@ public:
     MP3Sound(MP3Sound &other) = delete;        // Singletons should not be cloneable
     void operator=(const MP3Sound &) = delete; // Singletons should not be assignable
 
-    bool begin();                                                             // Init serial stream, soundmodule and sound_available_
-    void playSound(TrackDef t_track_def);                                     // Play sound track number. This method writes sound track nr in a list, the method processSounds() (has to run in loop)
-                                                                              // will play the sounds according to the list
-    void playSoundAdHoc(TrackDef t_track_def);                                // Play sound track number immediately without waiting until the end of sound
-    void setVolume(uint8_t t_vol);                                            // Scales loudness from 0 to 100 %
-    void processSounds(ll_status t_ll_state, ll_high_level_state t_hl_state); // This method has to be called cyclic, e.g. every second.
+    bool begin();                                                                                 // Init serial stream, soundmodule and sound_available_
+    void playSound(TrackDef t_track_def);                                                         // Play sound track number. This method writes sound track nr in a list, the method processSounds() (has to run in loop)
+                                                                                                  // will play the sounds according to the list
+    void playSoundAdHoc(TrackDef t_track_def);                                                    // Play sound track number immediately without waiting until the end of sound
+    void setVolume(uint8_t t_vol);                                                                // Scales loudness from 0 to 100 %
+    void processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_level_state t_hl_state); // This method has to be called cyclic, e.g. every second.
 
     // DFMiniMP3 specific notification methods
     static void OnError(DfMp3 &mp3, uint16_t errorCode);
@@ -83,15 +84,22 @@ public:
 
 private:
     std::list<TrackDef> active_sounds_;
-    bool sound_available_ = false;                  // Sound module available as well as SD-Card with some kind of files
-    uint16_t last_error_code_ = 0;                  // Last DFPlayer error code
-    ll_status last_ll_state_ = {0};                 // Last processed low-level state
-    ll_high_level_state last_hl_state_ = {0};       // Last processed high-level state
-    TrackDef background_track_def_ = {0};           // Current/last background track
-    TrackDef advert_track_def_ = {0};               // Current/last playing advert track
-    bool current_playing_is_background_;            // Current/last playing sound is a background sound
-    unsigned long hl_mode_started_;                 // Millis when the last high-level mode started. 0 if idle.
-    unsigned long next_process_cycle_ = millis();   // Next cycle for sound processing
+    bool sound_available_ = false;                // Sound module available as well as SD-Card with some kind of files
+    unsigned long next_process_cycle_ = millis(); // Next cycle for sound processing
+
+    uint16_t last_error_code_ = 0;            // Last DFPlayer error code
+    uint16_t last_finished_cb_track_ = 0;     // Last DFPlayer OnPlayFinished() callback track. Required for redundant call detection
+    unsigned long last_finished_cb_call_ = 0; // Last DFPlayer OnPlayFinished() callback call (ms). Required for redundant call detection
+
+    ll_status last_ll_state_ = {0};           // Last processed low-level state
+    ll_high_level_state last_hl_state_ = {0}; // Last processed high-level state
+    unsigned long hl_mode_started_;           // Millis when the last high-level mode started. 0 if idle.
+    bool last_ros_running_ = false;            // Last processed ros_running state
+
+    TrackDef background_track_def_ = {0}; // Current/last background track
+    TrackDef advert_track_def_ = {0};     // Current/last playing advert track
+    bool current_playing_is_background_;  // Current/last playing sound is a background sound
+
     unsigned long next_gps_sound_cycle_ = millis(); // Next cycle when a GPS ping sound got played
     unsigned long last_advert_end_;                 // Millis when the last played advert sound ended. Used for pauseAfter calculation
 };

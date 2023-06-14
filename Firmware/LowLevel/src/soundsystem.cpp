@@ -28,12 +28,13 @@
  * playAdvertisement()      |     yes*4     |             |   yes*4      |              |   yes   |
  * setRepeatPlayAllInRoot() |   Plays ALL   |             |     yes      |              |         |
  * getCurrentTrack()        |      *3       |             |     *4       |              |    *3   |
- * OnPlayFinished()         | Play & Advert |             |     *6       |              | Play&Adv|
+ * OnPlayFinished()         | Play&Advert*5 |             |   *5,*6      |              | Play&Adv|
  * -------------------------------------------------------------------------------------------------------
  * *1 = Autoplay (unasked) all (at least) root files.
  * *2 = Highly depends on SD-Card and content
  * *3 = Advert track get returned with an internal track number
  * *4 = Advert get only played with a current running play sound
+ * *5 = Sometimes called a second time within 10-150ms
  * *6 = Two callbacks (advert & play) at the end of play sound
  *
  * Founded by this evaluation:
@@ -161,7 +162,7 @@ void MP3Sound::playSound(TrackDef t_track_def)
     active_sounds_.push_front(t_track_def);
 }
 
-void MP3Sound::processSounds(ll_status t_ll_state, ll_high_level_state t_hl_state)
+void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_level_state t_hl_state)
 {
     if (!this->sound_available_)
         return;
@@ -176,9 +177,9 @@ void MP3Sound::processSounds(ll_status t_ll_state, ll_high_level_state t_hl_stat
 
     const uint8_t changed_status = t_ll_state.status_bitmask ^ last_ll_state_.status_bitmask;
     DEBUG_PRINTF("Changed status_bitmask " PRINTF_BINARY_PATTERN_INT8 " ", PRINTF_BYTE_TO_BINARY_INT8(changed_status));
-    DEBUG_PRINTF("(new status " PRINTF_BINARY_PATTERN_INT8, PRINTF_BYTE_TO_BINARY_INT8(t_ll_state.status_bitmask));
-    DEBUG_PRINTF(" XOR last status " PRINTF_BINARY_PATTERN_INT8 "), ", PRINTF_BYTE_TO_BINARY_INT8(last_ll_state_.status_bitmask));
-    DEBUG_PRINTF(", HL mode %d\n", t_hl_state.current_mode);
+    DEBUG_PRINTF("(new status " PRINTF_BINARY_PATTERN_INT8 " ", PRINTF_BYTE_TO_BINARY_INT8(t_ll_state.status_bitmask));
+    DEBUG_PRINTF("XOR last status " PRINTF_BINARY_PATTERN_INT8 "), ", PRINTF_BYTE_TO_BINARY_INT8(last_ll_state_.status_bitmask));
+    DEBUG_PRINTF("HL mode %d\n", t_hl_state.current_mode);
 
     // LL status_bitmask changed
     if (changed_status & StatusBitmask_initialized)
@@ -193,25 +194,28 @@ void MP3Sound::processSounds(ll_status t_ll_state, ll_high_level_state t_hl_stat
     }
     last_ll_state_.status_bitmask = t_ll_state.status_bitmask;
 
+    // ROS running changed
+    if (t_ros_running && !last_ros_running_)
+    {
+        playSound({num : 16, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // ROS startup successful
+    }
+    last_ros_running_ = t_ros_running;
+
     // HL mode changed
     if (t_hl_state.current_mode != last_hl_state_.current_mode)
     {
-        if (last_hl_state_.current_mode == 0 && t_hl_state.current_mode > 0)
-        {
-            playSound({num : 16, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // ROS startup successful
-        }
         switch (t_hl_state.current_mode)
         {
         case MODE_RECORDING:
             hl_mode_started_ = millis();
-            playSoundAdHoc({num : 4, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // Starting map area recording
-            playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500});                       // Waiting for RTK GPS signal
+            playSound({num : 4, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // Starting map area recording
+            playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500});                  // Waiting for RTK GPS signal
             break;
 
         case MODE_AUTONOMOUS:
             hl_mode_started_ = millis();
-            playSoundAdHoc({num : 12, type : TrackTypes::advert, flags : TrackFlags::stopBackground, pauseAfter : 1500}); // Stay back, autonomous robot mower in use
-            playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500});                                           // Waiting for RTK GPS signal
+            playSound({num : 12, type : TrackTypes::advert, flags : TrackFlags::stopBackground, pauseAfter : 1500}); // Stay back, autonomous robot mower in use
+            playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500});                                      // Waiting for RTK GPS signal
             break;
 
         default:
@@ -253,7 +257,7 @@ void MP3Sound::processSounds(ll_status t_ll_state, ll_high_level_state t_hl_stat
 
     DfMp3_Status status = myMP3.getStatus();
     uint16_t current_track = myMP3.getCurrentTrack();
-    DEBUG_PRINTF("Status %#04x, track %d\n", status.state, current_track);
+    // DEBUG_PRINTF("Status %#04x, track %d\n", status.state, current_track);
 
     // Do not interrupt advert sound if still playing
     if (!current_playing_is_background_ &&
@@ -283,8 +287,18 @@ void MP3Sound::OnError(DfMp3 &mp3, uint16_t errorCode)
 
 void MP3Sound::OnPlayFinished(DfMp3 &mp3, DfMp3_PlaySources source, uint16_t track)
 {
-    DEBUG_PRINTF("DFPlayer finished track %d\n", track);
+    DEBUG_PRINTF("DFPlayer finished track %d (%lu ms)\n", track, millis());
     MP3Sound *snd = MP3Sound::GetInstance();
+
+    // Redundant CB call?
+    if (track == snd->last_finished_cb_track_ && millis() < snd->last_finished_cb_call_ + DFP_REDUNDANT_ONPLAYFINISH_CB_MAX)
+    {
+        DEBUG_PRINTF("DFPlayer redundant OnPLayFinish() call\n");
+        return;
+    }
+    snd->last_finished_cb_track_ = track;
+    snd->last_finished_cb_call_ = millis();
+
     if (!snd->current_playing_is_background_)
     {
         snd->last_advert_end_ = millis();
