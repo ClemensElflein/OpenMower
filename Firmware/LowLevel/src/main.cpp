@@ -203,14 +203,14 @@ void updateEmergency()
         manageUILEDS();
 
 #ifdef ENABLE_SOUND_MODULE
-        if (emergency_state & 0b11000 & (last_emergency & 0b11000) != (emergency_state & 0b11000))
+        if (emergency_state & 0b11000)
         {
-            my_sound->playSoundAdHoc({num : 9, type : MP3Sound::TrackTypes::advert, pauseAfter : 1500}); // Emergency wheel lift sensor triggered
+            my_sound->playSoundAdHoc({num : 9, type : MP3Sound::TrackTypes::advert, pauseAfter : 500}); // Emergency wheel lift sensor triggered
             my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                     // "Bee daa, Bee daa" Minion fire alarm
         }
-        if (emergency_state & 0b00110 & (last_emergency & 0b00110) != (emergency_state & 0b00110))
+        if (emergency_state & 0b00110)
         {
-            my_sound->playSoundAdHoc({num : 8, type : MP3Sound::TrackTypes::advert, pauseAfter : 1500}); // Emergency stop button triggered
+            my_sound->playSoundAdHoc({num : 8, type : MP3Sound::TrackTypes::advert, pauseAfter : 500}); // Emergency stop button triggered
             my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                     // "Bee daa, Bee daa" Minion fire alarm
         }
 #endif
