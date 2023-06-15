@@ -225,8 +225,8 @@ void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_l
     }
     last_hl_state_.current_mode = t_hl_state.current_mode;
 
-    // GPS quality handling
-    if (t_hl_state.gps_quality != last_hl_state_.gps_quality)
+    // GPS quality ping during area recording
+    if (t_hl_state.gps_quality != last_hl_state_.gps_quality && t_hl_state.current_mode == MODE_RECORDING)
     {
         if (millis() >= next_gps_sound_cycle_)
         {
