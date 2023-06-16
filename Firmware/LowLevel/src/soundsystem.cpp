@@ -192,6 +192,16 @@ void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_l
         // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
         playSound({num : 5, type : TrackTypes::background, flags : TrackFlags::repeat});
     }
+    if (changed_status & StatusBitmask_rain)
+    {
+        if (t_hl_state.current_mode == MODE_AUTONOMOUS && !((hl_mode_flags_ & ModeFlags::rainDetected) || (hl_mode_flags_ & ModeFlags::docking)))
+        {
+            playSoundAdHoc({num : 10, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // Rain detected, heading back to base
+            playSound({num : (uint16_t)(10 + (rand() % 2)), type : TrackTypes::background});           // Play background track 10 or 11 by random
+            hl_mode_flags_ |= ModeFlags::docking;
+        }
+        hl_mode_flags_ |= ModeFlags::rainDetected;
+    }
     last_ll_state_.status_bitmask = t_ll_state.status_bitmask;
 
     // ROS running changed
@@ -207,45 +217,64 @@ void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_l
         switch (t_hl_state.current_mode)
         {
         case MODE_RECORDING:
+            hl_mode_flags_ |= ModeFlags::started;
             hl_mode_started_ = millis();
             playSound({num : 4, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // Starting map area recording
-            playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500});                  // Waiting for RTK GPS signal
+            if (t_hl_state.gps_quality < 75)
+                playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500}); // Waiting for RTK GPS signal
             break;
 
         case MODE_AUTONOMOUS:
+            hl_mode_flags_ |= ModeFlags::started;
             hl_mode_started_ = millis();
             playSound({num : 12, type : TrackTypes::advert, flags : TrackFlags::stopBackground, pauseAfter : 1500}); // Stay back, autonomous robot mower in use
-            playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500});                                      // Waiting for RTK GPS signal
+            if (t_hl_state.gps_quality < 75)
+                playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500}); // Waiting for RTK GPS signal
             break;
 
         default:
             hl_mode_started_ = 0;
+            hl_mode_flags_ = 0;
             break;
         }
     }
     last_hl_state_.current_mode = t_hl_state.current_mode;
 
-    // GPS quality ping during area recording
-    if (t_hl_state.gps_quality != last_hl_state_.gps_quality && t_hl_state.current_mode == MODE_RECORDING)
+    // GPS quality changed
+    if (t_hl_state.gps_quality != last_hl_state_.gps_quality)
     {
-        if (millis() >= next_gps_sound_cycle_)
+        switch (t_hl_state.current_mode)
         {
+        case MODE_RECORDING:
+            if (millis() < next_gps_sound_cycle_)
+                break;
+
+            // Ping only rated GPS quality changes
             if (t_hl_state.gps_quality < 50)
             {
-                playSound({num : 20, type : TrackTypes::background}); // GPS poor ping
+                if (last_hl_state_.gps_quality >= 50)
+                    playSound({num : 20, type : TrackTypes::background}); // GPS poor ping
             }
             else if (t_hl_state.gps_quality < 75)
             {
-                playSound({num : 21, type : TrackTypes::background}); // GPS acceptable ping
+                if (last_hl_state_.gps_quality < 50 || last_hl_state_.gps_quality >= 75)
+                    playSound({num : 21, type : TrackTypes::background}); // GPS acceptable ping
             }
-            else
-            {
+            else if (last_hl_state_.gps_quality < 75)
                 playSound({num : 22, type : TrackTypes::background}); // GPS good ping
-            }
-        }
-        else
-        {
+
             next_gps_sound_cycle_ = millis() + GPS_SOUND_CYCLETIME;
+            break;
+
+        case MODE_AUTONOMOUS:
+            if (hl_mode_flags_ & ModeFlags::initialGpsFix || t_hl_state.gps_quality < 75)
+                break;
+            playSound({num : 12, type : TrackTypes::background}); // Stalking "Pink Panther"
+            hl_mode_flags_ |= ModeFlags::initialGpsFix;
+            break;
+
+        default:
+            break;
         }
     }
     last_hl_state_.gps_quality = t_hl_state.gps_quality;

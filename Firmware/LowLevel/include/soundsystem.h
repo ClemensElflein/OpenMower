@@ -61,6 +61,14 @@ public:
         uint8_t flags = 0;            // See TrackFlags
         unsigned long pauseAfter = 0; // Cosmetic pause in ms, after advert track got played, before the next sound get processed from queue.
     };
+    // Describe specific (assumed) mode flags
+    enum ModeFlags : uint8_t
+    {
+        started = 0x01,       // Mode started
+        initialGpsFix = 0x02, // Got an initial GPS "fix", by which we can assume that i.e. the mower drive to his mowing start point
+        rainDetected = 0x04,  // LL rain sensor signal received
+        docking = 0x08,       // Heading back to base, i.e. due to rain detected
+    };
 
     bool playing;
 
@@ -94,7 +102,8 @@ private:
     ll_status last_ll_state_ = {0};           // Last processed low-level state
     ll_high_level_state last_hl_state_ = {0}; // Last processed high-level state
     unsigned long hl_mode_started_;           // Millis when the last high-level mode started. 0 if idle.
-    bool last_ros_running_ = false;            // Last processed ros_running state
+    uint8_t hl_mode_flags_;                   // High level mode flags (assumptions), like initial GPS "fix", rain, docking...
+    bool last_ros_running_ = false;           // Last processed ros_running state
 
     TrackDef background_track_def_ = {0}; // Current/last background track
     TrackDef advert_track_def_ = {0};     // Current/last playing advert track
