@@ -27,9 +27,14 @@
 #define DFP_ADVERT_FOLDER 1U
 #define DFP_ONLINE_TIMEOUT 5000
 #define DFP_REDUNDANT_ONPLAYFINISH_CB_MAX 300 // Max. ms to detect a recurring OnPlayFinish() CB call as redundant
+
 #define BUFFERSIZE 100
 #define PROCESS_CYCLETIME 500
+
 #define GPS_SOUND_CYCLETIME 3000
+#define MOW_SOUND_INITIAL_FIX_DELAY 120000 // Play random mow sounds earliest 3 minutes after first fix (max. expected time to navigate to mowing area)
+#define MOW_SOUND_MIN_PAUSE_AFTER 60000    // Minimum pause before a new randomized mow sounds get played
+#define MOW_SOUND_CHANCE 50                // % change to play a new sound within the next minute after MOW_SOUND_MIN_PAUSE_AFTER
 
 class MP3Sound;                               // forward declaration ...
 typedef DFMiniMp3<SerialPIO, MP3Sound> DfMp3; // ... for a more readable/shorter DfMp3 typedef
@@ -101,7 +106,8 @@ private:
 
     ll_status last_ll_state_ = {0};           // Last processed low-level state
     ll_high_level_state last_hl_state_ = {0}; // Last processed high-level state
-    unsigned long hl_mode_started_;           // Millis when the last high-level mode started. 0 if idle.
+    unsigned long hl_mode_started_ms_;        // Millis when the current high-level mode started. 0 if idle.
+    unsigned long hl_mode_has_fix_ms_;        // Millis when the current high-level mode got his initial GPS fix. 0 if idle.
     uint8_t hl_mode_flags_;                   // High level mode flags (assumptions), like initial GPS "fix", rain, docking...
     bool last_ros_running_ = false;           // Last processed ros_running state
 
@@ -111,6 +117,8 @@ private:
 
     unsigned long next_gps_sound_cycle_ = millis(); // Next cycle when a GPS ping sound got played
     unsigned long last_advert_end_;                 // Millis when the last played advert sound ended. Used for pauseAfter calculation
+
+    void playMowSound(); // Play (a randomized) mowing sound (at randomized times)
 };
 
 #endif // _SOUND_SYSTEM_H_  HEADER_FILE

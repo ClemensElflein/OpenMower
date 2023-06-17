@@ -17,7 +17,7 @@
 #define _DEBUG_H_
 
 // Define to stream debugging messages via USB
-#define USB_DEBUG
+//#define USB_DEBUG
 
 #ifdef USB_DEBUG
 #define DEBUG_SERIAL Serial

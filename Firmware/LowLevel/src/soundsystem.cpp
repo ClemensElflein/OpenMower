@@ -218,7 +218,7 @@ void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_l
         {
         case MODE_RECORDING:
             hl_mode_flags_ |= ModeFlags::started;
-            hl_mode_started_ = millis();
+            hl_mode_started_ms_ = millis();
             playSound({num : 4, type : TrackTypes::advert, flags : TrackFlags::stopBackground}); // Starting map area recording
             if (t_hl_state.gps_quality < 75)
                 playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500}); // Waiting for RTK GPS signal
@@ -226,14 +226,15 @@ void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_l
 
         case MODE_AUTONOMOUS:
             hl_mode_flags_ |= ModeFlags::started;
-            hl_mode_started_ = millis();
+            hl_mode_started_ms_ = millis();
             playSound({num : 12, type : TrackTypes::advert, flags : TrackFlags::stopBackground, pauseAfter : 1500}); // Stay back, autonomous robot mower in use
             if (t_hl_state.gps_quality < 75)
                 playSound({num : 5, type : TrackTypes::advert, pauseAfter : 1500}); // Waiting for RTK GPS signal
             break;
 
         default:
-            hl_mode_started_ = 0;
+            hl_mode_started_ms_ = 0;
+            hl_mode_has_fix_ms_ = 0;
             hl_mode_flags_ = 0;
             break;
         }
@@ -260,17 +261,25 @@ void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_l
                 if (last_hl_state_.gps_quality < 50 || last_hl_state_.gps_quality >= 75)
                     playSound({num : 21, type : TrackTypes::background}); // GPS acceptable ping
             }
-            else if (last_hl_state_.gps_quality < 75)
-                playSound({num : 22, type : TrackTypes::background}); // GPS good ping
+            else // GPS quality >= 75
+            {
+                if (last_hl_state_.gps_quality < 75)
+                    playSound({num : 22, type : TrackTypes::background}); // GPS good ping
 
+                hl_mode_flags_ |= ModeFlags::initialGpsFix;
+                if (!hl_mode_has_fix_ms_)
+                    hl_mode_has_fix_ms_ = millis();
+            }
             next_gps_sound_cycle_ = millis() + GPS_SOUND_CYCLETIME;
             break;
 
         case MODE_AUTONOMOUS:
-            if (hl_mode_flags_ & ModeFlags::initialGpsFix || t_hl_state.gps_quality < 75)
+            if ((hl_mode_flags_ & ModeFlags::initialGpsFix) || (t_hl_state.gps_quality < 75))
                 break;
             playSound({num : 12, type : TrackTypes::background}); // Stalking "Pink Panther"
             hl_mode_flags_ |= ModeFlags::initialGpsFix;
+            if (!hl_mode_has_fix_ms_)
+                hl_mode_has_fix_ms_ = millis();
             break;
 
         default:
@@ -278,6 +287,9 @@ void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_l
         }
     }
     last_hl_state_.gps_quality = t_hl_state.gps_quality;
+
+    // Generic, state-change independent sounds
+    playMowSound();
 
     // Process sound queue
     int n = active_sounds_.size();
@@ -304,6 +316,31 @@ void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_l
     DEBUG_PRINTF("Next (num %d, type %d, flags " PRINTF_BINARY_PATTERN_INT8 ")\n", track_def.num, track_def.type, PRINTF_BYTE_TO_BINARY_INT8(track_def.flags));
     playSoundAdHoc(track_def);
     active_sounds_.pop_back();
+}
+
+void MP3Sound::playMowSound()
+{
+    static unsigned long last_mow_sound_started_ms = 0;
+
+    if (last_hl_state_.current_mode != MODE_AUTONOMOUS)
+        return;
+
+    unsigned long now = millis();
+    if (now < (hl_mode_has_fix_ms_ + MOW_SOUND_INITIAL_FIX_DELAY))
+        return;
+    if (now < (last_mow_sound_started_ms + MOW_SOUND_MIN_PAUSE_AFTER))
+        return;
+
+    // Rand play on MOW_SOUND_CHANCE within next minute
+    uint16_t tries_per_minute = 60000 / PROCESS_CYCLETIME;
+    int dice = rand() % (tries_per_minute * 60000 / PROCESS_CYCLETIME);
+    //DEBUG_PRINTF("tries_per_minute %u, chance %u, rand %i\n", tries_per_minute, MOW_SOUND_CHANCE, dice);
+    if (dice > MOW_SOUND_CHANCE)
+        return; // No luck
+
+    // Play sound
+    playSound({num : (uint16_t)(200 + (rand() % 7)), type : TrackTypes::background}); // Play background track 200 to 206 by random
+    last_mow_sound_started_ms = now;
 }
 
 void MP3Sound::OnError(DfMp3 &mp3, uint16_t errorCode)
