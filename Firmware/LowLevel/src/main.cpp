@@ -31,7 +31,8 @@
 #define STATUS_CYCLETIME 100      // cycletime for refresh analog and digital Statusvalues
 #define UI_SET_LED_CYCLETIME 1000 // cycletime for refresh UI status LEDs
 
-#define LIFT_EMERGENCY_MILLIS 500  // Time for wheels to be lifted in order to count as emergency. This is to filter uneven ground.
+#define TILT_EMERGENCY_MILLIS 500  // Time for wheels to be lifted in order to count as emergency. This is to filter uneven ground.
+#define LIFT_EMERGENCY_MILLIS 2000  // Time for one wheel to be lifted in order to count as emergency. This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
 // Define to stream debugging messages via USB
@@ -86,6 +87,7 @@ unsigned long last_heartbeat_millis = 0;
 unsigned long last_UILED_millis = 0;
 
 unsigned long lift_emergency_started = 0;
+unsigned long tilt_emergency_started = 0;
 unsigned long button_emergency_started = 0;
 
 // Stock UI
@@ -141,7 +143,8 @@ void updateEmergency() {
 
     uint8_t emergency_state = 0;
 
-    bool is_lifted = emergency1 || emergency2;
+    bool is_tilted = emergency1 || emergency2;
+    bool is_lifted = emergency1 && emergency2;
     bool stop_pressed = emergency3 || emergency4;
 
     if (is_lifted) {
@@ -173,6 +176,24 @@ void updateEmergency() {
             emergency_state |= 0b10000;
     }
 
+    if (is_tilted) {
+        // We just tilted, store the timestamp
+        if (tilt_emergency_started == 0) {
+            tilt_emergency_started = millis();
+        }
+    } else {
+        // Not tilted, reset the time
+        tilt_emergency_started = 0;
+    }
+
+ if (tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS) {
+        // Emergency bit 2 (lift wheel 1)set?
+        if (emergency1)
+            emergency_state |= 0b01000;
+        // Emergency bit 1 (lift wheel 2)set?
+        if (emergency2)
+            emergency_state |= 0b10000;
+    }
     if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS) {
         // Emergency bit 2 (stop button) set?
         if (emergency3)
