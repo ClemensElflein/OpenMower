@@ -530,7 +530,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
 
 // returns true, if it's a good idea to charge the battery (current, voltages, ...)
 bool checkShouldCharge() {
-    return status_message.v_charge < 30.0 && status_message.charging_current < 2 && status_message.v_battery < 29.0;
+    return status_message.v_charge < 30.0 && status_message.charging_current < 1.5 && status_message.v_battery < 29.0;
 }
 
 void updateChargingEnabled() {
