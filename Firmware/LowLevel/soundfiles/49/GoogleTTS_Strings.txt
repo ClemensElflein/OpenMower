@@ -1,0 +1,25 @@
+-- file leading nr --    ------ string to convert ------------ 
+
+0001					Hallo, ich bin Steve, dein intelligenter Rasemäher, Rasenpflege ist mein Beruf
+0002					"open mower" erfolgreich gestartet
+0003					Initialisiere robot operating system
+0004					Starte Aufzeichnung des Lageplans
+0005					Warte auf RTK-GPS Signal
+0006					Berechne Abmessungen des Lageplans
+0007					Starte den Mähvorgang
+0008					Not-Aus-Taste gedrückt
+0009					Rad Hebesensor ausgelöst
+0010					Regen festgestellt, fahre zurück zur Basis
+0011					"open mower" hat das Rasenmähen beendet und fährt zurück zu Ladestation
+0012					Vorsicht! Autonomer Mähroboter im Einsatz
+0013                  	Au-weia, schon wieder
+0016                    Start des Robot operating systems erfolgreich
+0017                    Das Robot operating system wurde gestoppt
+0018                    Der Raspberry Pai wurde herunter gefahren, Du kannst Deinen open mower nun ausschalten
+0019                    Die ei-em-ju-Initialisierung ist fehlgeschlagen
+0020                    leiser
+0021                    lauter
+
+New german adverts sampled via Google TTS with settings:
+Language: Deutsch (Deutschland), Neural2, de-DE-Neural2-B
+Small home speaker, Speed = 1.00, Pitch 0

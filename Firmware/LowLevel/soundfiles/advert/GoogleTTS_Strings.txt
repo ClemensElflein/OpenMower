@@ -16,3 +16,13 @@
 0014					Hallo, ich bin Tobi, dein intelligenter Rasemäher, Rasenpflege ist mein Beruf
 0015					Hello, I am Tobi, your smart mower, green care ist my profession
 0016                    Robot operating system start up successful
+
+0017                    Robot operating system stopped
+0018                    Raspberry Pi shut down and powered off. It's save to power off your open mower now
+0019                    IMU initialization failed
+0020                    down
+0021                    up
+
+New adverts >= 0017 sampled via Google TTS with settings:
+Language: English (US), Neural2, en-US-Neural2-D
+Small home speaker, Speed = 1.00, Pitch 0
