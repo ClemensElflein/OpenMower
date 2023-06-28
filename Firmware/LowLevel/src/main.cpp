@@ -335,9 +335,9 @@ void loop1() {
             case 6:
                 mutex_enter_blocking(&mtx_status_message);
                 if (state) {
-                    status_message.status_bitmask |= 0b00100000;
+                    status_message.status_bitmask |= 0b01000000;
                 } else {
-                    status_message.status_bitmask &= 0b11011111;
+                    status_message.status_bitmask &= 0b10111111;
                 }
                 mutex_exit(&mtx_status_message);
                 break;
