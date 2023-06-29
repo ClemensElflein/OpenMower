@@ -15,10 +15,15 @@
 0013                  	Au-weia, schon wieder
 0016                    Start des Robot operating systems erfolgreich
 0017                    Das Robot operating system wurde gestoppt
-0018                    Der Raspberry Pai wurde herunter gefahren, Du kannst Deinen open mower nun ausschalten
+0018                    Der Raspberry Pai wurde heruntergefahren, Du kannst Deinen open mower nun ausschalten
 0019                    Die ei-em-ju-Initialisierung ist fehlgeschlagen
 0020                    leiser
 0021                    lauter
+0022			auf deutsche sprache umgestellt
+0023			Notaus aufgehoben
+
+
+
 
 New german adverts sampled via Google TTS with settings:
 Language: Deutsch (Deutschland), Neural2, de-DE-Neural2-B
