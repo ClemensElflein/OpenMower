@@ -32,7 +32,8 @@
 #define STATUS_CYCLETIME 100      // cycletime for refresh analog and digital Statusvalues
 #define UI_SET_LED_CYCLETIME 1000 // cycletime for refresh UI status LEDs
 
-#define LIFT_EMERGENCY_MILLIS 500  // Time for wheels to be lifted in order to count as emergency. This is to filter uneven ground.
+#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency. This is to filter uneven ground.
+#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency. This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
 #define PACKET_SERIAL Serial1
@@ -77,6 +78,7 @@ unsigned long last_heartbeat_millis = 0;
 unsigned long last_UILED_millis = 0;
 
 unsigned long lift_emergency_started = 0;
+unsigned long tilt_emergency_started = 0;
 unsigned long button_emergency_started = 0;
 
 // Stock UI
@@ -135,7 +137,8 @@ void updateEmergency()
 
     uint8_t emergency_state = 0;
 
-    bool is_lifted = emergency1 || emergency2;
+    bool is_tilted = emergency1 || emergency2;
+    bool is_lifted = emergency1 && emergency2;
     bool stop_pressed = emergency3 || emergency4;
 
     if (is_lifted)
@@ -176,8 +179,25 @@ void updateEmergency()
             emergency_state |= 0b10000;
     }
 
-    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
-    {
+    if (is_tilted) {
+        // We just tilted, store the timestamp
+        if (tilt_emergency_started == 0) {
+            tilt_emergency_started = millis();
+        }
+    } else {
+        // Not tilted, reset the time
+        tilt_emergency_started = 0;
+    }
+
+ if (tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS) {
+        // Emergency bit 2 (lift wheel 1)set?
+        if (emergency1)
+            emergency_state |= 0b01000;
+        // Emergency bit 1 (lift wheel 2)set?
+        if (emergency2)
+            emergency_state |= 0b10000;
+    }
+    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS) {
         // Emergency bit 2 (stop button) set?
         if (emergency3)
             emergency_state |= 0b00010;
@@ -361,21 +381,18 @@ void loop1()
             }
             mutex_exit(&mtx_status_message);
 
-            break;
-        case 6:
-            mutex_enter_blocking(&mtx_status_message);
-            if (state)
-            {
-                status_message.status_bitmask |= 0b00100000;
-            }
-            else
-            {
-                status_message.status_bitmask &= 0b11011111;
-            }
-            mutex_exit(&mtx_status_message);
-            break;
-        default:
-            break;
+                break;
+            case 6:
+                mutex_enter_blocking(&mtx_status_message);
+                if (state) {
+                    status_message.status_bitmask |= 0b01000000;
+                } else {
+                    status_message.status_bitmask &= 0b10111111;
+                }
+                mutex_exit(&mtx_status_message);
+                break;
+            default:
+                break;
         }
     }
 
