@@ -300,7 +300,7 @@ void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_l
     uint16_t current_track = myMP3.getCurrentTrack();
     // DEBUG_PRINTF("Status %#04x, track %d\n", status.state, current_track);
 
-    // Do not interrupt advert sound if still playing
+    // Do not interrupt advert sound if it's still playing
     if (!current_playing_is_background_ &&
         (status.state == DfMp3_StatusState_Playing || status.state == DfMp3_StatusState_Shuffling))
         return;

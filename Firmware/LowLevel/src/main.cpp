@@ -226,12 +226,12 @@ void updateEmergency()
         if (emergency_state & 0b11000)
         {
             my_sound->playSoundAdHoc({num : 9, type : MP3Sound::TrackTypes::advert, pauseAfter : 500}); // Emergency wheel lift sensor triggered
-            my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                     // "Bee daa, Bee daa" Minion fire alarm
+            my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                    // "Bee daa, Bee daa" Minion fire alarm
         }
         if (emergency_state & 0b00110)
         {
             my_sound->playSoundAdHoc({num : 8, type : MP3Sound::TrackTypes::advert, pauseAfter : 500}); // Emergency stop button triggered
-            my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                     // "Bee daa, Bee daa" Minion fire alarm
+            my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                    // "Bee daa, Bee daa" Minion fire alarm
         }
 #endif
     }
@@ -455,33 +455,6 @@ void setup()
     UISerial.setStream(&UI1_SERIAL);
     UISerial.setPacketHandler(&onUIPacketReceived);
 
-    /*
-     * IMU INITIALIZATION
-     */
-
-    if (!init_imu())
-    {
-#ifdef USB_DEBUG
-        DEBUG_SERIAL.println("IMU initialization unsuccessful");
-        DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
-#endif
-        status_message.status_bitmask = 0;
-        while (1)
-        { // Blink RED for IMU failure
-            p.neoPixelSetValue(0, 255, 0, 0, true);
-            delay(500);
-            p.neoPixelSetValue(0, 0, 0, 0, true);
-            delay(500);
-        }
-    }
-    p.neoPixelSetValue(0, 255, 255, 255, true); // White for IMU Success
-
-#ifdef USB_DEBUG
-    DEBUG_SERIAL.println("Imu initialized");
-#endif
-
-    status_message.status_bitmask |= 1;
-
 #ifdef ENABLE_SOUND_MODULE
     p.neoPixelSetValue(0, 0, 255, 255, true);
 
@@ -504,6 +477,40 @@ void setup()
         }
     }
 #endif
+
+    /*
+     * IMU INITIALIZATION
+     */
+
+    if (!init_imu())
+    {
+#ifdef USB_DEBUG
+        DEBUG_SERIAL.println("IMU initialization unsuccessful");
+        DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
+#endif
+#ifdef ENABLE_SOUND_MODULE
+        my_sound->playSound({num : 19, type : MP3Sound::TrackTypes::advert, flags : MP3Sound::TrackFlags::stopBackground, pauseAfter : 500}); // IMU initialization failed
+        my_sound->playSound({num : 15, type : MP3Sound::TrackTypes::background});                                                             // Alarm02
+#endif
+        status_message.status_bitmask = 0;
+        while (1)
+        { // Blink RED for IMU failure
+            p.neoPixelSetValue(0, 255, 0, 0, true);
+            delay(500);
+            p.neoPixelSetValue(0, 0, 0, 0, true);
+            delay(500);
+#ifdef ENABLE_SOUND_MODULE
+            my_sound->processSounds(status_message, ROS_running, last_high_level_state);
+#endif
+        }
+    }
+    p.neoPixelSetValue(0, 255, 255, 255, true); // White for IMU Success
+
+#ifdef USB_DEBUG
+    DEBUG_SERIAL.println("Imu initialized");
+#endif
+
+    status_message.status_bitmask |= 1;
 
     rp2040.resumeOtherCore();
 

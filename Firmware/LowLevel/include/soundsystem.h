@@ -24,9 +24,9 @@
 
 #include "datatypes.h"
 
-#define DFP_ADVERT_FOLDER 1U
+#define DFP_ADVERT_FOLDER 1U // Folder 01 = English (US), 49 = German, ...
 #define DFP_ONLINE_TIMEOUT 5000
-#define DFP_REDUNDANT_ONPLAYFINISH_CB_MAX 300 // Max. ms to detect a recurring OnPlayFinish() CB call as redundant
+#define DFP_REDUNDANT_ONPLAYFINISH_CB_MAX 300 // Max. ms to detect a recurring OnPlayFinish() CB as redundant
 
 #define BUFFERSIZE 100
 #define PROCESS_CYCLETIME 500
@@ -38,7 +38,7 @@
 
 class MP3Sound;                               // forward declaration ...
 typedef DFMiniMp3<SerialPIO, MP3Sound> DfMp3; // ... for a more readable/shorter DfMp3 typedef
-// typedef DFMiniMp3<SerialPIO, MP3Sound, Mp3ChipMH2024K16SS> DfMp3; // Need to be tested
+// typedef DFMiniMp3<SerialPIO, MP3Sound, Mp3ChipMH2024K16SS> DfMp3; // Need to be tested if really required
 
 // Non thread safe singleton MP3Sound class
 class MP3Sound
@@ -49,7 +49,7 @@ protected:
 public:
     enum TrackTypes : uint8_t
     {
-        background = 1, // Background tracks are stored in folder mp3 and might be interrupted/aborted by higher priority sounds
+        background = 1, // Background tracks are stored in folder mp3 and get interrupted/aborted by higher priority sound like advert
         advert,         // Advert tracks are stored in language specific folder, i.e. "01" US or "49" German, and interrupt/stop background sounds
         advertRaw,      // Raw-Advert tracks are stored in folder advert and interrupt/stop background or advert sounds.
                         // Due to DFPlayer incompatibilities, advert_raw should only be used if you know their drawbacks!
