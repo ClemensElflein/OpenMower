@@ -24,7 +24,7 @@
 
 #include "datatypes.h"
 
-#define DFP_ADVERT_FOLDER 1U // Folder 01 = English (US), 49 = German, ...
+#define DFP_ADVERT_FOLDER 1 // Folder 01 = English (US), 49 = German, ...
 #define DFP_ONLINE_TIMEOUT 5000
 #define DFP_REDUNDANT_ONPLAYFINISH_CB_MAX 300 // Max. ms to detect a recurring OnPlayFinish() CB as redundant
 

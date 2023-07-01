@@ -168,7 +168,9 @@ namespace soundSystem
         case TrackTypes::advert:
             myMP3.stop();
             delay(50); // (sometimes) required for "MH2024K-24SS"
-            myMP3.playFolderTrack16(DFP_ADVERT_FOLDER, t_track_def.num);
+            // FIXME: playFolderTrack16() does not work with german folder?! or other folders as 01
+            // myMP3.playFolderTrack16(DFP_ADVERT_FOLDER, t_track_def.num);
+            myMP3.playFolderTrack(DFP_ADVERT_FOLDER, t_track_def.num);
             delay(50); // (sometimes) required for "MH2024K-24SS"
             advert_track_def_ = t_track_def;
             current_playing_is_background_ = false;
