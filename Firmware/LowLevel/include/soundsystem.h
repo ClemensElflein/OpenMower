@@ -63,8 +63,9 @@ public:
     {
         uint16_t num;
         TrackTypes type;
-        uint8_t flags = 0;            // See TrackFlags
-        unsigned long pauseAfter = 0; // Cosmetic pause in ms, after advert track got played, before the next sound get processed from queue.
+        uint8_t flags = 0;               // See TrackFlags
+        unsigned long pauseAfter = 0;    // Cosmetic pause in ms, after advert track got played, before the next sound get processed from queue.
+        int32_t repeatDuration = 180000; // How long (ms) to repeat a background sound. Default to 180 sec. noise pollution (i.e. VdS 2300)
     };
     // Describe specific (assumed) mode flags
     enum ModeFlags : uint8_t
@@ -111,9 +112,10 @@ private:
     uint8_t hl_mode_flags_;                   // High level mode flags (assumptions), like initial GPS "fix", rain, docking...
     bool last_ros_running_ = false;           // Last processed ros_running state
 
-    TrackDef background_track_def_ = {0}; // Current/last background track
-    TrackDef advert_track_def_ = {0};     // Current/last playing advert track
-    bool current_playing_is_background_;  // Current/last playing sound is a background sound
+    TrackDef background_track_def_ = {0};   // Current/last background track
+    TrackDef advert_track_def_ = {0};       // Current/last playing advert track
+    bool current_playing_is_background_;    // Current/last playing sound is a background sound
+    unsigned long current_playing_started_; // Millis when current/last playing sound got started
 
     unsigned long next_gps_sound_cycle_ = millis(); // Next cycle when a GPS ping sound got played
     unsigned long last_advert_end_;                 // Millis when the last played advert sound ended. Used for pauseAfter calculation

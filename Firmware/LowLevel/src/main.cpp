@@ -489,8 +489,8 @@ void setup()
         DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
 #endif
 #ifdef ENABLE_SOUND_MODULE
-        my_sound->playSound({num : 19, type : MP3Sound::TrackTypes::advert, flags : MP3Sound::TrackFlags::stopBackground, pauseAfter : 500}); // IMU initialization failed
-        my_sound->playSound({num : 15, type : MP3Sound::TrackTypes::background});                                                             // Alarm02
+        my_sound->playSound({num : 19, type : MP3Sound::TrackTypes::advert, flags : MP3Sound::TrackFlags::stopBackground, pauseAfter : 500});   // IMU initialization failed
+        my_sound->playSound({num : 15, type : MP3Sound::TrackTypes::background, flags : MP3Sound::TrackFlags::repeat, repeatDuration : 20000}); // Alarm02
 #endif
         status_message.status_bitmask = 0;
         while (1)

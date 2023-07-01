@@ -140,10 +140,11 @@ void MP3Sound::playSoundAdHoc(TrackDef t_track_def)
         return;
         break;
     }
+    current_playing_started_ = millis();
 
     if (t_track_def.flags & TrackFlags::repeat)
     {
-        myMP3.setRepeatPlayCurrentTrack(true);
+        myMP3.setRepeatPlayCurrentTrack(true); // FIXME: Does NOT work reliable, see manual handling in OnPlayFinished()
     }
 
     if (t_track_def.flags & TrackFlags::stopBackground)
@@ -334,7 +335,7 @@ void MP3Sound::playMowSound()
     // Rand play on MOW_SOUND_CHANCE within next minute
     uint16_t tries_per_minute = 60000 / PROCESS_CYCLETIME;
     int dice = rand() % (tries_per_minute * 60000 / PROCESS_CYCLETIME);
-    //DEBUG_PRINTF("tries_per_minute %u, chance %u, rand %i\n", tries_per_minute, MOW_SOUND_CHANCE, dice);
+    // DEBUG_PRINTF("tries_per_minute %u, chance %u, rand %i\n", tries_per_minute, MOW_SOUND_CHANCE, dice);
     if (dice > MOW_SOUND_CHANCE)
         return; // No luck
 
@@ -353,25 +354,38 @@ void MP3Sound::OnError(DfMp3 &mp3, uint16_t errorCode)
 
 void MP3Sound::OnPlayFinished(DfMp3 &mp3, DfMp3_PlaySources source, uint16_t track)
 {
-    DEBUG_PRINTF("DFPlayer finished track %d (%lu ms)\n", track, millis());
+    unsigned long now = millis();
+    DEBUG_PRINTF("DFPlayer finished track %d (%lu ms)\n", track, now);
     MP3Sound *snd = MP3Sound::GetInstance();
 
-    // Redundant CB call?
-    if (track == snd->last_finished_cb_track_ && millis() < snd->last_finished_cb_call_ + DFP_REDUNDANT_ONPLAYFINISH_CB_MAX)
+    // Redundant CB call protection
+    if (track == snd->last_finished_cb_track_ && now < snd->last_finished_cb_call_ + DFP_REDUNDANT_ONPLAYFINISH_CB_MAX)
     {
         DEBUG_PRINTF("DFPlayer redundant OnPLayFinish() call\n");
         return;
     }
     snd->last_finished_cb_track_ = track;
-    snd->last_finished_cb_call_ = millis();
+    snd->last_finished_cb_call_ = now;
 
+    // Required for pauseAfter calculation
     if (!snd->current_playing_is_background_)
     {
-        snd->last_advert_end_ = millis();
+        snd->last_advert_end_ = now;
     }
+    // Repeat background sound handling
     if (snd->background_track_def_.num && snd->background_track_def_.flags & TrackFlags::repeat)
     {
-        snd->playSoundAdHoc(snd->background_track_def_);
+        if (snd->background_track_def_.repeatDuration > 0)
+        {
+            unsigned long play_duration = now - snd->current_playing_started_;
+            snd->background_track_def_.repeatDuration -= play_duration;
+            snd->playSoundAdHoc(snd->background_track_def_);
+        }
+        else
+        {
+            myMP3.stop();
+            snd->background_track_def_ = {0};
+        }
     }
 }
 
