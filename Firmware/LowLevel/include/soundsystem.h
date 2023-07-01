@@ -28,6 +28,11 @@
 #define DFP_ONLINE_TIMEOUT 5000
 #define DFP_REDUNDANT_ONPLAYFINISH_CB_MAX 300 // Max. ms to detect a recurring OnPlayFinish() CB as redundant
 
+#ifdef DEBUG_PREFIX
+#undef DEBUG_PREFIX
+#define DEBUG_PREFIX "[DFP] "
+#endif
+
 #define BUFFERSIZE 100
 #define PROCESS_CYCLETIME 500
 
@@ -36,22 +41,34 @@
 #define MOW_SOUND_MIN_PAUSE_AFTER 60000    // Minimum pause before a new randomized mow sounds get played
 #define MOW_SOUND_CHANCE 50                // % change to play a new sound within the next minute after MOW_SOUND_MIN_PAUSE_AFTER
 
-class MP3Sound;                               // forward declaration ...
-typedef DFMiniMp3<SerialPIO, MP3Sound> DfMp3; // ... for a more readable/shorter DfMp3 typedef
-// typedef DFMiniMp3<SerialPIO, MP3Sound, Mp3ChipMH2024K16SS> DfMp3; // Need to be tested if really required
+// For better reading, let's use track names which point to tracks[] indexes
+#define SOUND_TRACK_BGD_OM_BOOT 0 // Heartbeat during OM LowLevel startup
+#define SOUND_TRACK_ADV_HI_IM_STEVE 1
+#define SOUND_TRACK_ADV_IMU_INIT_FAILED 2
+#define SOUND_TRACK_BGD_OM_ALARM 3
+#define SOUND_TRACK_ADV_EMERGENCY_STOP 4
+#define SOUND_TRACK_ADV_EMERGENCY_LIFT 5
+#define SOUND_TRACK_BGD_EMERGENCY_ALARM 6
+#define SOUND_TRACK_ADV_OM_STARTUP_SUCCESS 7
+#define SOUND_TRACK_ADV_ROS_INIT 8
+#define SOUND_TRACK_BGD_ROS_BOOT 9 // Heartbeat during ROS HighLevel startup
+#define SOUND_TRACK_ADV_ROS_STARTUP_SUCCESS 10
+#define SOUND_TRACK_ADV_MAP_RECORD_START 11
+#define SOUND_TRACK_ADV_AUTONOMOUS_START 12
+#define SOUND_TRACK_ADV_RAIN 13
+#define SOUND_TRACK_ADV_RTKGPS_WAIT 14
+#define SOUND_TRACK_ADV_RTKGPS_POOR 15
+#define SOUND_TRACK_ADV_RTKGPS_MODERATE 16
+#define SOUND_TRACK_ADV_RTKGPS_GOOD 17
+#define SOUND_TRACK_BGD_MUSIC_PINK_PANTHER 18
 
-// Non thread safe singleton MP3Sound class
-class MP3Sound
+namespace soundSystem
 {
-protected:
-    MP3Sound(){}; // Singleton constructors always should be private to prevent direct construction via 'new'
-
-public:
     enum TrackTypes : uint8_t
     {
         background = 1, // Background tracks are stored in folder mp3 and get interrupted/aborted by higher priority sound like advert
         advert,         // Advert tracks are stored in language specific folder, i.e. "01" US or "49" German, and interrupt/stop background sounds
-        advertRaw,      // Raw-Advert tracks are stored in folder advert and interrupt/stop background or advert sounds.
+        advertRaw,      // Raw-Advert tracks are stored in folder 'advert' and interrupt/stop background or advert sounds.
                         // Due to DFPlayer incompatibilities, advert_raw should only be used if you know their drawbacks!
     };
     enum TrackFlags : uint8_t
@@ -61,66 +78,42 @@ public:
     };
     struct TrackDef
     {
-        uint16_t num;
+        uint16_t num; // Source (SD-Card) track number
         TrackTypes type;
         uint8_t flags = 0;               // See TrackFlags
         unsigned long pauseAfter = 0;    // Cosmetic pause in ms, after advert track got played, before the next sound get processed from queue.
         int32_t repeatDuration = 180000; // How long (ms) to repeat a background sound. Default to 180 sec. noise pollution (i.e. VdS 2300)
     };
-    // Describe specific (assumed) mode flags
-    enum ModeFlags : uint8_t
-    {
-        started = 0x01,       // Mode started
-        initialGpsFix = 0x02, // Got an initial GPS "fix", by which we can assume that i.e. the mower drive to his mowing start point
-        rainDetected = 0x04,  // LL rain sensor signal received
-        docking = 0x08,       // Heading back to base, i.e. due to rain detected
+    // For easier reading and simpler code, let's have a list of predefined tracks and its (default) settings
+    const TrackDef tracks[] = {
+        {2, background, repeat},                          // 0 = OM boot-up background
+        {1, advert, pauseAfter : 1500},                   // 1 = Hi I'm steve
+        {19, advert, stopBackground, pauseAfter : 500},   // 2 = IMU initialization failed
+        {15, background, repeat, repeatDuration : 20000}, // 3 = Alarm02
+        {8, advert, pauseAfter : 500},                    // 4 = Emergency stop button triggered
+        {9, advert, pauseAfter : 500},                    // 5 = Emergency wheel lift sensor triggered
+        {9, background},                                  // 6 = "Bee daa, Bee daa" Minion fire alarm
+        {2, advert, pauseAfter : 1500},                   // 7 = OM startup successful
+        {3, advert, stopBackground},                      // 8 = Initializing ROS
+        {5, background, repeat},                          // 9 = ROS boot-up background
+        {16, advert, stopBackground},                     // 10 = ROS startup successful
+        {4, advert, stopBackground},                      // 11 = Starting map area recording
+        {12, advert, stopBackground, pauseAfter : 1500},  // 12 = Stay back, autonomous robot mower in use
+        {10, advert, stopBackground},                     // 13 = Rain detected, heading back to base
+        {5, advert, pauseAfter : 1500},                   // 14 = Waiting for RTK GPS signal
+        {20, background},                                 // 15 = GPS poor ping
+        {21, background},                                 // 16 = GPS moderate/acceptable ping
+        {22, background},                                 // 17 = GPS good ping
+        {12, background},                                 // 18 = Stalking "Pink Panther"
     };
 
-    bool playing;
+    bool begin(); // Init serial stream, soundmodule and sound_available_
 
-    static MP3Sound *GetInstance();
-    MP3Sound(MP3Sound &other) = delete;        // Singletons should not be cloneable
-    void operator=(const MP3Sound &) = delete; // Singletons should not be assignable
+    void playSound(TrackDef t_track_def);      // Play sound trackDef. This method writes sound trackDef in a list, the method processSounds() (has to run in loop)
+                                               // will play the sounds according to the list
+    void playSoundAdHoc(TrackDef t_track_def); // Play sound track number immediately without waiting until the end of sound
+    void setVolume(uint8_t t_vol);             // Scales loudness from 0 to 100 %
 
-    bool begin();                                                                                 // Init serial stream, soundmodule and sound_available_
-    void playSound(TrackDef t_track_def);                                                         // Play sound track number. This method writes sound track nr in a list, the method processSounds() (has to run in loop)
-                                                                                                  // will play the sounds according to the list
-    void playSoundAdHoc(TrackDef t_track_def);                                                    // Play sound track number immediately without waiting until the end of sound
-    void setVolume(uint8_t t_vol);                                                                // Scales loudness from 0 to 100 %
     void processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_level_state t_hl_state); // This method has to be called cyclic, e.g. every second.
-
-    // DFMiniMP3 specific notification methods
-    static void OnError(DfMp3 &mp3, uint16_t errorCode);
-    static void OnPlayFinished(DfMp3 &mp3, DfMp3_PlaySources source, uint16_t track);
-    static void OnPlaySourceOnline(DfMp3 &mp3, DfMp3_PlaySources source);
-    static void OnPlaySourceInserted(DfMp3 &mp3, DfMp3_PlaySources source);
-    static void OnPlaySourceRemoved(DfMp3 &mp3, DfMp3_PlaySources source);
-
-private:
-    std::list<TrackDef> active_sounds_;
-    bool sound_available_ = false;                // Sound module available as well as SD-Card with some kind of files
-    unsigned long next_process_cycle_ = millis(); // Next cycle for sound processing
-
-    uint16_t last_error_code_ = 0;            // Last DFPlayer error code
-    uint16_t last_finished_cb_track_ = 0;     // Last DFPlayer OnPlayFinished() callback track. Required for redundant call detection
-    unsigned long last_finished_cb_call_ = 0; // Last DFPlayer OnPlayFinished() callback call (ms). Required for redundant call detection
-
-    ll_status last_ll_state_ = {0};           // Last processed low-level state
-    ll_high_level_state last_hl_state_ = {0}; // Last processed high-level state
-    unsigned long hl_mode_started_ms_;        // Millis when the current high-level mode started. 0 if idle.
-    unsigned long hl_mode_has_fix_ms_;        // Millis when the current high-level mode got his initial GPS fix. 0 if idle.
-    uint8_t hl_mode_flags_;                   // High level mode flags (assumptions), like initial GPS "fix", rain, docking...
-    bool last_ros_running_ = false;           // Last processed ros_running state
-
-    TrackDef background_track_def_ = {0};   // Current/last background track
-    TrackDef advert_track_def_ = {0};       // Current/last playing advert track
-    bool current_playing_is_background_;    // Current/last playing sound is a background sound
-    unsigned long current_playing_started_; // Millis when current/last playing sound got started
-
-    unsigned long next_gps_sound_cycle_ = millis(); // Next cycle when a GPS ping sound got played
-    unsigned long last_advert_end_;                 // Millis when the last played advert sound ended. Used for pauseAfter calculation
-
-    void playMowSound(); // Play (a randomized) mowing sound (at randomized times)
-};
-
+}
 #endif // _SOUND_SYSTEM_H_  HEADER_FILE

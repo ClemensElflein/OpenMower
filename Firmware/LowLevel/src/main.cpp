@@ -68,10 +68,6 @@ PacketSerial packetSerial; // COBS communication PICO <> Raspi
 PacketSerial UISerial;     // COBS communication PICO UI-Board
 FastCRC16 CRC16;
 
-#ifdef ENABLE_SOUND_MODULE
-MP3Sound *my_sound = MP3Sound::GetInstance(); // Soundsystem
-#endif
-
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
 unsigned long last_heartbeat_millis = 0;
@@ -225,13 +221,13 @@ void updateEmergency()
 #ifdef ENABLE_SOUND_MODULE
         if (emergency_state & 0b11000)
         {
-            my_sound->playSoundAdHoc({num : 9, type : MP3Sound::TrackTypes::advert, pauseAfter : 500}); // Emergency wheel lift sensor triggered
-            my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                    // "Bee daa, Bee daa" Minion fire alarm
+            soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_LIFT]);
+            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_EMERGENCY_ALARM]);
         }
         if (emergency_state & 0b00110)
         {
-            my_sound->playSoundAdHoc({num : 8, type : MP3Sound::TrackTypes::advert, pauseAfter : 500}); // Emergency stop button triggered
-            my_sound->playSound({num : 9, type : MP3Sound::TrackTypes::background});                    // "Bee daa, Bee daa" Minion fire alarm
+            soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_STOP]);
+            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_EMERGENCY_ALARM]);
         }
 #endif
     }
@@ -458,12 +454,12 @@ void setup()
 #ifdef ENABLE_SOUND_MODULE
     p.neoPixelSetValue(0, 0, 255, 255, true);
 
-    sound_available = my_sound->begin();
+    sound_available = soundSystem::begin();
     if (sound_available)
     {
         p.neoPixelSetValue(0, 0, 0, 255, true);
-        my_sound->setVolume(100);
-        my_sound->playSoundAdHoc({num : 1, type : MP3Sound::TrackTypes::advert, pauseAfter : 1500}); // Hi I'm steve
+        soundSystem::setVolume(100);
+        soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_HI_IM_STEVE]);
         p.neoPixelSetValue(0, 255, 255, 0, true);
     }
     else
@@ -489,8 +485,8 @@ void setup()
         DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
 #endif
 #ifdef ENABLE_SOUND_MODULE
-        my_sound->playSound({num : 19, type : MP3Sound::TrackTypes::advert, flags : MP3Sound::TrackFlags::stopBackground, pauseAfter : 500});   // IMU initialization failed
-        my_sound->playSound({num : 15, type : MP3Sound::TrackTypes::background, flags : MP3Sound::TrackFlags::repeat, repeatDuration : 20000}); // Alarm02
+        soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_ADV_IMU_INIT_FAILED]);
+        soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_OM_ALARM]);
 #endif
         status_message.status_bitmask = 0;
         while (1)
@@ -500,7 +496,7 @@ void setup()
             p.neoPixelSetValue(0, 0, 0, 0, true);
             delay(500);
 #ifdef ENABLE_SOUND_MODULE
-            my_sound->processSounds(status_message, ROS_running, last_high_level_state);
+            soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
 #endif
         }
     }
@@ -743,7 +739,7 @@ void loop()
     }
 
 #ifdef ENABLE_SOUND_MODULE
-    my_sound->processSounds(status_message, ROS_running, last_high_level_state);
+    soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
 #endif
 }
 
