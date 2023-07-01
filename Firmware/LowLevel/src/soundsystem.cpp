@@ -319,11 +319,14 @@ void MP3Sound::processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_l
     active_sounds_.pop_back();
 }
 
+/**
+ * @brief Play a randomized mow- background sound at randomized times
+ */
 void MP3Sound::playMowSound()
 {
     static unsigned long last_mow_sound_started_ms = 0;
 
-    if (last_hl_state_.current_mode != MODE_AUTONOMOUS)
+    if (last_hl_state_.current_mode != MODE_AUTONOMOUS || last_hl_state_.gps_quality < 50)
         return;
 
     unsigned long now = millis();
