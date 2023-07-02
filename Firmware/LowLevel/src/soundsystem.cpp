@@ -443,6 +443,7 @@ namespace soundSystem
                     }
                     else
                     {
+                        delay(50); // (sometimes) required for "DFR LISP3"
                         myMP3.stop();
                         background_track_def_ = {0};
                     }
