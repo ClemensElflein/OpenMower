@@ -217,19 +217,6 @@ void updateEmergency()
 
         // Update LEDs instantly
         manageUILEDS();
-
-#ifdef ENABLE_SOUND_MODULE
-        if (emergency_state & 0b11000)
-        {
-            soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_LIFT]);
-            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_EMERGENCY_ALARM]);
-        }
-        if (emergency_state & 0b00110)
-        {
-            soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_STOP]);
-            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_EMERGENCY_ALARM]);
-        }
-#endif
     }
 }
 

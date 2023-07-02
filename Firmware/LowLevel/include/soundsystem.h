@@ -48,6 +48,8 @@
 #define SOUND_TRACK_BGD_OM_ALARM 3
 #define SOUND_TRACK_ADV_EMERGENCY_STOP 4
 #define SOUND_TRACK_ADV_EMERGENCY_LIFT 5
+#define SOUND_TRACK_ADV_EMERGENCY_ROS 19
+#define SOUND_TRACK_ADV_EMERGENCY_CLEARED 20
 #define SOUND_TRACK_BGD_EMERGENCY_ALARM 6
 #define SOUND_TRACK_ADV_OM_STARTUP_SUCCESS 7
 #define SOUND_TRACK_ADV_ROS_INIT 8
@@ -105,6 +107,9 @@ namespace soundSystem
         {21, background},                                 // 16 = GPS moderate/acceptable ping
         {22, background},                                 // 17 = GPS good ping
         {12, background},                                 // 18 = Stalking "Pink Panther"
+        {24, advert, pauseAfter : 500},                   // 19 = Emergency triggered by ROS
+        {23, advert, stopBackground, pauseAfter : 500},   // 20 = Emergency cleared
+
     };
 
     bool begin(); // Init serial stream, soundmodule and sound_available_

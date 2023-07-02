@@ -62,6 +62,7 @@ namespace soundSystem
 
         uint16_t last_error_code_ = 0; // Last DFPlayer error code. See DfMp3_Error for code meaning
 
+        ll_status last_ll_state = {0};            // Last processed low-level state
         ll_high_level_state last_hl_state_ = {0}; // Last processed high-level state
         unsigned long hl_mode_started_ms_;        // Millis when the current high-level mode started. 0 if idle.
         unsigned long hl_mode_has_fix_ms_;        // Millis when the current high-level mode got his initial GPS fix. 0 if idle.
@@ -72,7 +73,7 @@ namespace soundSystem
         bool current_playing_is_background_;    // Current/last playing sound is a background sound
         unsigned long current_playing_started_; // Millis when current/last playing sound got started
 
-        unsigned long last_advert_end_;                 // Millis when the last played advert sound ended. Used for pauseAfter calculation
+        unsigned long last_advert_end_; // Millis when the last played advert sound ended. Used for pauseAfter calculation
 
         // Describe specific (assumed) mode flags
         enum ModeFlags : uint8_t
@@ -204,10 +205,48 @@ namespace soundSystem
         active_sounds_.push_front(t_track_def);
     }
 
+    /**
+     * @brief Handle all kind of emergency sounds
+     *
+     * @param t_ll_state
+     */
+    void handleEmergency(ll_status t_ll_state)
+    {
+        if ((last_ll_state.emergency_bitmask & LL_EMERGENCY_BIT_LATCH) == (t_ll_state.emergency_bitmask & LL_EMERGENCY_BIT_LATCH))
+            return; // Ignore stop button or wheel lift changes if latch didn't changed
+
+        const uint8_t changed_emergency = t_ll_state.emergency_bitmask ^ last_ll_state.emergency_bitmask;
+        DEBUG_PRINTF("Changed emergency_bitmask " PRINTF_BINARY_PATTERN_INT8 " (new status " PRINTF_BINARY_PATTERN_INT8 " XOR last status " PRINTF_BINARY_PATTERN_INT8 ")\n",
+                     PRINTF_BYTE_TO_BINARY_INT8(changed_emergency),
+                     PRINTF_BYTE_TO_BINARY_INT8(t_ll_state.emergency_bitmask),
+                     PRINTF_BYTE_TO_BINARY_INT8(last_ll_state.emergency_bitmask));
+
+        if (changed_emergency & LL_EMERGENCY_BIT_LATCH)
+        {
+            if (changed_emergency & LL_EMERGENCY_BITS_STOP)
+            {
+                playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_STOP]);
+            }
+            else if (changed_emergency & LL_EMERGENCY_BITS_LIFT)
+            {
+                soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_LIFT]);
+            }
+            else
+            {
+                soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_ROS]);
+            }
+            playSound(soundSystem::tracks[SOUND_TRACK_BGD_EMERGENCY_ALARM]);
+        }
+        else
+        {
+            soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_CLEARED]);
+        }
+        last_ll_state.emergency_bitmask = t_ll_state.emergency_bitmask;
+    }
+
     void processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_level_state t_hl_state)
     {
         static unsigned long next_cycle = millis(); // Next cycle for sound processing
-        static ll_status last_ll_state = {0};             // Last processed low-level state
 
         if (!sound_available_)
             return;
@@ -220,6 +259,9 @@ namespace soundSystem
         }
         next_cycle = millis() + PROCESS_CYCLETIME;
 
+        handleEmergency(t_ll_state);
+
+        // Handle LL status_bitmask changes
         const uint8_t changed_status = t_ll_state.status_bitmask ^ last_ll_state.status_bitmask;
         DEBUG_PRINTF("Changed status_bitmask " PRINTF_BINARY_PATTERN_INT8 " (new status " PRINTF_BINARY_PATTERN_INT8 " XOR last status " PRINTF_BINARY_PATTERN_INT8 "), HL mode %d\n",
                      PRINTF_BYTE_TO_BINARY_INT8(changed_status),
@@ -227,18 +269,17 @@ namespace soundSystem
                      PRINTF_BYTE_TO_BINARY_INT8(last_ll_state.status_bitmask),
                      t_hl_state.current_mode);
 
-        // LL status_bitmask changed
-        if (changed_status & StatusBitmask_initialized)
+        if (changed_status & LL_STATUS_BIT_INITIALIZED)
         {
             playSound(tracks[SOUND_TRACK_ADV_OM_STARTUP_SUCCESS]); // OM startup successful
         }
-        if (changed_status & StatusBitmask_raspi_power)
+        if (changed_status & LL_STATUS_BIT_RASPI_POWER)
         {
             playSound(tracks[SOUND_TRACK_ADV_ROS_INIT]); // Initializing ROS
             // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
             playSound(tracks[SOUND_TRACK_BGD_ROS_BOOT]);
         }
-        if (changed_status & StatusBitmask_rain)
+        if (changed_status & LL_STATUS_BIT_RAIN)
         {
             if (t_hl_state.current_mode == MODE_AUTONOMOUS && !((hl_mode_flags_ & ModeFlags::rainDetected) || (hl_mode_flags_ & ModeFlags::docking)))
             {
