@@ -2,7 +2,7 @@
 
 001					    Hallo, ich bin Steve, dein intelligenter Rasemäher, Rasenpflege ist mein Beruf
 002					    "open mower" erfolgreich gestartet
-003					    Initialisiere robot operating system
+003					    Initialisiere Roboter Betriebssystem
 004					    Starte Aufzeichnung des Lageplans
 005					    Warte auf RTK-GPS Signal
 006					    Berechne Abmessungen des Lageplans
