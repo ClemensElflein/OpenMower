@@ -31,7 +31,7 @@
 #define STATUS_CYCLETIME 100      // cycletime for refresh analog and digital Statusvalues
 #define UI_SET_LED_CYCLETIME 1000 // cycletime for refresh UI status LEDs
 
-#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency. This is to filter uneven ground.
+#define TILT_EMERGENCY_MILLIS 2500 // Time for a single wheel to be lifted in order to count as emergency. This is to filter uneven ground.
 #define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency. This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
@@ -133,7 +133,7 @@ void updateEmergency() {
         emergency_latch = true;
         ROS_running = false;
     }
-    uint8_t last_emergency = status_message.emergency_bitmask & 1;
+    uint8_t last_emergency = status_message.emergency_bitmask & LL_EMERGENCY_BIT_LATCH;
 
     // Mask the emergency bits. 2x Lift sensor, 2x Emergency Button
     bool emergency1 = !gpio_get(PIN_EMERGENCY_1) | (stock_ui_emergency_state & Emergency_state::Emergency_lift1);
@@ -143,75 +143,74 @@ void updateEmergency() {
 
     uint8_t emergency_state = 0;
 
-    bool is_tilted = emergency1 || emergency2;
-    bool is_lifted = emergency1 && emergency2;
-    bool stop_pressed = emergency3 || emergency4;
-
-    if (is_lifted) {
-        // We just lifted, store the timestamp
-        if (lift_emergency_started == 0) {
-            lift_emergency_started = millis();
-        }
-    } else {
-        // Not lifted, reset the time
-        lift_emergency_started = 0;
-    }
-
-    if (stop_pressed) {
-        // We just pressed, store the timestamp
-        if (button_emergency_started == 0) {
+    // Handle stop button
+    if (emergency3 || emergency4)
+    {
+        // We just pressed stop button, store the timestamp
+        if (button_emergency_started == 0)
             button_emergency_started = millis();
-        }
-    } else {
+    }
+    else
+    {
         // Not pressed, reset the time
         button_emergency_started = 0;
     }
 
-    if (lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) {
-        // Emergency bit 2 (lift wheel 1)set?
-        if (emergency1)
-            emergency_state |= 0b01000;
-        // Emergency bit 1 (lift wheel 2)set?
-        if (emergency2)
-            emergency_state |= 0b10000;
+    // Handle both wheels lifted
+    if (emergency1 && emergency2)
+    {
+        // We just lifted, store the timestamp
+        if (lift_emergency_started == 0)
+            lift_emergency_started = millis();
+    }
+    else
+    {
+        // Not lifted, reset the time
+        lift_emergency_started = 0;
     }
 
-    if (is_tilted) {
+    // Handle if one wheel tilt
+    // FIXME: This could be moved into previous "Handle both wheels lifted" else condition, but for the ease of reading leave it here?
+    if (emergency1 || emergency2)
+    {
         // We just tilted, store the timestamp
-        if (tilt_emergency_started == 0) {
+        if (tilt_emergency_started == 0)
             tilt_emergency_started = millis();
-        }
-    } else {
+    }
+    else
+    {
         // Not tilted, reset the time
         tilt_emergency_started = 0;
     }
 
- if (tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS) {
-        // Emergency bit 2 (lift wheel 1)set?
+    // Set corresponding emergency bits
+    if ((lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) ||
+        (tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS))
+    {
         if (emergency1)
-            emergency_state |= 0b01000;
-        // Emergency bit 1 (lift wheel 2)set?
+            emergency_state |= LL_EMERGENCY_BIT_LIFT1;
         if (emergency2)
-            emergency_state |= 0b10000;
+            emergency_state |= LL_EMERGENCY_BIT_LIFT2;
     }
-    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS) {
+    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
+    {
         // Emergency bit 2 (stop button) set?
         if (emergency3)
-            emergency_state |= 0b00010;
-        // Emergency bit 1 (stop button)set?
+            emergency_state |= LL_EMERGENCY_BIT_STOP1;
         if (emergency4)
-            emergency_state |= 0b00100;
+            emergency_state |= LL_EMERGENCY_BIT_STOP2;
     }
 
     if (emergency_state || emergency_latch) {
-        emergency_latch |= 1;
-        emergency_state |= 1;
+        emergency_latch = true;
+        emergency_state |= LL_EMERGENCY_BIT_LATCH;
     }
 
     status_message.emergency_bitmask = emergency_state;
 
     // If it's a new emergency, instantly send the message. This is to not spam the channel during emergencies.
-    if (last_emergency != (emergency_state & 1)) {
+    if (last_emergency != (emergency_state & LL_EMERGENCY_BIT_LATCH))
+    {
         sendMessage(&status_message, sizeof(struct ll_status));
 
         // Update LEDs instantly
@@ -295,11 +294,11 @@ void manageUILEDS() {
     }
 
     // Show Info mower lifted or stop button pressed
-    if (status_message.emergency_bitmask & 0b00110) {
+    if (status_message.emergency_bitmask & LL_EMERGENCY_BITS_STOP) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_blink_fast);
-    } else if (status_message.emergency_bitmask & 0b11000) {
+    } else if (status_message.emergency_bitmask & LL_EMERGENCY_BITS_LIFT) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_blink_slow);
-    } else if (status_message.emergency_bitmask & 0b0000001) {
+    } else if (status_message.emergency_bitmask & LL_EMERGENCY_BIT_LATCH) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_on);
     } else {
         setLed(leds_message, LED_MOWER_LIFTED, LED_off);
