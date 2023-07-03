@@ -225,21 +225,21 @@ namespace soundSystem
         {
             if (changed_emergency & LL_EMERGENCY_BITS_STOP)
             {
-                playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_STOP]);
+                playSoundAdHoc(tracks[SOUND_TRACK_ADV_EMERGENCY_STOP]);
             }
             else if (changed_emergency & LL_EMERGENCY_BITS_LIFT)
             {
-                soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_LIFT]);
+                playSoundAdHoc(tracks[SOUND_TRACK_ADV_EMERGENCY_LIFT]);
             }
             else
             {
-                soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_ROS]);
+                playSoundAdHoc(tracks[SOUND_TRACK_ADV_EMERGENCY_ROS]);
             }
-            playSound(soundSystem::tracks[SOUND_TRACK_BGD_EMERGENCY_ALARM]);
+            playSound(tracks[SOUND_TRACK_BGD_EMERGENCY_ALARM]);
         }
         else
         {
-            soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_EMERGENCY_CLEARED]);
+            playSoundAdHoc(tracks[SOUND_TRACK_ADV_EMERGENCY_CLEARED]);
         }
         last_ll_state.emergency_bitmask = t_ll_state.emergency_bitmask;
     }
