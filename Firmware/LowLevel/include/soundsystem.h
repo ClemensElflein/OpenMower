@@ -40,6 +40,7 @@
 #define MOW_SOUND_INITIAL_FIX_DELAY 120000 // Play random mow sounds earliest 3 minutes after first fix (max. expected time to navigate to mowing area)
 #define MOW_SOUND_MIN_PAUSE_AFTER 60000    // Minimum pause before a new randomized mow sounds get played
 #define MOW_SOUND_CHANCE 50                // % change to play a new sound within the next minute after MOW_SOUND_MIN_PAUSE_AFTER
+#define ROS_RUNNING_BEFORE_EMERGENCY 10000 // Min. millis of running ROS before emergencies get handled
 
 // For better reading, let's use track names which point to tracks[] indexes
 #define SOUND_TRACK_BGD_OM_BOOT 0 // Heartbeat during OM LowLevel startup

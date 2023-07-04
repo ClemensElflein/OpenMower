@@ -64,7 +64,6 @@ namespace soundSystem
 
         ll_status last_ll_state = {0};            // Last processed low-level state
         ll_high_level_state last_hl_state_ = {0}; // Last processed high-level state
-        unsigned long hl_mode_started_ms_;        // Millis when the current high-level mode started. 0 if idle.
         unsigned long hl_mode_has_fix_ms_;        // Millis when the current high-level mode got his initial GPS fix. 0 if idle.
         uint8_t hl_mode_flags_;                   // High level mode flags (assumptions), like initial GPS "fix", rain, docking...
 
@@ -73,7 +72,8 @@ namespace soundSystem
         bool current_playing_is_background_;    // Current/last playing sound is a background sound
         unsigned long current_playing_started_; // Millis when current/last playing sound got started
 
-        unsigned long last_advert_end_; // Millis when the last played advert sound ended. Used for pauseAfter calculation
+        unsigned long ros_running_since_ = 0; // ros_running since millis state
+        unsigned long last_advert_end_;       // Millis when the last played advert sound ended. Used for pauseAfter calculation
 
         // Describe specific (assumed) mode flags
         enum ModeFlags : uint8_t
@@ -210,24 +210,28 @@ namespace soundSystem
      *
      * @param t_ll_state
      */
-    void handleEmergency(ll_status t_ll_state)
+    void handleEmergencies(ll_status t_ll_state, bool t_ros_running)
     {
         if ((last_ll_state.emergency_bitmask & LL_EMERGENCY_BIT_LATCH) == (t_ll_state.emergency_bitmask & LL_EMERGENCY_BIT_LATCH))
             return; // Ignore stop button or wheel lift changes if latch didn't changed
 
-        const uint8_t changed_emergency = t_ll_state.emergency_bitmask ^ last_ll_state.emergency_bitmask;
-        DEBUG_PRINTF("Changed emergency_bitmask " PRINTF_BINARY_PATTERN_INT8 " (new status " PRINTF_BINARY_PATTERN_INT8 " XOR last status " PRINTF_BINARY_PATTERN_INT8 ")\n",
-                     PRINTF_BYTE_TO_BINARY_INT8(changed_emergency),
-                     PRINTF_BYTE_TO_BINARY_INT8(t_ll_state.emergency_bitmask),
-                     PRINTF_BYTE_TO_BINARY_INT8(last_ll_state.emergency_bitmask));
-
-        if (changed_emergency & LL_EMERGENCY_BIT_LATCH)
+        if (t_ll_state.v_charge > 20.0f ||                                  // No emergencies while docked
+            !t_ros_running ||                                               // No emergencies as long as ROS does not run
+            !ros_running_since_ ||                                          // Pico just started up, while ROS might already running (which happen i.e. after a FW update)
+            millis() < (ros_running_since_ + ROS_RUNNING_BEFORE_EMERGENCY)) // No emergency handling before ROS is running that long
         {
-            if (changed_emergency & LL_EMERGENCY_BITS_STOP)
+            last_ll_state.emergency_bitmask = t_ll_state.emergency_bitmask;
+            return;
+        }
+
+        if (!(last_ll_state.emergency_bitmask & LL_EMERGENCY_BIT_LATCH) && (t_ll_state.emergency_bitmask & LL_EMERGENCY_BIT_LATCH))
+        {
+            // Latch changed from 0 -> 1
+            if (t_ll_state.emergency_bitmask & LL_EMERGENCY_BITS_STOP)
             {
                 playSoundAdHoc(tracks[SOUND_TRACK_ADV_EMERGENCY_STOP]);
             }
-            else if (changed_emergency & LL_EMERGENCY_BITS_LIFT)
+            else if (t_ll_state.emergency_bitmask & LL_EMERGENCY_BITS_LIFT)
             {
                 playSoundAdHoc(tracks[SOUND_TRACK_ADV_EMERGENCY_LIFT]);
             }
@@ -239,6 +243,7 @@ namespace soundSystem
         }
         else
         {
+            // Latch changed from 1 -> 0
             playSoundAdHoc(tracks[SOUND_TRACK_ADV_EMERGENCY_CLEARED]);
         }
         last_ll_state.emergency_bitmask = t_ll_state.emergency_bitmask;
@@ -259,7 +264,19 @@ namespace soundSystem
         }
         next_cycle = millis() + PROCESS_CYCLETIME;
 
-        handleEmergency(t_ll_state);
+        // Docked ?
+        if (t_ll_state.v_charge > 20.0f)
+        {
+            if (last_ll_state.v_charge < 10.0f)
+            {
+                myMP3.stop();
+                background_track_def_ = {0};
+                active_sounds_.clear();
+            }
+        }
+        last_ll_state.v_charge = t_ll_state.v_charge;
+
+        handleEmergencies(t_ll_state, t_ros_running);
 
         // Handle LL status_bitmask changes
         const uint8_t changed_status = t_ll_state.status_bitmask ^ last_ll_state.status_bitmask;
@@ -269,22 +286,22 @@ namespace soundSystem
                      PRINTF_BYTE_TO_BINARY_INT8(last_ll_state.status_bitmask),
                      t_hl_state.current_mode);
 
-        if (changed_status & LL_STATUS_BIT_INITIALIZED)
+        if (!(last_ll_state.status_bitmask & LL_STATUS_BIT_INITIALIZED) && (t_ll_state.status_bitmask & LL_STATUS_BIT_INITIALIZED))
         {
             playSound(tracks[SOUND_TRACK_ADV_OM_STARTUP_SUCCESS]); // OM startup successful
         }
-        if (changed_status & LL_STATUS_BIT_RASPI_POWER)
+        if (!t_ros_running && !(last_ll_state.status_bitmask & LL_STATUS_BIT_RASPI_POWER) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RASPI_POWER))
         {
             playSound(tracks[SOUND_TRACK_ADV_ROS_INIT]); // Initializing ROS
             // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
             playSound(tracks[SOUND_TRACK_BGD_ROS_BOOT]);
         }
-        if (changed_status & LL_STATUS_BIT_RAIN)
+        if (!(last_ll_state.status_bitmask & LL_STATUS_BIT_RAIN) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RAIN))
         {
             if (t_hl_state.current_mode == MODE_AUTONOMOUS && !((hl_mode_flags_ & ModeFlags::rainDetected) || (hl_mode_flags_ & ModeFlags::docking)))
             {
-                playSoundAdHoc(tracks[SOUND_TRACK_ADV_RAIN]);                                    // Rain detected, heading back to base
-                playSound({num : (uint16_t)(10 + (rand() % 2)), type : TrackTypes::background}); // Play background track 10 or 11 by random
+                playSoundAdHoc(tracks[SOUND_TRACK_ADV_RAIN]);                                     // Rain detected, heading back to base
+                playSound({num : (uint16_t)(100 + (rand() % 3)), type : TrackTypes::background}); // Play background track 100-102 by random
                 hl_mode_flags_ |= ModeFlags::docking;
             }
             hl_mode_flags_ |= ModeFlags::rainDetected;
@@ -292,12 +309,11 @@ namespace soundSystem
         last_ll_state.status_bitmask = t_ll_state.status_bitmask;
 
         // ROS running changed
-        static bool last_ros_running = false; // Last processed ros_running state
-        if (t_ros_running && !last_ros_running)
+        if (t_ros_running && !ros_running_since_)
         {
+            ros_running_since_ = millis();
             playSound(tracks[SOUND_TRACK_ADV_ROS_STARTUP_SUCCESS]); // ROS startup successful
         }
-        last_ros_running = t_ros_running;
 
         // HL mode changed
         if (t_hl_state.current_mode != last_hl_state_.current_mode)
@@ -306,7 +322,6 @@ namespace soundSystem
             {
             case MODE_RECORDING:
                 hl_mode_flags_ |= ModeFlags::started;
-                hl_mode_started_ms_ = millis();
                 playSound(tracks[SOUND_TRACK_ADV_MAP_RECORD_START]); // Starting map area recording
                 if (t_hl_state.gps_quality < 75)
                     playSound(tracks[SOUND_TRACK_ADV_RTKGPS_WAIT]); // Waiting for RTK GPS signal
@@ -314,14 +329,12 @@ namespace soundSystem
 
             case MODE_AUTONOMOUS:
                 hl_mode_flags_ |= ModeFlags::started;
-                hl_mode_started_ms_ = millis();
                 playSound(tracks[SOUND_TRACK_ADV_AUTONOMOUS_START]); // Stay back, autonomous robot mower in use
                 if (t_hl_state.gps_quality < 75)
                     playSound(tracks[SOUND_TRACK_ADV_RTKGPS_WAIT]); // Waiting for RTK GPS signal
                 break;
 
             default:
-                hl_mode_started_ms_ = 0;
                 hl_mode_has_fix_ms_ = 0;
                 hl_mode_flags_ = 0;
                 break;
