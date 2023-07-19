@@ -59,6 +59,8 @@ namespace soundSystem
 
         std::list<TrackDef> active_sounds_;
         bool sound_available_ = false; // Sound module available as well as SD-Card with some kind of files
+        uint8_t volume = 0;            // Last set volume (%)
+        uint8_t language = 0;          // Selected language. See soundystem.h `const uint8_t languages[]`
 
         uint16_t last_error_code_ = 0; // Last DFPlayer error code. See DfMp3_Error for code meaning
 
@@ -84,7 +86,7 @@ namespace soundSystem
             docking = 0x08,       // Heading back to base, i.e. due to rain detected
         };
 
-        void playMowSound(); // Forwward declaration
+        void playMowSound(); // Forward declaration
     }
 
     bool begin()
@@ -136,6 +138,18 @@ namespace soundSystem
         return sound_available_;
     }
 
+    void setNextLanguage()
+    {
+        if (!sound_available_)
+            return;
+
+        language++;
+        if (language >= sizeof(languages) / sizeof(uint8_t))
+            language = 0;
+
+        playSoundAdHoc(tracks[SOUND_TRACK_ADV_LANGUAGE]);
+    }
+
     void setVolume(uint8_t t_vol) // scales from 0 to 100 %
     {
         if (!sound_available_)
@@ -145,7 +159,28 @@ namespace soundSystem
         uint8_t val = (uint8_t)(30.0 / 100.0 * (double)t_vol);
         DEBUG_PRINTF("Set volume %d\n", val);
         myMP3.setVolume(val);
+        volume = t_vol;
         delay(50); // (sometimes) required for "DFR LISP3"
+    }
+
+    void setVolumeUp()
+    {
+        if (!sound_available_ || volume > (100 - VOLUME_STEPS))
+            return;
+
+        volume += VOLUME_STEPS;
+        setVolume(volume);
+        playSoundAdHoc(tracks[SOUND_TRACK_ADV_UP]);
+    }
+
+    void setVolumeDown()
+    {
+        if (!sound_available_ || volume < VOLUME_STEPS)
+            return;
+
+        volume -= VOLUME_STEPS;
+        setVolume(volume);
+        playSoundAdHoc(tracks[SOUND_TRACK_ADV_DOWN]);
     }
 
     void playSoundAdHoc(TrackDef t_track_def)
@@ -171,7 +206,7 @@ namespace soundSystem
             delay(50); // (sometimes) required for "MH2024K-24SS"
             // FIXME: playFolderTrack16() does not work with german folder?! or other folders as 01
             // myMP3.playFolderTrack16(DFP_ADVERT_FOLDER, t_track_def.num);
-            myMP3.playFolderTrack(DFP_ADVERT_FOLDER, t_track_def.num);
+            myMP3.playFolderTrack(languages[language], t_track_def.num);
             delay(50); // (sometimes) required for "MH2024K-24SS"
             advert_track_def_ = t_track_def;
             current_playing_is_background_ = false;

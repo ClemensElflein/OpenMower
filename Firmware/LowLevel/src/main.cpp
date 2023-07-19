@@ -531,6 +531,25 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size)
         ui_event.button_id = msg->button_id;
         ui_event.press_duration = msg->press_duration;
         sendMessage(&ui_event, sizeof(ui_event));
+
+#ifdef ENABLE_SOUND_MODULE
+        // Handle Sound Buttons. FIXME: Should/might go to mower_logic? But as sound isn't hip ... :-/
+        switch (msg->button_id)
+        {
+        case 8: // Mon = Volume up
+            soundSystem::setVolumeUp();
+            break;
+        case 9: // Tue = Volume down
+            soundSystem::setVolumeDown();
+            break;
+        case 10: // Wed = Next Language
+            soundSystem::setNextLanguage();
+            break;
+
+        default:
+            break;
+        }
+#endif
     }
     else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency))
     {

@@ -24,7 +24,6 @@
 
 #include "datatypes.h"
 
-#define DFP_ADVERT_FOLDER 1 // Folder 01 = English (US), 49 = German, ...
 #define DFP_ONLINE_TIMEOUT 5000
 #define DFP_REDUNDANT_ONPLAYFINISH_CB_MAX 300 // Max. ms to detect a recurring OnPlayFinish() CB as redundant
 
@@ -41,6 +40,7 @@
 #define MOW_SOUND_MIN_PAUSE_AFTER 60000    // Minimum pause before a new randomized mow sounds get played
 #define MOW_SOUND_CHANCE 50                // % change to play a new sound within the next minute after MOW_SOUND_MIN_PAUSE_AFTER
 #define ROS_RUNNING_BEFORE_EMERGENCY 10000 // Min. millis of running ROS before emergencies get handled
+#define VOLUME_STEPS 5                     // Amount of volume setps for volumeUp() and volumeDown()
 
 // For better reading, let's use track names which point to tracks[] indexes
 #define SOUND_TRACK_BGD_OM_BOOT 0 // Heartbeat during OM LowLevel startup
@@ -64,6 +64,9 @@
 #define SOUND_TRACK_ADV_RTKGPS_MODERATE 16
 #define SOUND_TRACK_ADV_RTKGPS_GOOD 17
 #define SOUND_TRACK_BGD_MUSIC_PINK_PANTHER 18
+#define SOUND_TRACK_ADV_UP 21
+#define SOUND_TRACK_ADV_DOWN 22
+#define SOUND_TRACK_ADV_LANGUAGE 23
 
 namespace soundSystem
 {
@@ -87,6 +90,8 @@ namespace soundSystem
         unsigned long pauseAfter = 0;    // Cosmetic pause in ms, after advert track got played, before the next sound get processed from queue.
         int32_t repeatDuration = 180000; // How long (ms) to repeat a background sound. Default to 180 sec. noise pollution (i.e. VdS 2300)
     };
+    const uint8_t languages[] = {1, 49}; // Available advert language sounds. 1 = English(US), 49 = German
+
     // For easier reading and simpler code, let's have a list of predefined tracks and its (default) settings
     const TrackDef tracks[] = {
         {2, background, repeat},                          // 0 = OM boot-up background
@@ -110,7 +115,9 @@ namespace soundSystem
         {12, background},                                 // 18 = Stalking "Pink Panther"
         {24, advert, pauseAfter : 500},                   // 19 = Emergency triggered by ROS
         {23, advert, stopBackground, pauseAfter : 500},   // 20 = Emergency cleared
-
+        {21, advert, pauseAfter : 100},                   // 21 = Volume "up"
+        {20, advert, pauseAfter : 100},                   // 22 = Volume "down"
+        {22, advert, pauseAfter : 100},                   // 23 = Switched to (Englisch) language
     };
 
     bool begin(); // Init serial stream, soundmodule and sound_available_
@@ -118,7 +125,11 @@ namespace soundSystem
     void playSound(TrackDef t_track_def);      // Play sound trackDef. This method writes sound trackDef in a list, the method processSounds() (has to run in loop)
                                                // will play the sounds according to the list
     void playSoundAdHoc(TrackDef t_track_def); // Play sound track number immediately without waiting until the end of sound
-    void setVolume(uint8_t t_vol);             // Scales loudness from 0 to 100 %
+
+    void setNextLanguage();        // Select next (available) language
+    void setVolume(uint8_t t_vol); // Scales loudness from 0 to 100 %
+    void setVolumeUp();            // Scale volume up by VOLUME_STEPS
+    void setVolumeDown();          // Scale volume down by VOLUME_STEPS
 
     void processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_level_state t_hl_state); // This method has to be called cyclic, e.g. every second.
 }
