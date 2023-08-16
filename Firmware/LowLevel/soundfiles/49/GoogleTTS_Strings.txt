@@ -8,7 +8,7 @@
 006					    Berechne Abmessungen des Lageplans
 007					    Starte den Mähvorgang
 008					    Not-Aus-Taste gedrückt
-009					    Rad Hebesensor ausgelöst
+009					    Not-Aus durch Rad Hebesensor
 010					    Regen festgestellt, fahre zurück zur Basis
 011					    "open mower" hat das Rasenmähen beendet und fährt zurück zu Ladestation
 012					    Vorsicht! Autonomer Mähroboter im Einsatz
@@ -21,7 +21,8 @@
 021                     lauter
 022			            auf deutsche sprache umgestellt
 023			            Notaus aufgehoben
-024                     Not-Aus vom Roboter Betriebssystem ausgelöst
+024                     Not-Aus durch Roboter Betriebssystem
+025                     Not-Aus durch Kollisionssensor
 
 
 New german adverts sampled via Google TTS with settings:

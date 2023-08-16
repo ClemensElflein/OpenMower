@@ -25,6 +25,7 @@
 022                     Switched to English Language
 023                     Emergency cleared
 024                     Emergency triggered by Robot operating system
+025                     Emergency triggered by collision sensor
 
 
 New adverts >= 0017 sampled via Google TTS with settings:
