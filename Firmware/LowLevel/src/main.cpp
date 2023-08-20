@@ -445,7 +445,7 @@ void setup()
     if (sound_available)
     {
         p.neoPixelSetValue(0, 0, 0, 255, true);
-        soundSystem::setVolume(100);
+        soundSystem::setVolume(VOLUME_DEFAULT);
         soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_HI_IM_STEVE]);
         p.neoPixelSetValue(0, 255, 255, 0, true);
     }

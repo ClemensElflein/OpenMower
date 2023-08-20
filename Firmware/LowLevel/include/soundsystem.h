@@ -40,6 +40,7 @@
 #define MOW_SOUND_MIN_PAUSE_AFTER 60000    // Minimum pause before a new randomized mow sounds get played
 #define MOW_SOUND_CHANCE 50                // % change to play a new sound within the next minute after MOW_SOUND_MIN_PAUSE_AFTER
 #define ROS_RUNNING_BEFORE_EMERGENCY 10000 // Min. millis of running ROS before emergencies get handled
+#define VOLUME_DEFAULT 100
 #define VOLUME_STEPS 5                     // Amount of volume setps for volumeUp() and volumeDown()
 
 // For better reading, let's use track names which point to tracks[] indexes

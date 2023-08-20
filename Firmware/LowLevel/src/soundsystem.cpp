@@ -58,9 +58,9 @@ namespace soundSystem
         DfMp3 myMP3(soundSerial);
 
         std::list<TrackDef> active_sounds_;
-        bool sound_available_ = false; // Sound module available as well as SD-Card with some kind of files
-        uint8_t volume = 0;            // Last set volume (%)
-        uint8_t language = 0;          // Selected language. See soundystem.h `const uint8_t languages[]`
+        bool sound_available_ = false;   // Sound module available as well as SD-Card with some kind of files
+        uint8_t volume = VOLUME_DEFAULT; // Last set volume (%)
+        uint8_t language = 0;            // Selected language. See soundystem.h `const uint8_t languages[]`
 
         uint16_t last_error_code_ = 0; // Last DFPlayer error code. See DfMp3_Error for code meaning
 
@@ -135,6 +135,7 @@ namespace soundSystem
         myMP3.setRepeatPlayCurrentTrack(false);
         myMP3.setRepeatPlayAllInRoot(false);
         playSoundAdHoc(tracks[SOUND_TRACK_BGD_OM_BOOT]);
+        delay(50); // (sometimes) required for "DFR LISP3"
         return sound_available_;
     }
 
