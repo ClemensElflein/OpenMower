@@ -404,7 +404,7 @@ void setup()
     // Setup pins
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(PIN_ENABLE_CHARGE, OUTPUT);
-    digitalWrite(PIN_ENABLE_CHARGE, LOW);
+    digitalWrite(PIN_ENABLE_CHARGE, HIGH);
 
     gpio_init(PIN_RASPI_POWER);
     gpio_put(PIN_RASPI_POWER, true);
