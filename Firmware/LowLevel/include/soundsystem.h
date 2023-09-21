@@ -99,7 +99,7 @@ namespace soundSystem
         {1, advert, pauseAfter : 1500},                   // 1 = Hi I'm steve
         {19, advert, stopBackground, pauseAfter : 500},   // 2 = IMU initialization failed
         {15, background, repeat, repeatDuration : 20000}, // 3 = Alarm02
-        {8, advert, pauseAfter : 500},                    // 4 = Emergency stop button triggered
+        {8, advert, pauseAfter : 500},                    // 4 = Stop button triggered
         {9, advert, pauseAfter : 500},                    // 5 = Emergency wheel lift sensor triggered
         {9, background},                                  // 6 = "Bee daa, Bee daa" Minion fire alarm
         {2, advert, pauseAfter : 1500},                   // 7 = OM startup successful

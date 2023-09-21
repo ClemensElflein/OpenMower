@@ -266,16 +266,18 @@ namespace soundSystem
             if (t_ll_state.emergency_bitmask & LL_EMERGENCY_BITS_STOP)
             {
                 playSoundAdHoc(tracks[SOUND_TRACK_ADV_EMERGENCY_STOP]);
+                // Do not take attention via "Bida bida" as user pressed the button itself
             }
             else if (t_ll_state.emergency_bitmask & LL_EMERGENCY_BITS_LIFT)
             {
                 playSoundAdHoc(tracks[SOUND_TRACK_ADV_EMERGENCY_LIFT]);
+                playSound(tracks[SOUND_TRACK_BGD_EMERGENCY_ALARM]);
             }
             else
             {
                 playSoundAdHoc(tracks[SOUND_TRACK_ADV_EMERGENCY_ROS]);
+                playSound(tracks[SOUND_TRACK_BGD_EMERGENCY_ALARM]);
             }
-            playSound(tracks[SOUND_TRACK_BGD_EMERGENCY_ALARM]);
         }
         else
         {

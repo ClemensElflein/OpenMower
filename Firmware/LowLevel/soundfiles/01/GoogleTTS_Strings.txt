@@ -7,7 +7,7 @@
 005					    waiting for rtk gps signal
 006					    calculating map dimensions
 007					    initiate mowing sequence
-008					    emergency stop button triggered
+008					    stop button triggered
 009					    emergency wheel lift sensor triggered
 010					    rain detected, heading back to base
 011					    open mower has completed mowing the lawn, heading back to charging station

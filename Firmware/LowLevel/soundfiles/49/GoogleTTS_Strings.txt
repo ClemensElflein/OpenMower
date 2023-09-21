@@ -7,7 +7,7 @@
 005					    Warte auf RTK-GPS Signal
 006					    Berechne Abmessungen des Lageplans
 007					    Starte den Mähvorgang
-008					    Not-Aus-Taste gedrückt
+008					    Stop-Taste gedrückt
 009					    Not-Aus durch Rad Hebesensor
 010					    Regen festgestellt, fahre zurück zur Basis
 011					    "open mower" hat das Rasenmähen beendet und fährt zurück zu Ladestation
