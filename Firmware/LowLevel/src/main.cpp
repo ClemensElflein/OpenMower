@@ -90,6 +90,11 @@ unsigned long lift_emergency_started = 0;
 unsigned long tilt_emergency_started = 0;
 unsigned long button_emergency_started = 0;
 
+#define UI_GET_VERSION_CYCLE_MS 10000            // How often to check for UI version
+#define UI_GET_VERSION_RESPOND_TIMEOUT_MS 100    // Respond timeout for a a UI Get_Version request
+unsigned long ui_get_version_runout = 0;         // Next period when to check for a UI version
+unsigned long ui_get_version_respond_runout = 0; // When a requested UI Get_Version runs out, or 0 if no un-responded request exists
+
 // Stock UI
 uint8_t stock_ui_emergency_state = 0; // Get set by received Get_Emergency packet
 bool stock_ui_rain = false;           // Get set by received Get_Rain packet
@@ -114,6 +119,7 @@ bool ROS_running = false;
 unsigned long charging_disabled_time = 0;
 
 float imu_temp[9];
+uint16_t ui_version = 0; // Last received UI (firmware =? protocol) version. 200 = Latest Button-/LED-CoverUI. >= 300 = More intelligent Display which handles values & states instead of LEDs & Buttons?!
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -477,25 +483,32 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         buffer[size - 2] != (crc & 0xFF))
         return;
 
-    if (buffer[0] == Get_Button && size == sizeof(struct msg_event_button)) {
-        struct msg_event_button *msg = (struct msg_event_button *) buffer;
-        struct ll_ui_event ui_event;
-        ui_event.type = PACKET_ID_LL_UI_EVENT;
-        ui_event.button_id = msg->button_id;
-        ui_event.press_duration = msg->press_duration;
-        sendMessage(&ui_event, sizeof(ui_event));
-    }
-    else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency))
+    if (buffer[0] == Get_Version && size == sizeof(struct msg_get_version))
     {
-        struct msg_event_emergency *msg = (struct msg_event_emergency *)buffer;
-        stock_ui_emergency_state = msg->state;
+        struct msg_get_version *msg = (struct msg_get_version *)buffer;
+        ui_version = msg->version;
+        status_message.status_bitmask |= 0b10000000;
+        ui_get_version_respond_runout = 0;
+    } else if (buffer[0] == Get_Button && size == sizeof(struct msg_event_button))
+        {
+            struct msg_event_button *msg = (struct msg_event_button *)buffer;
+            struct ll_ui_event ui_event;
+            ui_event.type = PACKET_ID_LL_UI_EVENT;
+            ui_event.button_id = msg->button_id;
+            ui_event.press_duration = msg->press_duration;
+            sendMessage(&ui_event, sizeof(ui_event));
+        }
+        else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency))
+        {
+            struct msg_event_emergency *msg = (struct msg_event_emergency *)buffer;
+            stock_ui_emergency_state = msg->state;
+        }
+        else if (buffer[0] == Get_Rain && size == sizeof(struct msg_event_rain))
+        {
+            struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
+            stock_ui_rain = (msg->value < msg->threshold);
+        }
     }
-    else if (buffer[0] == Get_Rain && size == sizeof(struct msg_event_rain))
-    {
-        struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
-        stock_ui_rain = (msg->value < msg->threshold);
-    }
-}
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {
     // sanity check for CRC to work (1 type, 1 data, 2 CRC)
@@ -654,6 +667,22 @@ void loop() {
             my_sound.processSounds();
         }
 #endif
+    }
+
+    // Process UI version
+    if (ui_get_version_respond_runout && now > ui_get_version_respond_runout)
+    {
+        status_message.status_bitmask &= 0b01111111;
+        ui_version = 0;
+        ui_get_version_respond_runout = 0;
+    }
+    if (now > ui_get_version_runout)
+    {
+        struct msg_get_version msg;
+        msg.type = Get_Version;
+        sendUIMessage(&msg, sizeof(msg));
+        ui_get_version_runout = now + UI_GET_VERSION_CYCLE_MS;
+        ui_get_version_respond_runout = now + UI_GET_VERSION_RESPOND_TIMEOUT_MS;
     }
 }
 
