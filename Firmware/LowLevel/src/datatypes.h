@@ -32,6 +32,8 @@ enum HighLevelMode {
     MODE_RECORDING = 3 // ROS connected, Manual mode during recording etc
 };
 
+#define LL_STATUS_BIT_UI_AVAIL 0b10000000
+
 #pragma pack(push, 1)
 struct ll_status {
     // Type of this message. Has to be PACKET_ID_LL_STATUS.
