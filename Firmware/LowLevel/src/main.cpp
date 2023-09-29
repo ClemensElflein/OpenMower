@@ -489,26 +489,27 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         ui_version = msg->version;
         status_message.status_bitmask |= LL_STATUS_BIT_UI_AVAIL;
         ui_get_version_respond_timeout = 0;
-    } else if (buffer[0] == Get_Button && size == sizeof(struct msg_event_button))
-        {
-            struct msg_event_button *msg = (struct msg_event_button *)buffer;
-            struct ll_ui_event ui_event;
-            ui_event.type = PACKET_ID_LL_UI_EVENT;
-            ui_event.button_id = msg->button_id;
-            ui_event.press_duration = msg->press_duration;
-            sendMessage(&ui_event, sizeof(ui_event));
-        }
-        else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency))
-        {
-            struct msg_event_emergency *msg = (struct msg_event_emergency *)buffer;
-            stock_ui_emergency_state = msg->state;
-        }
-        else if (buffer[0] == Get_Rain && size == sizeof(struct msg_event_rain))
-        {
-            struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
-            stock_ui_rain = (msg->value < msg->threshold);
-        }
     }
+    else if (buffer[0] == Get_Button && size == sizeof(struct msg_event_button))
+    {
+        struct msg_event_button *msg = (struct msg_event_button *)buffer;
+        struct ll_ui_event ui_event;
+        ui_event.type = PACKET_ID_LL_UI_EVENT;
+        ui_event.button_id = msg->button_id;
+        ui_event.press_duration = msg->press_duration;
+        sendMessage(&ui_event, sizeof(ui_event));
+    }
+    else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency))
+    {
+        struct msg_event_emergency *msg = (struct msg_event_emergency *)buffer;
+        stock_ui_emergency_state = msg->state;
+    }
+    else if (buffer[0] == Get_Rain && size == sizeof(struct msg_event_rain))
+    {
+        struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
+        stock_ui_rain = (msg->value < msg->threshold);
+    }
+}
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {
     // sanity check for CRC to work (1 type, 1 data, 2 CRC)
