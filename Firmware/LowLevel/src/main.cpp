@@ -27,9 +27,11 @@
 #include <soundsystem.h>
 #endif
 
-#define IMU_CYCLETIME 20          // cycletime for refresh IMU data
-#define STATUS_CYCLETIME 100      // cycletime for refresh analog and digital Statusvalues
-#define UI_SET_LED_CYCLETIME 1000 // cycletime for refresh UI status LEDs
+#define IMU_CYCLETIME 20              // cycletime for refresh IMU data
+#define STATUS_CYCLETIME 100          // cycletime for refresh analog and digital Statusvalues
+#define UI_SET_LED_CYCLETIME 1000     // cycletime for refresh UI status LEDs
+#define UI_GET_VERSION_CYCLETIME 5000 // cycletime for UI Get_Version request (UI available check)
+#define UI_GET_VERSION_TIMEOUT 100    // timeout for UI Get_Version response (UI available check)
 
 #define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency. This is to filter uneven ground.
 #define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency. This is to filter uneven ground.
@@ -90,6 +92,9 @@ unsigned long lift_emergency_started = 0;
 unsigned long tilt_emergency_started = 0;
 unsigned long button_emergency_started = 0;
 
+unsigned long ui_get_version_next_millis = 0;     // Next cycle when to check for a UI version
+unsigned long ui_get_version_respond_timeout = 0; // When UI Get_Version response times out
+
 // Stock UI
 uint8_t stock_ui_emergency_state = 0; // Get set by received Get_Emergency packet
 bool stock_ui_rain = false;           // Get set by received Get_Rain packet
@@ -114,6 +119,7 @@ bool ROS_running = false;
 unsigned long charging_disabled_time = 0;
 
 float imu_temp[9];
+uint16_t ui_version = 0; // Last received UI (firmware =? protocol) version. 200 = Latest Button-/LED-CoverUI. >= 300 = More intelligent Display which handles values & states instead of LEDs & Buttons?!
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -477,8 +483,16 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         buffer[size - 2] != (crc & 0xFF))
         return;
 
-    if (buffer[0] == Get_Button && size == sizeof(struct msg_event_button)) {
-        struct msg_event_button *msg = (struct msg_event_button *) buffer;
+    if (buffer[0] == Get_Version && size == sizeof(struct msg_get_version))
+    {
+        struct msg_get_version *msg = (struct msg_get_version *)buffer;
+        ui_version = msg->version;
+        status_message.status_bitmask |= LL_STATUS_BIT_UI_AVAIL;
+        ui_get_version_respond_timeout = 0;
+    }
+    else if (buffer[0] == Get_Button && size == sizeof(struct msg_event_button))
+    {
+        struct msg_event_button *msg = (struct msg_event_button *)buffer;
         struct ll_ui_event ui_event;
         ui_event.type = PACKET_ID_LL_UI_EVENT;
         ui_event.button_id = msg->button_id;
@@ -654,6 +668,22 @@ void loop() {
             my_sound.processSounds();
         }
 #endif
+    }
+
+    // Check UI version/available
+    if (ui_get_version_respond_timeout && now > ui_get_version_respond_timeout)
+    {
+        status_message.status_bitmask &= ~LL_STATUS_BIT_UI_AVAIL;
+        ui_version = 0;
+        ui_get_version_respond_timeout = 0;
+    }
+    if (now > ui_get_version_next_millis)
+    {
+        ui_get_version_next_millis = now + UI_GET_VERSION_CYCLETIME;
+        ui_get_version_respond_timeout = now + UI_GET_VERSION_TIMEOUT;
+        struct msg_get_version msg;
+        msg.type = Get_Version;
+        sendUIMessage(&msg, sizeof(msg));
     }
 }
 
