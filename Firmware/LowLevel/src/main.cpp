@@ -29,7 +29,6 @@
 
 #define IMU_CYCLETIME 20              // cycletime for refresh IMU data
 #define STATUS_CYCLETIME 100          // cycletime for refresh analog and digital Statusvalues
-#define UI_SET_LED_CYCLETIME 1000     // cycletime for refresh UI status LEDs
 #define UI_GET_VERSION_CYCLETIME 5000 // cycletime for UI Get_Version request (UI available check)
 #define UI_GET_VERSION_TIMEOUT 100    // timeout for UI Get_Version response (UI available check)
 
@@ -86,7 +85,7 @@ MP3Sound my_sound; // Soundsystem
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
 unsigned long last_heartbeat_millis = 0;
-unsigned long last_UILED_millis = 0;
+unsigned long next_ui_msg_millis = 0;
 
 unsigned long lift_emergency_started = 0;
 unsigned long tilt_emergency_started = 0;
@@ -119,13 +118,16 @@ bool ROS_running = false;
 unsigned long charging_disabled_time = 0;
 
 float imu_temp[9];
-uint16_t ui_version = 0; // Last received UI (firmware =? protocol) version. 200 = Latest Button-/LED-CoverUI. >= 300 = More intelligent Display which handles values & states instead of LEDs & Buttons?!
+
+uint16_t ui_version = 0;                   // Last received UI firmware version
+uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
+uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
 void onUIPacketReceived(const uint8_t *buffer, size_t size);
-void manageUILEDS();
+void manageUISubscriptions();
 
 void setRaspiPower(bool power) {
     // Update status bits in the status message
@@ -220,12 +222,12 @@ void updateEmergency() {
     if (last_emergency != (emergency_state & 1)) {
         sendMessage(&status_message, sizeof(struct ll_status));
 
-        // Update LEDs instantly
-        manageUILEDS();
+        // Update UI instantly
+        manageUISubscriptions();
     }
 }
 
-// deals with the pyhsical information an control the UI-LEDs und buzzer in depency of voltage und current values
+// Deals with the physical information and control the UI-LEDs und buzzer in dependency of voltage und current values
 void manageUILEDS() {
     // Show Info Docking LED
     if ((status_message.charging_current > 0.80f) && (status_message.v_charge > 20.0f))
@@ -312,6 +314,25 @@ void manageUILEDS() {
     }
 
     sendUIMessage(&leds_message, sizeof(leds_message));
+}
+
+// Manage send status to UI, dependent on ui_topic_bitmask (subscription)
+void manageUISubscriptions()
+{
+    if (ui_topic_bitmask & Topic_set_leds)
+    {
+        manageUILEDS();
+    }
+
+    if (ui_topic_bitmask & Topic_set_ll_status)
+    {
+        sendUIMessage(&status_message, sizeof(struct ll_status));
+    }
+
+    if (ui_topic_bitmask & Topic_set_hl_state)
+    {
+        sendUIMessage(&last_high_level_state, sizeof(struct ll_high_level_state));
+    }
 }
 
 void setup1() {
@@ -509,6 +530,12 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
         stock_ui_rain = (msg->value < msg->threshold);
     }
+    else if (buffer[0] == Get_Subscribe && size == sizeof(struct msg_event_subscribe))
+    {
+        struct msg_event_subscribe *msg = (struct msg_event_subscribe *)buffer;
+        ui_topic_bitmask = msg->topic_bitmask;
+        ui_interval = msg->interval;
+    }
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {
@@ -660,9 +687,10 @@ void loop() {
 #endif
     }
 
-    if (now - last_UILED_millis > UI_SET_LED_CYCLETIME) {
-        manageUILEDS();
-        last_UILED_millis = now;
+    if (now > next_ui_msg_millis)
+    {
+        next_ui_msg_millis = now + ui_interval;
+        manageUISubscriptions();
 #ifdef ENABLE_SOUND_MODULE
         if (sound_available) {
             my_sound.processSounds();
