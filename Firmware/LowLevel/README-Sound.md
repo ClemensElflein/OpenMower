@@ -6,14 +6,31 @@
 
 **Explanation:**<br>
 I'm with sound since a couple of months.<br>
-In the first month, I lost 2 Picos because his VREG cracked.<br>
+In the first month, I lost 2 Picos because his tiny Buck-Boost Converter "RT6150" cracked.<br>
 After a short correspondence with Clemens, he pointed me to the DFPlayer
 as a possible reason.<br>
-Because: by OM default design, the DFPlayer's VCC is 3.3V (via JP1),
-which is provided by the small VREG on the Pico.<br>
+Because: By OM default design, the DFPlayer's VCC is 3.3V (via JP1),
+which is provided by the small Buck-Boost Converter on the Pico.<br>
 After I switched my DFPlayer's VCC to 5V (via JP1), I didn't lost any Pico anymore.<br>
 It's not confirmed yet if that really was the reason for my cracked Pico's,
 and you're invited to validate the assumption by leaving your DFPlayer on 3.3V. **But be warned**, even if the Pico is cheap, it's awful to replace it! 
+
+### Update 10/13/2023
+
+As I'm still in doubt if it's really necessary to switch DFPlayer's VCC to 5V,
+I did some measuring today:
+
+- Placed an 0.2Ω resistor (4W) within Pico's 3V3 output line
+- Measured with an oscilloscope the occuring voltage over the resistor:<br>
+  0.028 V<sub>AVG</sub> => divided by 0.2Ω = 140mA => looks fine<br>
+  0.195 V<sub>PP</sub> => divided by 0.2Ω = 975mA => hugh :-/ but this is V<sub>PP</sub>!
+- Within the Pico Datasheet it's written (somewhere), thats allowed to draw up to 300mA
+- The specs of the Buck-Boost Converter "RT6150" (used on the Pico) say:<br>
+  "*Up to 800mA Continuous Output Current*", as well as<br>
+  "*... current
+limit.*"
+
+Conclusion: I'm still unsure :-/
 
 ## Sound Buttons
 
