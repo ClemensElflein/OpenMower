@@ -41,7 +41,7 @@
 #define MOW_SOUND_CHANCE 50                // % change to play a new sound within the next minute after MOW_SOUND_MIN_PAUSE_AFTER
 #define ROS_RUNNING_BEFORE_EMERGENCY 10000 // Min. millis of running ROS before emergencies get handled
 #define VOLUME_DEFAULT 100
-#define VOLUME_STEPS 5                     // Amount of volume setps for volumeUp() and volumeDown()
+#define VOLUME_STEPS 5 // Amount of volume setps for volumeUp() and volumeDown()
 
 // For better reading, let's use track names which point to tracks[] indexes
 #define SOUND_TRACK_BGD_OM_BOOT 0 // Heartbeat during OM LowLevel startup
@@ -68,6 +68,13 @@
 #define SOUND_TRACK_ADV_UP 21
 #define SOUND_TRACK_ADV_DOWN 22
 #define SOUND_TRACK_ADV_LANGUAGE 23
+
+// Some quirky defines for old- sound-card-format detection
+#define DFP_DETECTION_BIT_END (1 << 0)                // Detection phase ended
+#define DFP_DETECTION_BIT_HAS_AUTOPLAY (1 << 1)       // DFPlayer has played a track after reset
+#define DFP_DETECTION_BIT_OLD_CARD_STRUCTURE (1 << 2) // Detected old SD-Card structure
+#define DFP_DETECTION_BIT_HANDLED (1 << 3)            // Autoplay existence handled
+#define DFP_AUTOPLAY_TIMEOUT 6000                     // Autoplayed track detection timeout. "Hi I'm Steve ..." is about 4.x seconds
 
 namespace soundSystem
 {
@@ -97,7 +104,7 @@ namespace soundSystem
     const TrackDef tracks[] = {
         {2, background, repeat},                          // 0 = OM boot-up background
         {1, advert, pauseAfter : 1500},                   // 1 = Hi I'm steve
-        {19, advert, stopBackground, pauseAfter : 500},   // 2 = IMU initialization failed
+        {19, advert, pauseAfter : 500},                   // 2 = IMU initialization failed
         {15, background, repeat, repeatDuration : 20000}, // 3 = Alarm02
         {8, advert, pauseAfter : 500},                    // 4 = Stop button triggered
         {9, advert, pauseAfter : 500},                    // 5 = Emergency wheel lift sensor triggered

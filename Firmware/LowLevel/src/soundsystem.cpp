@@ -1,5 +1,7 @@
 // Created by Elmar Elflein on 18/07/22.
 // Copyright (c) 2022 Elmar Elflein. All rights reserved.
+// Restructured by Jörg Ebeling on 10/16/23.
+// Copyright (c) 2023 Jörg Ebeling. All rights reserved.
 //
 // This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 //
@@ -17,7 +19,7 @@
 /*                          | Original      |        Old clones          |        Newer clones    | Unknown
  * DFPlayer Chip            | DFROBOT LISP3 | YX5200-24SS | MH2024K-24SS | MH2024K-16SS | GD3200B | YX6200-16S
  * -------------------------------------------------------------------------------------------------------
- * Tested                   |      ok       |             |     ok       |              |   ok    |
+ * Tested/working with OM   |      ok       |             |     ok       |              |  partly |
  * Autoplay files *1        |      yes      |             |     no       |              |   no    |
  * Require reset()          |               |             |              |              |   YES   |
  * Reset->isOnline *2       |   800-850ms   |             |    750ms     |              |  600ms  |
@@ -30,16 +32,15 @@
  * getCurrentTrack()        |      *3       |             |     *4       |              |    *3   |
  * OnPlayFinished()         | Play&Advert*5 |             |   *5,*6      |              | Play&Adv|
  * -------------------------------------------------------------------------------------------------------
- * *1 = Autoplay (unasked) all (at least) root files.
+ * *1 = Autoplay (unasked) all (at least) root files (after reset()).
  * *2 = Highly depends on SD-Card and content
  * *3 = Advert track get returned with an internal track number
  * *4 = Advert get only played with a current running play sound
  * *5 = Sometimes called a second time within 10-150ms
  * *6 = Two callbacks (advert & play) at the end of play sound
  *
- * Founded by this evaluation:
+ * Conclusion by this evaluation:
  * DFPlayer's "advert" functionality is not usable for our requirements, as MH2024K-24S don't return a usable advert state.
- * Nevertheless, DFPlayer's "advert" functionality might be used for unimportant messages like "GPS lost".
  */
 
 #include <Arduino.h>
@@ -86,7 +87,13 @@ namespace soundSystem
             docking = 0x08,       // Heading back to base, i.e. due to rain detected
         };
 
-        void playMowSound(); // Forward declaration
+        uint8_t dfp_detection_status = 0;             // Sound-card detection status bits i.e. for old- sound-card-format detection
+        unsigned long autoplay_detection_start = 0;   // start ms of auto-played track
+        unsigned long autoplay_detection_timeout = 0; // When auto-play detection timeout (ms)
+
+        // Forward declarations
+        void playMowSound();
+        bool handleAutoplay(ll_status t_ll_state);
     }
 
     bool begin()
@@ -97,7 +104,7 @@ namespace soundSystem
         DEBUG_PRINTF("Reset...\n");
         myMP3.reset(false);
 
-        uint32_t start_ms = millis();
+        unsigned long start_ms = millis();
         while (!myMP3.isOnline()) // loop till module is ready and play media is online
         {
             if (last_error_code_ == DfMp3_Error_Busy) // Usually "media not found"
@@ -114,6 +121,25 @@ namespace soundSystem
             }
         }
         DEBUG_PRINTF("Online after %dms\n", millis() - start_ms);
+
+        // Check max. 600ms if sound-busy get set, which would identify a "DFROBOT LISP3" due to auto-playing
+        start_ms = millis();
+        while (millis() < start_ms + 600)
+        {
+            // Directly check if Sound-Busy bit is set.
+            // We can't use the normal status_message.status_bitmask flag here, because DFPlayer::reset() occur in setup(), so loop1() isn't handled, as well
+            // as IMU init follows DFPlayer init, which might take some more seconds, which we don't have to reliable detect a new or old SD-Card
+            gpio_put_masked(0b111 << 13, 6 << 13);
+            delay(1);
+            if (!gpio_get(PIN_MUX_IN)) // DFPlayer is busy
+            {
+                dfp_detection_status |= DFP_DETECTION_BIT_HAS_AUTOPLAY;
+                autoplay_detection_start = millis();
+                autoplay_detection_timeout = autoplay_detection_start + DFP_AUTOPLAY_TIMEOUT;
+                break;
+            }
+            delay(20);
+        }
 
         uint16_t total_tracks = myMP3.getTotalTrackCount(DfMp3_PlaySource_Sd);
         DEBUG_PRINTF("getTotalTrackCount() = %d\n", total_tracks);
@@ -132,9 +158,8 @@ namespace soundSystem
         }
         sound_available_ = true;
 
-        myMP3.setRepeatPlayCurrentTrack(false);
-        myMP3.setRepeatPlayAllInRoot(false);
-        playSoundAdHoc(tracks[SOUND_TRACK_BGD_OM_BOOT]);
+        // myMP3.setRepeatPlayAllInRoot(false); // FIXME: This would abort auto-playing title @ DFROBOT LISP3. Lib Error?
+        myMP3.setRepeatPlayCurrentTrack(false); // FIXME: This will stop auto-play of all root files @ DFROBOT LISP3. Lib Error?
         delay(50); // (sometimes) required for "DFR LISP3"
         return sound_available_;
     }
@@ -201,18 +226,24 @@ namespace soundSystem
             background_track_def_ = t_track_def;
             current_playing_is_background_ = true;
             break;
-
         case TrackTypes::advert:
             myMP3.stop();
             delay(50); // (sometimes) required for "MH2024K-24SS"
-            // FIXME: playFolderTrack16() does not work with german folder?! or other folders as 01
-            // myMP3.playFolderTrack16(DFP_ADVERT_FOLDER, t_track_def.num);
-            myMP3.playFolderTrack(languages[language], t_track_def.num);
+            if (dfp_detection_status & DFP_DETECTION_BIT_OLD_CARD_STRUCTURE) // Old SD-Card detected (or assumed)
+            {
+                // Simple support for old SD-Card format
+                myMP3.playGlobalTrack(t_track_def.num);
+            }
+            else
+            {
+                // FIXME: playFolderTrack16() does not work reliable across DFPlayer clones. playFolderTrack() does.
+                // myMP3.playFolderTrack16(DFP_ADVERT_FOLDER, t_track_def.num);
+                myMP3.playFolderTrack(languages[language], t_track_def.num);
+            }
             delay(50); // (sometimes) required for "MH2024K-24SS"
             advert_track_def_ = t_track_def;
             current_playing_is_background_ = false;
             break;
-
         default:
             // advert_raw not yet implemented
             return;
@@ -289,14 +320,16 @@ namespace soundSystem
 
     void processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_level_state t_hl_state)
     {
-        static unsigned long next_cycle = millis(); // Next cycle for sound processing
-
         if (!sound_available_)
             return;
 
         myMP3.loop();
 
-        if (millis() < next_cycle)
+        if (!handleAutoplay(t_ll_state)) // Sound-card-format (old/new) detection
+            return;
+
+        static unsigned long next_cycle; // Next cycle for sound processing
+        if (!(millis() > next_cycle))
         {
             return;
         }
@@ -438,18 +471,15 @@ namespace soundSystem
 
         DfMp3_Status status = myMP3.getStatus();
         uint16_t current_track = myMP3.getCurrentTrack();
-        // DEBUG_PRINTF("Status %#04x, track %d\n", status.state, current_track);
+        DEBUG_PRINTF("Status %#04x, track %d\n", status.state, current_track);
 
-        // Do not interrupt advert sound if it's still playing
-        if (!current_playing_is_background_ &&
-            (status.state == DfMp3_StatusState_Playing || status.state == DfMp3_StatusState_Shuffling))
+        // Do not interrupt advert sound if it's still playing (don't use busy signal from status_bitmask as it's not reliable set my DFPlayer clones)
+        if (!current_playing_is_background_ && (status.state == DfMp3_StatusState_Playing || status.state == DfMp3_StatusState_Shuffling))
             return;
 
         // Cosmetic pause after advert sound
         if (advert_track_def_.pauseAfter && last_advert_end_ + advert_track_def_.pauseAfter > millis())
-        {
             return;
-        }
 
         // Play next in queue
         TrackDef track_def = active_sounds_.back();
@@ -460,6 +490,44 @@ namespace soundSystem
 
     namespace // anonymous (private) namespace
     {
+        /**
+         * @brief Handles the case of a possibly already played track (Hi I'm Steve)
+         *
+         * @return true if it already got handled
+         * @return false if not yet handled (because still in detection phase)
+         */
+        bool handleAutoplay(ll_status t_ll_state)
+        {
+            if (dfp_detection_status & DFP_DETECTION_BIT_HANDLED)
+                return true;
+
+            if (!(dfp_detection_status & DFP_DETECTION_BIT_END)) // Still in detection phase
+            {
+                if ((t_ll_state.status_bitmask & LL_STATUS_BIT_SOUND_BUSY) && // DFPlayer (still) busy, and ...
+                    (millis() < autoplay_detection_timeout))                  // not timed out yet
+                    return false;
+                else
+                {
+                    dfp_detection_status |= DFP_DETECTION_BIT_END;
+                    // The old SD-Card has "Hi I'm Steve" as track 1, which is approx. 4600ms,
+                    // whereas the new one has the long sequence of "Pings", which is approx. 29000ms
+                    if (millis() - autoplay_detection_start < DFP_AUTOPLAY_TIMEOUT)
+                        dfp_detection_status |= DFP_DETECTION_BIT_OLD_CARD_STRUCTURE;
+                }
+            }
+
+            // Play "Hi I'm Steve ..." if ...
+            if (!(dfp_detection_status & DFP_DETECTION_BIT_HAS_AUTOPLAY) ||     // DFPlayer didn't auo-played, or ...
+                !(dfp_detection_status & DFP_DETECTION_BIT_OLD_CARD_STRUCTURE)) // new SD-Card detected (or assumed)
+            {
+                playSoundAdHoc(tracks[SOUND_TRACK_ADV_HI_IM_STEVE]);
+                playSound(tracks[SOUND_TRACK_BGD_OM_BOOT]);
+            }
+            dfp_detection_status |= DFP_DETECTION_BIT_HANDLED;
+
+            return true;
+        }
+
         /**
          * @brief Play a randomized mow- background sound at randomized times
          */
@@ -490,7 +558,7 @@ namespace soundSystem
 
         /**
          * @brief Notification class required by DFMiniMP3's lib (see https://github.com/Makuna/DFMiniMp3/wiki/Notification-Method)
-         *        Also handle background sound repeat.
+         *        Also handles background sound repeat.
          */
         class Mp3Notify
         {

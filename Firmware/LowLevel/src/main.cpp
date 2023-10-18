@@ -374,9 +374,13 @@ void loop1()
             case 6:
                 mutex_enter_blocking(&mtx_status_message);
                 if (state) {
-                    status_message.status_bitmask |= 0b01000000;
-                } else {
-                    status_message.status_bitmask &= 0b10111111;
+                    //DEBUG_PRINTF("SND BUSY OFF\n");
+                    status_message.status_bitmask &= ~LL_STATUS_BIT_SOUND_BUSY;
+                }
+                else
+                {
+                    //DEBUG_PRINTF("SND BUSY ON\n");
+                    status_message.status_bitmask |= LL_STATUS_BIT_SOUND_BUSY;
                 }
                 mutex_exit(&mtx_status_message);
                 break;
@@ -452,7 +456,8 @@ void setup()
     {
         p.neoPixelSetValue(0, 0, 0, 255, true);
         soundSystem::setVolume(VOLUME_DEFAULT);
-        soundSystem::playSoundAdHoc(soundSystem::tracks[SOUND_TRACK_ADV_HI_IM_STEVE]);
+        // Do NOT play any initial sound now, as we've to handle the special case of
+        // old DFPlayer SD-Card format @ DFROBOT LISP3. See soundSystem::processSounds()
         p.neoPixelSetValue(0, 255, 255, 0, true);
     }
     else
@@ -477,10 +482,6 @@ void setup()
         DEBUG_SERIAL.println("IMU initialization unsuccessful");
         DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
 #endif
-#ifdef ENABLE_SOUND_MODULE
-        soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_ADV_IMU_INIT_FAILED]);
-        soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_OM_ALARM]);
-#endif
         status_message.status_bitmask = 0;
         while (1)
         { // Blink RED for IMU failure
@@ -489,7 +490,10 @@ void setup()
             p.neoPixelSetValue(0, 0, 0, 0, true);
             delay(500);
 #ifdef ENABLE_SOUND_MODULE
+            loop1(); // Need to get sound busy flag for proper SD-Card detection, but it's handled in loop1() whose core is still idle. Quirky!!
             soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
+            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_ADV_IMU_INIT_FAILED]);
+            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_OM_ALARM]);
 #endif
         }
     }
