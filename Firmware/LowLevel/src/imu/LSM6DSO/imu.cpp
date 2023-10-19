@@ -27,6 +27,12 @@ bool init_imu() {
 #endif
 
     int status = IMU.begin();
+
+    uint8_t WHOAMI = 0;
+    IMU.ReadID(&WHOAMI);
+    if(WHOAMI != 0b01101100)
+        return false;
+
     if (status != 0)
         return false;
 
