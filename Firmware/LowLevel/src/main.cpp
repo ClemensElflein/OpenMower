@@ -476,8 +476,25 @@ void setup()
      * IMU INITIALIZATION
      */
 
-    if (!init_imu())
-    {
+    bool init_imu_success = false;
+    int init_imu_tries = 1000;
+    while(init_imu_tries --> 0) {
+        if(init_imu()) {
+            init_imu_success = true;
+            break;
+        }
+#ifdef USB_DEBUG
+        DEBUG_SERIAL.println("IMU initialization unsuccessful, retrying in 1 sec");
+#endif
+        p.neoPixelSetValue(0, 0, 0, 0, true);
+        delay(1000);
+        p.neoPixelSetValue(255, 255, 0, 0, true);
+        delay(100);
+        p.neoPixelSetValue(0, 0, 0, 0, true);
+        delay(100);
+    }
+
+    if (!init_imu_success) {
 #ifdef USB_DEBUG
         DEBUG_SERIAL.println("IMU initialization unsuccessful");
         DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
