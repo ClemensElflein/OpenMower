@@ -498,7 +498,7 @@
   )
 
   (symbol (lib_id "Device:R") (at 107.95 134.62 270) (unit 1)
-    (in_bom no) (on_board yes) (dnp no) (fields_autoplaced)
+    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 29911232-e4a0-4e21-a802-db891bdf5617)
     (property "Reference" "R7" (at 107.95 128.27 90)
       (effects (font (size 1.27 1.27)))
@@ -536,7 +536,7 @@
   )
 
   (symbol (lib_id "Device:R") (at 114.3 137.16 90) (unit 1)
-    (in_bom no) (on_board yes) (dnp no) (fields_autoplaced)
+    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 42ad3914-b5f2-442a-b4be-a68250126d06)
     (property "Reference" "R13" (at 114.3 130.81 90)
       (effects (font (size 1.27 1.27)))

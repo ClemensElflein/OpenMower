@@ -4267,11 +4267,10 @@
     (property "Sheetfile" "sound_module.kicad_sch")
     (property "Sheetname" "sound")
     (property "Stock_PN" "R-805-1K-.125W-1%")
-    (property "exclude_from_bom" "")
     (property "ki_description" "Resistor")
     (property "ki_keywords" "R res resistor")
     (path "/7936fd08-09c5-4aba-8422-c848060d3b9f/42ad3914-b5f2-442a-b4be-a68250126d06")
-    (attr smd exclude_from_pos_files exclude_from_bom)
+    (attr smd)
     (fp_text reference "R13" (at 0 -1.65 90) (layer "F.SilkS")
         (effects (font (size 1 1) (thickness 0.15)))
       (tstamp e0ca2939-761f-4c58-a689-024b98f53033)
@@ -4308,7 +4307,7 @@
       (net 146 "/pico/SOUND_RX") (pintype "passive") (tstamp 5ecfeda6-9218-4216-9d8d-ea6ea9ecfe51))
     (pad "2" smd roundrect (at 1 0 270) (size 1.2 1.4) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.2083333333)
       (net 96 "Net-(J16-Pin_3)") (pintype "passive") (tstamp c2c3a5e4-a7ee-4054-8f2d-acd9ffd46ab6))
-    (model "${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0805_2012Metric.wrl" hide
+    (model "${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0805_2012Metric.wrl"
       (offset (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
@@ -6103,11 +6102,10 @@
     (property "Sheetfile" "sound_module.kicad_sch")
     (property "Sheetname" "sound")
     (property "Stock_PN" "R-805-1K-.125W-1%")
-    (property "exclude_from_bom" "")
     (property "ki_description" "Resistor")
     (property "ki_keywords" "R res resistor")
     (path "/7936fd08-09c5-4aba-8422-c848060d3b9f/29911232-e4a0-4e21-a802-db891bdf5617")
-    (attr smd exclude_from_pos_files exclude_from_bom)
+    (attr smd)
     (fp_text reference "R7" (at 0 -1.65 90) (layer "F.SilkS")
         (effects (font (size 1 1) (thickness 0.15)))
       (tstamp bc7a7efd-5c66-4ff2-b49e-3211c0136f86)
@@ -6144,7 +6142,7 @@
       (net 95 "Net-(J16-Pin_2)") (pintype "passive") (tstamp c174d86e-4f4f-48a4-a750-1d41d65ec099))
     (pad "2" smd roundrect (at 1 0 90) (size 1.2 1.4) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.2083333333)
       (net 139 "/pico/SOUND_TX") (pintype "passive") (tstamp 69cb47aa-a828-48f2-b238-3a471e1333f7))
-    (model "${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0805_2012Metric.wrl" hide
+    (model "${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0805_2012Metric.wrl"
       (offset (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
@@ -7267,7 +7265,7 @@
     (property "ki_description" "Generic connector, single row, 01x05, script generated (kicad-library-utils/schlib/autogen/connector/)")
     (property "ki_keywords" "connector")
     (path "/00000000-0000-0000-0000-000061040c60/5f2acb61-2418-45e6-9454-9e201a305d2c")
-    (attr through_hole)
+    (attr through_hole exclude_from_pos_files)
     (fp_text reference "J4" (at 5 -3.55) (layer "F.SilkS")
         (effects (font (size 1 1) (thickness 0.15)))
       (tstamp 289602ac-ce83-40ea-8852-39dc573e0154)
@@ -7358,7 +7356,7 @@
       (net 119 "/ESCs/MC_HALL_W") (pinfunction "Pin_4") (pintype "passive") (tstamp c33357b4-d4a9-48ee-9ad3-e10dd2fd1c50))
     (pad "5" thru_hole oval (at 10 0) (size 1.7 1.95) (drill 0.95) (layers "*.Cu" "*.Mask")
       (net 2 "+5V") (pinfunction "Pin_5") (pintype "passive") (tstamp 33e98ba5-6ef4-4da0-a1ee-f42b6144d9e7))
-    (model "${KICAD6_3DMODEL_DIR}/Connector_JST.3dshapes/JST_XH_B5B-XH-A_1x05_P2.50mm_Vertical.wrl"
+    (model "${KICAD6_3DMODEL_DIR}/Connector_JST.3dshapes/JST_XH_B5B-XH-A_1x05_P2.50mm_Vertical.wrl" hide
       (offset (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
