@@ -3661,7 +3661,7 @@
     )
   )
 
-  (footprint "" locked (layer "F.Cu")
+  (footprint "MountingHole:MountingHole_2.7mm_M2.5" locked (layer "F.Cu")
     (tstamp 1509b6e6-a266-4bd3-bef6-1700f12ad930)
     (at 132.1 161.2 -90)
     (attr board_only exclude_from_pos_files exclude_from_bom)
@@ -5115,7 +5115,7 @@
     )
   )
 
-  (footprint "" locked (layer "F.Cu")
+  (footprint "MountingHole:MountingHole_2.7mm_M2.5" locked (layer "F.Cu")
     (tstamp 391e77f9-45fd-4544-9a96-6b9be0f3494b)
     (at 132.1 137.2 -90)
     (attr board_only exclude_from_pos_files exclude_from_bom)
@@ -6149,7 +6149,7 @@
     )
   )
 
-  (footprint "" locked (layer "F.Cu")
+  (footprint "MountingHole:MountingHole_2.7mm_M2.5" locked (layer "F.Cu")
     (tstamp 563db87b-34c4-4832-bfe7-c025196b0284)
     (at 156.1 161.2 -90)
     (attr board_only exclude_from_pos_files exclude_from_bom)
@@ -7466,7 +7466,7 @@
       (solder_mask_margin 0.5) (clearance 0.5) (tstamp 8a3c0dba-9e03-4b0d-80e9-ed08f96632d6))
   )
 
-  (footprint "" locked (layer "F.Cu")
+  (footprint "MountingHole:MountingHole_2.7mm_M2.5" locked (layer "F.Cu")
     (tstamp 72587f14-3879-4ab1-8ee7-30f0f8e50d93)
     (at 115.1 124.7 -90)
     (attr board_only exclude_from_pos_files exclude_from_bom)
@@ -9772,7 +9772,7 @@
     )
   )
 
-  (footprint "" locked (layer "F.Cu")
+  (footprint "MountingHole:MountingHole_2.7mm_M2.5" locked (layer "F.Cu")
     (tstamp 90a47af4-b3af-42ad-8a92-2ac33f1eaf7d)
     (at 173.1 124.7 -90)
     (attr board_only exclude_from_pos_files exclude_from_bom)
@@ -10653,7 +10653,7 @@
     )
   )
 
-  (footprint "x-tech-logo:x-tech-logo" locked (layer "F.Cu")
+  (footprint "Symbol:ESD-Logo_6.6x6mm_SilkScreen" locked (layer "F.Cu")
     (tstamp a04df858-8e8b-4a7e-95d9-47f1c3d74be6)
     (at 43.6 178.9 180)
     (attr through_hole board_only exclude_from_pos_files exclude_from_bom)
@@ -11497,7 +11497,7 @@
     )
   )
 
-  (footprint "" locked (layer "F.Cu")
+  (footprint "MountingHole:MountingHole_2.7mm_M2.5" locked (layer "F.Cu")
     (tstamp af4e708f-3ecb-432a-8234-bc33a136a64e)
     (at 115.1 173.7 -90)
     (attr board_only exclude_from_pos_files exclude_from_bom)
@@ -11803,7 +11803,7 @@
     )
   )
 
-  (footprint "" locked (layer "F.Cu")
+  (footprint "MountingHole:MountingHole_2.7mm_M2.5" locked (layer "F.Cu")
     (tstamp b1631ef5-5ba5-48ed-9e83-a55482a37a65)
     (at 156.1 137.2 -90)
     (attr board_only exclude_from_pos_files exclude_from_bom)
@@ -12192,9 +12192,9 @@
       (stroke (width 0.12) (type solid)) (layer "F.SilkS") (tstamp 467a05ff-fa58-4c76-bad6-e24d53ae7ea3))
     (fp_arc (start -1.11 49.69) (mid -1.433508 49.588809) (end -1.64 49.32)
       (stroke (width 0.12) (type solid)) (layer "F.SilkS") (tstamp 3fa5fc97-b3b4-46b6-84a5-4ebc9c909cc1))
-    (fp_arc (start 18.89 -1.43) (mid 19.213502 -1.328793) (end 19.42 -1.06)
+    (fp_arc (start 18.89 -1.43) (mid 19.213484 -1.328785) (end 19.42 -1.06)
       (stroke (width 0.12) (type solid)) (layer "F.SilkS") (tstamp 14818e66-97d7-45c5-9a5c-8ef12527527c))
-    (fp_arc (start 19.42 49.32) (mid 19.213487 49.588772) (end 18.89 49.69)
+    (fp_arc (start 19.42 49.32) (mid 19.213496 49.58881) (end 18.89 49.69)
       (stroke (width 0.12) (type solid)) (layer "F.SilkS") (tstamp 87331e85-6492-49ed-aa82-4fa47ad6b90f))
     (fp_poly
       (pts
@@ -14024,7 +14024,7 @@
       (net 22 "Net-(IC3-BIAS)") (pinfunction "B") (pintype "passive") (tstamp 626679e8-6101-4722-ac57-5b8d9dab4c8b))
   )
 
-  (footprint "" locked (layer "F.Cu")
+  (footprint "MountingHole:MountingHole_2.7mm_M2.5" locked (layer "F.Cu")
     (tstamp db002d44-34dc-4a16-a373-be2b73d8ad8e)
     (at 173.1 173.7 -90)
     (attr board_only exclude_from_pos_files exclude_from_bom)
