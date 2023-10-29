@@ -1,4 +1,5 @@
 (fp_lib_table
+  (version 7)
   (lib (name "Arduino")(type "KiCad")(uri "${KIPRJMOD}/Arduino.pretty")(options "")(descr ""))
   (lib (name "MyModules")(type "KiCad")(uri "${KIPRJMOD}/MyModules.pretty")(options "")(descr ""))
   (lib (name "xESC2")(type "KiCad")(uri "${KIPRJMOD}/xESC2.pretty")(options "")(descr ""))
@@ -8,4 +9,5 @@
   (lib (name "TSC101CILT")(type "KiCad")(uri "${KIPRJMOD}/TSC101CILT")(options "")(descr ""))
   (lib (name "PicoW")(type "KiCad")(uri "${KIPRJMOD}/RP-PicoW Libraries/Module.pretty")(options "")(descr ""))
   (lib (name "lcsc")(type "KiCad")(uri "${KIPRJMOD}/lcsc.pretty")(options "")(descr ""))
+  (lib (name "MAX2040")(type "KiCad")(uri "${KIPRJMOD}/MAX2040")(options "")(descr ""))
 )
