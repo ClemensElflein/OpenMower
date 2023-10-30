@@ -56,7 +56,10 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        "clearance|148300000|75099500|ed8724e3-9031-40ec-852d-9868a6201e8f|00000000-0000-0000-0000-0000610a2a31",
+        "clearance|46899500|152857500|b7bf6e08-7978-4190-aff5-c90d967f0f9c|00000000-0000-0000-0000-0000610a2a2e"
+      ],
       "meta": {
         "filename": "board_design_settings.json",
         "version": 2
@@ -391,7 +394,7 @@
       "different_unit_net": "error",
       "duplicate_reference": "error",
       "duplicate_sheet_names": "error",
-      "endpoint_off_grid": "warning",
+      "endpoint_off_grid": "ignore",
       "extra_units": "error",
       "global_label_dangling": "warning",
       "hier_label_mismatch": "error",
@@ -410,7 +413,7 @@
       "pin_to_pin": "warning",
       "power_pin_not_driven": "error",
       "similar_labels": "warning",
-      "simulation_model_issue": "error",
+      "simulation_model_issue": "ignore",
       "unannotated": "error",
       "unit_value_mismatch": "error",
       "unresolved_variable": "error",

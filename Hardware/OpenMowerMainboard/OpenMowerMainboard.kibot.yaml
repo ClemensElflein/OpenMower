@@ -10,6 +10,10 @@ preflight:
       error: 'pin_to_pin'
       regex: 'Symbol U3'
 
+    - filter: Kicad 7.0.8 complains about solder jumpers connecting filled areas
+      error: 'clearance'
+      regex: 'Zone \[GND\]'
+
   set_text_variables:
     - name: 'git_version'
       # Replace n.m.i with n.m."x"
