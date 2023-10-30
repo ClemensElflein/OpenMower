@@ -33,8 +33,8 @@
 #define UI_GET_VERSION_CYCLETIME 5000 // cycletime for UI Get_Version request (UI available check)
 #define UI_GET_VERSION_TIMEOUT 100    // timeout for UI Get_Version response (UI available check)
 
-#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency. This is to filter uneven ground.
-#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency. This is to filter uneven ground.
+#define TILT_EMERGENCY_MILLIS 50000  // Time for a single wheel to be lifted in order to count as emergency. This is to filter uneven ground.
+#define LIFT_EMERGENCY_MILLIS 1000  // Time for both wheels to be lifted in order to count as emergency. This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
 // Define to stream debugging messages via USB
@@ -422,8 +422,10 @@ void setup() {
         if(init_imu()) {
             init_imu_success = true;
             break;
-        } 
+        }
+#ifdef USB_DEBUG
         DEBUG_SERIAL.println("IMU initialization unsuccessful, retrying in 1 sec");
+#endif
         p.neoPixelSetValue(0, 0, 0, 0, true);
         delay(1000);
         p.neoPixelSetValue(255, 255, 0, 0, true);
