@@ -10,6 +10,7 @@
 *-backups
 *.kicad_prl
 *.sch-bak
+*.kicad_pro-bak
 *~
 _autosave-*
 *.tmp
@@ -34,5 +35,8 @@ MyModules3d/
 
 release
 release_navigator
+OpenMowerMainboard-drc.txt
+OpenMowerMainboard-erc.txt
+kibot_errors.filter
 
 .kidiff
