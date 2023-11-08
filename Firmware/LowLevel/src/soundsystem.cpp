@@ -335,6 +335,7 @@ namespace soundSystem
         }
         next_cycle = millis() + PROCESS_CYCLETIME;
 
+#ifdef DFPIS5V
         // Docked ?
         if (t_ll_state.v_charge > 20.0f)
         {
@@ -463,6 +464,7 @@ namespace soundSystem
 
         // Generic, state-change independent sounds
         playMowSound();
+#endif // DFPIS5V
 
         // Process sound queue
         int n = active_sounds_.size();
@@ -521,13 +523,16 @@ namespace soundSystem
                 !(dfp_detection_status & DFP_DETECTION_BIT_OLD_CARD_STRUCTURE)) // new SD-Card detected (or assumed)
             {
                 playSoundAdHoc(tracks[SOUND_TRACK_ADV_HI_IM_STEVE]);
+#ifdef DFPIS5V
                 playSound(tracks[SOUND_TRACK_BGD_OM_BOOT]);
+#endif
             }
             dfp_detection_status |= DFP_DETECTION_BIT_HANDLED;
 
             return true;
         }
 
+#ifdef DFPIS5V
         /**
          * @brief Play a randomized mow- background sound at randomized times
          */
@@ -555,6 +560,7 @@ namespace soundSystem
             playSound({num : (uint16_t)(200 + (rand() % 7)), type : TrackTypes::background}); // Play background track 200 to 206 by random
             last_mow_sound_started_ms = now;
         }
+#endif // DFPIS5V
 
         /**
          * @brief Notification class required by DFMiniMP3's lib (see https://github.com/Makuna/DFMiniMp3/wiki/Notification-Method)
