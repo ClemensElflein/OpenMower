@@ -462,7 +462,7 @@ void setup() {
 #endif
         }
     }
-    p.neoPixelSetValue(0, 255, 255, 255, true);    // White for IMU Success
+    p.neoPixelSetValue(0, 255, 255, 255, true);     // White for IMU Success
 
 #ifdef USB_DEBUG
     DEBUG_SERIAL.println("Imu initialized");
@@ -477,7 +477,7 @@ void setup() {
     leds_message.leds = 0;
     sendUIMessage(&leds_message, sizeof(leds_message));
 
-    p.neoPixelSetValue(0, 255, 255, 255, true);    // White 1s final success
+    p.neoPixelSetValue(0, 255, 255, 255, true);     // White 1s final success
     delay(1000);
 }
 
@@ -649,12 +649,12 @@ void loop() {
         updateNeopixel();
 
         status_message.v_battery =
-                (float)analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
+                (float) analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
         status_message.v_charge =
-                (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
+                (float) analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
 #ifndef IGNORE_CHARGING_CURRENT
         status_message.charging_current =
-                (float)analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
+                (float) analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
 #else
         status_message.charging_current = -1.0f;
 #endif
