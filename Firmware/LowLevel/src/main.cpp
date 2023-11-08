@@ -722,6 +722,7 @@ void loop() {
         status_message.status_bitmask &= ~LL_STATUS_BIT_UI_AVAIL;
         ui_version = 0;
         ui_get_version_respond_timeout = 0;
+        stock_ui_emergency_state = 0; // Ensure that a stock-emergency state doesn't remain active if the UI got unplugged
     }
     if (now > ui_get_version_next_millis)
     {
