@@ -1,3 +1,11 @@
+> [!WARNING]  
+> This repository is only a fork from the original one at https://github.com/ClemensElflein/OpenMower
+
+> [!NOTE]  
+> This repository has the following PR's already merged:
+> - [Clear stock- emergency if CoverUI get unplugged](https://github.com/ClemensElflein/OpenMower/pull/82)
+
+
 # OpenMower - The DIY Smart Mowing Robot for Everyone
 
 ![OpenMower the DIY smart robot mower](./img/open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/jE7QNaSxW7)
