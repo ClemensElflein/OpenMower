@@ -723,10 +723,10 @@ void loop() {
     if (now > next_ui_msg_millis) {
         next_ui_msg_millis = now + ui_interval;
         manageUISubscriptions();
+    }
 #ifdef ENABLE_SOUND_MODULE
     soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
 #endif
-    }
 
     // Check UI version/available
     if (ui_get_version_respond_timeout && now > ui_get_version_respond_timeout)
