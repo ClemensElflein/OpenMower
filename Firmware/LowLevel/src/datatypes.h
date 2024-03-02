@@ -32,7 +32,27 @@ enum HighLevelMode {
     MODE_RECORDING = 3 // ROS connected, Manual mode during recording etc
 };
 
-#define LL_STATUS_BIT_UI_AVAIL 0b10000000
+#define LL_STATUS_BIT_INITIALIZED 0b00000001
+#define LL_STATUS_BIT_RASPI_POWER 0b00000010
+#define LL_STATUS_BIT_CHARGING    0b00000100
+#define LL_STATUS_BIT_FREE        0b00001000
+#define LL_STATUS_BIT_RAIN        0b00010000
+#define LL_STATUS_BIT_SOUND_AVAIL 0b00100000
+#define LL_STATUS_BIT_SOUND_BUSY  0b01000000
+#define LL_STATUS_BIT_UI_AVAIL    0b10000000
+
+#define LL_EMERGENCY_BIT_LATCH    0b00000001
+#define LL_EMERGENCY_BIT_HALL1    0b00001000
+#define LL_EMERGENCY_BIT_HALL2    0b00010000
+#define LL_EMERGENCY_BIT_HALL3    0b00000010
+#define LL_EMERGENCY_BIT_HALL4    0b00000100
+
+#define LL_EMERGENCY_BIT_LIFT1 LL_EMERGENCY_BIT_HALL1
+#define LL_EMERGENCY_BIT_LIFT2 LL_EMERGENCY_BIT_HALL2
+#define LL_EMERGENCY_BITS_LIFT (LL_EMERGENCY_BIT_LIFT1 | LL_EMERGENCY_BIT_LIFT2)
+#define LL_EMERGENCY_BIT_STOP1 LL_EMERGENCY_BIT_HALL3
+#define LL_EMERGENCY_BIT_STOP2 LL_EMERGENCY_BIT_HALL4
+#define LL_EMERGENCY_BITS_STOP (LL_EMERGENCY_BIT_STOP1 | LL_EMERGENCY_BIT_STOP2)
 
 #pragma pack(push, 1)
 struct ll_status {
@@ -52,10 +72,10 @@ struct ll_status {
     float uss_ranges_m[5];
     // Emergency bitmask:
     // Bit 0: Emergency latch
-    // Bit 1: Emergency 0 active
-    // Bit 2: Emergency 1 active
-    // Bit 3: Emergency 2 active
-    // Bit 4: Emergency 3 active
+    // Bit 1: Emergency 1 active
+    // Bit 2: Emergency 2 active
+    // Bit 3: Emergency 3 active
+    // Bit 4: Emergency 4 active
     uint8_t emergency_bitmask;
     // Charge voltage
     float v_charge;

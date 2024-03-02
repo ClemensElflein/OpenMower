@@ -22,6 +22,7 @@
 #include "pins.h"
 #include "ui_board.h"
 #include "imu.h"
+#include "debug.h"
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -36,20 +37,10 @@
 #define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency. This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
-// Define to stream debugging messages via USB
-// #define USB_DEBUG
-
-// Only define DEBUG_SERIAL if USB_DEBUG is actually enabled.
-// This enforces compile errors if it's used incorrectly.
-#ifdef USB_DEBUG
-#define DEBUG_SERIAL Serial
-#endif
 #define PACKET_SERIAL Serial1
 SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 
 #define UI1_SERIAL uiSerial
-
-#define ANZ_SOUND_SD_FILES 3
 
 // Millis after charging is retried
 #define CHARGING_RETRY_MILLIS 10000
@@ -77,10 +68,6 @@ uint8_t led_blink_counter = 0;
 PacketSerial packetSerial; // COBS communication PICO <> Raspi
 PacketSerial UISerial;     // COBS communication PICO UI-Board
 FastCRC16 CRC16;
-
-#ifdef ENABLE_SOUND_MODULE
-MP3Sound my_sound; // Soundsystem
-#endif
 
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
@@ -362,9 +349,9 @@ void loop1() {
             case 6:
                 mutex_enter_blocking(&mtx_status_message);
                 if (state) {
-                    status_message.status_bitmask |= 0b01000000;
+                    status_message.status_bitmask &= ~LL_STATUS_BIT_SOUND_BUSY;
                 } else {
-                    status_message.status_bitmask &= 0b10111111;
+                    status_message.status_bitmask |= LL_STATUS_BIT_SOUND_BUSY;
                 }
                 mutex_exit(&mtx_status_message);
                 break;
@@ -381,9 +368,7 @@ void setup() {
     //  Therefore, we pause the other core until setup() was a success
     rp2040.idleOtherCore();
 
-#ifdef USB_DEBUG
-    DEBUG_SERIAL.begin(9600);
-#endif
+    DEBUG_BEGIN(9600);
 
     emergency_latch = true;
     ROS_running = false;
@@ -433,6 +418,30 @@ void setup() {
     UISerial.setStream(&UI1_SERIAL);
     UISerial.setPacketHandler(&onUIPacketReceived);
 
+#ifdef ENABLE_SOUND_MODULE
+    p.neoPixelSetValue(0, 0, 255, 255, true);
+
+    sound_available = soundSystem::begin();
+    if (sound_available)
+    {
+        p.neoPixelSetValue(0, 0, 0, 255, true);
+        soundSystem::setVolume(VOLUME_DEFAULT);
+        // Do NOT play any initial sound now, as we've to handle the special case of
+        // old DFPlayer SD-Card format @ DFROBOT LISP3. See soundSystem::processSounds()
+        p.neoPixelSetValue(0, 255, 255, 0, true);
+    }
+    else
+    {
+        for (uint8_t b = 0; b < 3; b++)
+        {
+            p.neoPixelSetValue(0, 0, 0, 0, true);
+            delay(200);
+            p.neoPixelSetValue(0, 0, 0, 255, true);
+            delay(200);
+        }
+    }
+#endif
+
     /*
      * IMU INITIALIZATION
      */
@@ -466,6 +475,12 @@ void setup() {
             delay(500);
             p.neoPixelSetValue(0, 0, 0, 0, true);
             delay(500);
+#ifdef ENABLE_SOUND_MODULE
+            loop1(); // Need to get sound busy flag for proper SD-Card detection, but it's handled in loop1() whose core is still idle. Quirky!!
+            soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
+            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_ADV_IMU_INIT_FAILED]);
+            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_OM_ALARM]);
+#endif
         }
     }
     p.neoPixelSetValue(0, 255, 255, 255, true);     // White for IMU Success
@@ -475,25 +490,6 @@ void setup() {
 #endif
 
     status_message.status_bitmask |= 1;
-
-#ifdef ENABLE_SOUND_MODULE
-    p.neoPixelSetValue(0, 0, 255, 255, true);
-
-    sound_available = my_sound.begin();
-    if (sound_available) {
-        p.neoPixelSetValue(0, 0, 0, 255, true);
-        my_sound.setvolume(100);
-        my_sound.playSoundAdHoc(1);
-        p.neoPixelSetValue(0, 255, 255, 0, true);
-    } else {
-        for (uint8_t b = 0; b < 3; b++) {
-            p.neoPixelSetValue(0, 0, 0, 0, true);
-            delay(200);
-            p.neoPixelSetValue(0, 0, 0, 255, true);
-            delay(200);
-        }
-    }
-#endif
 
     rp2040.resumeOtherCore();
 
@@ -537,6 +533,25 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         ui_event.button_id = msg->button_id;
         ui_event.press_duration = msg->press_duration;
         sendMessage(&ui_event, sizeof(ui_event));
+
+#ifdef ENABLE_SOUND_MODULE
+        // Handle Sound Buttons. FIXME: Should/might go to mower_logic? But as sound isn't hip ... :-/
+        switch (msg->button_id)
+        {
+        case 8: // Mon = Volume up
+            soundSystem::setVolumeUp();
+            break;
+        case 9: // Tue = Volume down
+            soundSystem::setVolumeDown();
+            break;
+        case 10: // Wed = Next Language
+            soundSystem::setNextLanguage();
+            break;
+
+        default:
+            break;
+        }
+#endif
     }
     else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency))
     {
@@ -705,14 +720,11 @@ void loop() {
 #endif
     }
 
-    if (now > next_ui_msg_millis)
-    {
+    if (now > next_ui_msg_millis) {
         next_ui_msg_millis = now + ui_interval;
         manageUISubscriptions();
 #ifdef ENABLE_SOUND_MODULE
-        if (sound_available) {
-            my_sound.processSounds();
-        }
+    soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
 #endif
     }
 

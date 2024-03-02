@@ -3,6 +3,9 @@
 
 > [!NOTE]  
 > This repository has the following PR's already merged:
+> - [Improve Sound](https://github.com/ClemensElflein/OpenMower/pull/80)
+> - [Better support for CoverUI's "with Display" Proposal](https://github.com/ClemensElflein/OpenMower/pull/78)
+> - [Fix: error: 'DEBUG_SERIAL' was not declared in this scope](https://github.com/ClemensElflein/OpenMower/pull/81)
 > - [Clear stock- emergency if CoverUI get unplugged](https://github.com/ClemensElflein/OpenMower/pull/82)
 
 
