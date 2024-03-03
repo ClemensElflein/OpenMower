@@ -22,6 +22,7 @@
 #include "pins.h"
 #include "ui_board.h"
 #include "imu.h"
+#include "debug.h"
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -29,7 +30,6 @@
 
 #define IMU_CYCLETIME 20              // cycletime for refresh IMU data
 #define STATUS_CYCLETIME 100          // cycletime for refresh analog and digital Statusvalues
-#define UI_SET_LED_CYCLETIME 1000     // cycletime for refresh UI status LEDs
 #define UI_GET_VERSION_CYCLETIME 5000 // cycletime for UI Get_Version request (UI available check)
 #define UI_GET_VERSION_TIMEOUT 100    // timeout for UI Get_Version response (UI available check)
 
@@ -37,20 +37,10 @@
 #define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency. This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
 
-// Define to stream debugging messages via USB
-// #define USB_DEBUG
-
-// Only define DEBUG_SERIAL if USB_DEBUG is actually enabled.
-// This enforces compile errors if it's used incorrectly.
-#ifdef USB_DEBUG
-#define DEBUG_SERIAL Serial
-#endif
 #define PACKET_SERIAL Serial1
 SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 
 #define UI1_SERIAL uiSerial
-
-#define ANZ_SOUND_SD_FILES 3
 
 // Millis after charging is retried
 #define CHARGING_RETRY_MILLIS 10000
@@ -79,14 +69,10 @@ PacketSerial packetSerial; // COBS communication PICO <> Raspi
 PacketSerial UISerial;     // COBS communication PICO UI-Board
 FastCRC16 CRC16;
 
-#ifdef ENABLE_SOUND_MODULE
-MP3Sound my_sound; // Soundsystem
-#endif
-
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
 unsigned long last_heartbeat_millis = 0;
-unsigned long last_UILED_millis = 0;
+unsigned long next_ui_msg_millis = 0;
 
 unsigned long lift_emergency_started = 0;
 unsigned long tilt_emergency_started = 0;
@@ -119,13 +105,16 @@ bool ROS_running = false;
 unsigned long charging_disabled_time = 0;
 
 float imu_temp[9];
-uint16_t ui_version = 0; // Last received UI (firmware =? protocol) version. 200 = Latest Button-/LED-CoverUI. >= 300 = More intelligent Display which handles values & states instead of LEDs & Buttons?!
+
+uint16_t ui_version = 0;                   // Last received UI firmware version
+uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
+uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
 void onUIPacketReceived(const uint8_t *buffer, size_t size);
-void manageUILEDS();
+void manageUISubscriptions();
 
 void setRaspiPower(bool power) {
     // Update status bits in the status message
@@ -220,12 +209,12 @@ void updateEmergency() {
     if (last_emergency != (emergency_state & 1)) {
         sendMessage(&status_message, sizeof(struct ll_status));
 
-        // Update LEDs instantly
-        manageUILEDS();
+        // Update UI instantly
+        manageUISubscriptions();
     }
 }
 
-// deals with the pyhsical information an control the UI-LEDs und buzzer in depency of voltage und current values
+// Deals with the physical information and control the UI-LEDs und buzzer in dependency of voltage und current values
 void manageUILEDS() {
     // Show Info Docking LED
     if ((status_message.charging_current > 0.80f) && (status_message.v_charge > 20.0f))
@@ -314,6 +303,25 @@ void manageUILEDS() {
     sendUIMessage(&leds_message, sizeof(leds_message));
 }
 
+// Manage send status to UI, dependent on ui_topic_bitmask (subscription)
+void manageUISubscriptions()
+{
+    if (ui_topic_bitmask & Topic_set_leds)
+    {
+        manageUILEDS();
+    }
+
+    if (ui_topic_bitmask & Topic_set_ll_status)
+    {
+        sendUIMessage(&status_message, sizeof(struct ll_status));
+    }
+
+    if (ui_topic_bitmask & Topic_set_hl_state)
+    {
+        sendUIMessage(&last_high_level_state, sizeof(struct ll_high_level_state));
+    }
+}
+
 void setup1() {
     // Core
     digitalWrite(LED_BUILTIN, HIGH);
@@ -341,9 +349,9 @@ void loop1() {
             case 6:
                 mutex_enter_blocking(&mtx_status_message);
                 if (state) {
-                    status_message.status_bitmask |= 0b01000000;
+                    status_message.status_bitmask &= ~LL_STATUS_BIT_SOUND_BUSY;
                 } else {
-                    status_message.status_bitmask &= 0b10111111;
+                    status_message.status_bitmask |= LL_STATUS_BIT_SOUND_BUSY;
                 }
                 mutex_exit(&mtx_status_message);
                 break;
@@ -360,9 +368,7 @@ void setup() {
     //  Therefore, we pause the other core until setup() was a success
     rp2040.idleOtherCore();
 
-#ifdef USB_DEBUG
-    DEBUG_SERIAL.begin(9600);
-#endif
+    DEBUG_BEGIN(9600);
 
     emergency_latch = true;
     ROS_running = false;
@@ -412,6 +418,30 @@ void setup() {
     UISerial.setStream(&UI1_SERIAL);
     UISerial.setPacketHandler(&onUIPacketReceived);
 
+#ifdef ENABLE_SOUND_MODULE
+    p.neoPixelSetValue(0, 0, 255, 255, true);
+
+    sound_available = soundSystem::begin();
+    if (sound_available)
+    {
+        p.neoPixelSetValue(0, 0, 0, 255, true);
+        soundSystem::setVolume(VOLUME_DEFAULT);
+        // Do NOT play any initial sound now, as we've to handle the special case of
+        // old DFPlayer SD-Card format @ DFROBOT LISP3. See soundSystem::processSounds()
+        p.neoPixelSetValue(0, 255, 255, 0, true);
+    }
+    else
+    {
+        for (uint8_t b = 0; b < 3; b++)
+        {
+            p.neoPixelSetValue(0, 0, 0, 0, true);
+            delay(200);
+            p.neoPixelSetValue(0, 0, 0, 255, true);
+            delay(200);
+        }
+    }
+#endif
+
     /*
      * IMU INITIALIZATION
      */
@@ -422,8 +452,10 @@ void setup() {
         if(init_imu()) {
             init_imu_success = true;
             break;
-        } 
+        }
+#ifdef USB_DEBUG
         DEBUG_SERIAL.println("IMU initialization unsuccessful, retrying in 1 sec");
+#endif
         p.neoPixelSetValue(0, 0, 0, 0, true);
         delay(1000);
         p.neoPixelSetValue(255, 255, 0, 0, true);
@@ -443,6 +475,12 @@ void setup() {
             delay(500);
             p.neoPixelSetValue(0, 0, 0, 0, true);
             delay(500);
+#ifdef ENABLE_SOUND_MODULE
+            loop1(); // Need to get sound busy flag for proper SD-Card detection, but it's handled in loop1() whose core is still idle. Quirky!!
+            soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
+            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_ADV_IMU_INIT_FAILED]);
+            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_OM_ALARM]);
+#endif
         }
     }
     p.neoPixelSetValue(0, 255, 255, 255, true);     // White for IMU Success
@@ -452,25 +490,6 @@ void setup() {
 #endif
 
     status_message.status_bitmask |= 1;
-
-#ifdef ENABLE_SOUND_MODULE
-    p.neoPixelSetValue(0, 0, 255, 255, true);
-
-    sound_available = my_sound.begin();
-    if (sound_available) {
-        p.neoPixelSetValue(0, 0, 0, 255, true);
-        my_sound.setvolume(100);
-        my_sound.playSoundAdHoc(1);
-        p.neoPixelSetValue(0, 255, 255, 0, true);
-    } else {
-        for (uint8_t b = 0; b < 3; b++) {
-            p.neoPixelSetValue(0, 0, 0, 0, true);
-            delay(200);
-            p.neoPixelSetValue(0, 0, 0, 255, true);
-            delay(200);
-        }
-    }
-#endif
 
     rp2040.resumeOtherCore();
 
@@ -514,6 +533,25 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         ui_event.button_id = msg->button_id;
         ui_event.press_duration = msg->press_duration;
         sendMessage(&ui_event, sizeof(ui_event));
+
+#ifdef ENABLE_SOUND_MODULE
+        // Handle Sound Buttons. FIXME: Should/might go to mower_logic? But as sound isn't hip ... :-/
+        switch (msg->button_id)
+        {
+        case 8: // Mon = Volume up
+            soundSystem::setVolumeUp();
+            break;
+        case 9: // Tue = Volume down
+            soundSystem::setVolumeDown();
+            break;
+        case 10: // Wed = Next Language
+            soundSystem::setNextLanguage();
+            break;
+
+        default:
+            break;
+        }
+#endif
     }
     else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency))
     {
@@ -524,6 +562,12 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
     {
         struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
         stock_ui_rain = (msg->value < msg->threshold);
+    }
+    else if (buffer[0] == Get_Subscribe && size == sizeof(struct msg_event_subscribe))
+    {
+        struct msg_event_subscribe *msg = (struct msg_event_subscribe *)buffer;
+        ui_topic_bitmask = msg->topic_bitmask;
+        ui_interval = msg->interval;
     }
 }
 
@@ -676,15 +720,13 @@ void loop() {
 #endif
     }
 
-    if (now - last_UILED_millis > UI_SET_LED_CYCLETIME) {
-        manageUILEDS();
-        last_UILED_millis = now;
-#ifdef ENABLE_SOUND_MODULE
-        if (sound_available) {
-            my_sound.processSounds();
-        }
-#endif
+    if (now > next_ui_msg_millis) {
+        next_ui_msg_millis = now + ui_interval;
+        manageUISubscriptions();
     }
+#ifdef ENABLE_SOUND_MODULE
+    soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
+#endif
 
     // Check UI version/available
     if (ui_get_version_respond_timeout && now > ui_get_version_respond_timeout)
