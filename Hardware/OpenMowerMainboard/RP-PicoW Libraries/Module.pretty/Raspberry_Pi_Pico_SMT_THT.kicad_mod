@@ -2,7 +2,7 @@
   (layer "F.Cu")
   (tedit 0)
   (descr "Raspberry Pi Pico (W), RP2040-based microcontroller board (with wireless)")
-  (tags "Pico-W RPL RPTL RPi module RP2040 CYW43439 2.4GHz RF radio Wi-Fi WiFi SMD")
+  (tags "Pico-W RPL RPTL RPi module RP2040 CYW43439 2.4GHz RF radio Wi-Fi Wi-Fi SMD")
   (attr through_hole)
   (fp_text reference "REF**" (at 8.89 22.352) (layer "F.SilkS")
     (effects (font (size 1 1) (thickness 0.15)))

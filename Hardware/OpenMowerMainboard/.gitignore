@@ -10,9 +10,11 @@
 *-backups
 *.kicad_prl
 *.sch-bak
+*.kicad_pro-bak
 *~
 _autosave-*
 *.tmp
+*.lck
 *-save.pro
 *-save.kicad_pcb
 fp-info-cache
@@ -34,5 +36,10 @@ MyModules3d/
 
 release
 release_navigator
+jlcpcb
+Gerber
+OpenMowerMainboard-drc.txt
+OpenMowerMainboard-erc.txt
+kibot_errors.filter
 
 .kidiff
