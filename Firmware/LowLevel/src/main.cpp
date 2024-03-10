@@ -422,8 +422,10 @@ void setup() {
         if(init_imu()) {
             init_imu_success = true;
             break;
-        } 
+        }
+#ifdef USB_DEBUG
         DEBUG_SERIAL.println("IMU initialization unsuccessful, retrying in 1 sec");
+#endif
         p.neoPixelSetValue(0, 0, 0, 0, true);
         delay(1000);
         p.neoPixelSetValue(255, 255, 0, 0, true);
