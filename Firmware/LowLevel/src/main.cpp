@@ -33,9 +33,9 @@
 #define UI_GET_VERSION_CYCLETIME 5000 // cycletime for UI Get_Version request (UI available check)
 #define UI_GET_VERSION_TIMEOUT 100    // timeout for UI Get_Version response (UI available check)
 
-#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency. This is to filter uneven ground.
-#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency. This is to filter uneven ground.
-#define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
+#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
+#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
+#define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button.
 
 // Define to stream debugging messages via USB
 // #define USB_DEBUG
@@ -173,7 +173,7 @@ void updateEmergency() {
         button_emergency_started = 0;
     }
 
-    if (lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) {
+    if (LIFT_EMERGENCY_MILLIS > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) {
         // Emergency bit 2 (lift wheel 1)set?
         if (emergency1)
             emergency_state |= 0b01000;
@@ -192,7 +192,7 @@ void updateEmergency() {
         tilt_emergency_started = 0;
     }
 
- if (tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS) {
+    if (TILT_EMERGENCY_MILLIS > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS) {
         // Emergency bit 2 (lift wheel 1)set?
         if (emergency1)
             emergency_state |= 0b01000;
