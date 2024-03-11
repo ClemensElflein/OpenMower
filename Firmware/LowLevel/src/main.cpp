@@ -27,13 +27,14 @@
 #include <soundsystem.h>
 #endif
 
-#define IMU_CYCLETIME 20          // cycletime for refresh IMU data
-#define STATUS_CYCLETIME 100      // cycletime for refresh analog and digital Statusvalues
-#define UI_SET_LED_CYCLETIME 1000 // cycletime for refresh UI status LEDs
+#define IMU_CYCLETIME 20              // cycletime for refresh IMU data
+#define STATUS_CYCLETIME 100          // cycletime for refresh analog and digital Statusvalues
+#define UI_GET_VERSION_CYCLETIME 5000 // cycletime for UI Get_Version request (UI available check)
+#define UI_GET_VERSION_TIMEOUT 100    // timeout for UI Get_Version response (UI available check)
 
-#define TILT_EMERGENCY_MILLIS 2500 // Time for a single wheel to be lifted in order to count as emergency. This is to filter uneven ground.
-#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency. This is to filter uneven ground.
-#define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
+#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
+#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
+#define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button.
 
 // Define to stream debugging messages via USB
 // #define USB_DEBUG
@@ -84,11 +85,14 @@ MP3Sound my_sound; // Soundsystem
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
 unsigned long last_heartbeat_millis = 0;
-unsigned long last_UILED_millis = 0;
+unsigned long next_ui_msg_millis = 0;
 
 unsigned long lift_emergency_started = 0;
 unsigned long tilt_emergency_started = 0;
 unsigned long button_emergency_started = 0;
+
+unsigned long ui_get_version_next_millis = 0;     // Next cycle when to check for a UI version
+unsigned long ui_get_version_respond_timeout = 0; // When UI Get_Version response times out
 
 // Stock UI
 uint8_t stock_ui_emergency_state = 0; // Get set by received Get_Emergency packet
@@ -115,11 +119,15 @@ unsigned long charging_disabled_time = 0;
 
 float imu_temp[9];
 
+uint16_t ui_version = 0;                   // Last received UI firmware version
+uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
+uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
+
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
 void onUIPacketReceived(const uint8_t *buffer, size_t size);
-void manageUILEDS();
+void manageUISubscriptions();
 
 void setRaspiPower(bool power) {
     // Update status bits in the status message
@@ -143,50 +151,48 @@ void updateEmergency() {
 
     uint8_t emergency_state = 0;
 
-    // Handle stop button
-    if (emergency3 || emergency4)
-    {
-        // We just pressed stop button, store the timestamp
-        if (button_emergency_started == 0)
-            button_emergency_started = millis();
-    }
-    else
-    {
-        // Not pressed, reset the time
-        button_emergency_started = 0;
-    }
+    bool is_tilted = emergency1 || emergency2;
+    bool is_lifted = emergency1 && emergency2;
+    bool stop_pressed = emergency3 || emergency4;
 
-    // Handle both wheels lifted
-    if (emergency1 && emergency2)
-    {
+    if (is_lifted) {
         // We just lifted, store the timestamp
-        if (lift_emergency_started == 0)
+        if (lift_emergency_started == 0) {
             lift_emergency_started = millis();
-    }
-    else
-    {
+        }
+    } else {
         // Not lifted, reset the time
         lift_emergency_started = 0;
     }
 
-    // Handle if one wheel tilt
-    // FIXME: This could be moved into previous "Handle both wheels lifted" else condition, but for the ease of reading leave it here?
-    if (emergency1 || emergency2)
-    {
-        // We just tilted, store the timestamp
-        if (tilt_emergency_started == 0)
-            tilt_emergency_started = millis();
+    if (stop_pressed) {
+        // We just pressed, store the timestamp
+        if (button_emergency_started == 0) {
+            button_emergency_started = millis();
+        }
+    } else {
+        // Not pressed, reset the time
+        button_emergency_started = 0;
     }
-    else
-    {
+
+    if (LIFT_EMERGENCY_MILLIS > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) {
+        if (emergency1)
+            emergency_state |= LL_EMERGENCY_BIT_LIFT1;
+        if (emergency2)
+            emergency_state |= LL_EMERGENCY_BIT_LIFT2;
+    }
+
+    if (is_tilted) {
+        // We just tilted, store the timestamp
+        if (tilt_emergency_started == 0) {
+            tilt_emergency_started = millis();
+        }
+    } else {
         // Not tilted, reset the time
         tilt_emergency_started = 0;
     }
 
-    // Set corresponding emergency bits
-    if ((lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) ||
-        (tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS))
-    {
+    if (TILT_EMERGENCY_MILLIS > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS) {
         if (emergency1)
             emergency_state |= LL_EMERGENCY_BIT_LIFT1;
         if (emergency2)
@@ -194,7 +200,6 @@ void updateEmergency() {
     }
     if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
     {
-        // Emergency bit 2 (stop button) set?
         if (emergency3)
             emergency_state |= LL_EMERGENCY_BIT_STOP1;
         if (emergency4)
@@ -213,12 +218,12 @@ void updateEmergency() {
     {
         sendMessage(&status_message, sizeof(struct ll_status));
 
-        // Update LEDs instantly
-        manageUILEDS();
+        // Update UI instantly
+        manageUISubscriptions();
     }
 }
 
-// deals with the pyhsical information an control the UI-LEDs und buzzer in depency of voltage und current values
+// Deals with the physical information and control the UI-LEDs und buzzer in dependency of voltage und current values
 void manageUILEDS() {
     // Show Info Docking LED
     if ((status_message.charging_current > 0.80f) && (status_message.v_charge > 20.0f))
@@ -307,6 +312,25 @@ void manageUILEDS() {
     sendUIMessage(&leds_message, sizeof(leds_message));
 }
 
+// Manage send status to UI, dependent on ui_topic_bitmask (subscription)
+void manageUISubscriptions()
+{
+    if (ui_topic_bitmask & Topic_set_leds)
+    {
+        manageUILEDS();
+    }
+
+    if (ui_topic_bitmask & Topic_set_ll_status)
+    {
+        sendUIMessage(&status_message, sizeof(struct ll_status));
+    }
+
+    if (ui_topic_bitmask & Topic_set_hl_state)
+    {
+        sendUIMessage(&last_high_level_state, sizeof(struct ll_high_level_state));
+    }
+}
+
 void setup1() {
     // Core
     digitalWrite(LED_BUILTIN, HIGH);
@@ -371,7 +395,7 @@ void setup() {
     // Setup pins
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(PIN_ENABLE_CHARGE, OUTPUT);
-    digitalWrite(PIN_ENABLE_CHARGE, LOW);
+    digitalWrite(PIN_ENABLE_CHARGE, HIGH);
 
     gpio_init(PIN_RASPI_POWER);
     gpio_put(PIN_RASPI_POWER, true);
@@ -409,7 +433,25 @@ void setup() {
      * IMU INITIALIZATION
      */
 
-    if (!init_imu()) {
+    bool init_imu_success = false;
+    int init_imu_tries = 1000;
+    while(init_imu_tries --> 0) {
+        if(init_imu()) {
+            init_imu_success = true;
+            break;
+        }
+#ifdef USB_DEBUG
+        DEBUG_SERIAL.println("IMU initialization unsuccessful, retrying in 1 sec");
+#endif
+        p.neoPixelSetValue(0, 0, 0, 0, true);
+        delay(1000);
+        p.neoPixelSetValue(255, 255, 0, 0, true);
+        delay(100);
+        p.neoPixelSetValue(0, 0, 0, 0, true);
+        delay(100);
+    }
+
+    if (!init_imu_success) {
 #ifdef USB_DEBUG
         DEBUG_SERIAL.println("IMU initialization unsuccessful");
         DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
@@ -476,8 +518,16 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         buffer[size - 2] != (crc & 0xFF))
         return;
 
-    if (buffer[0] == Get_Button && size == sizeof(struct msg_event_button)) {
-        struct msg_event_button *msg = (struct msg_event_button *) buffer;
+    if (buffer[0] == Get_Version && size == sizeof(struct msg_get_version))
+    {
+        struct msg_get_version *msg = (struct msg_get_version *)buffer;
+        ui_version = msg->version;
+        status_message.status_bitmask |= LL_STATUS_BIT_UI_AVAIL;
+        ui_get_version_respond_timeout = 0;
+    }
+    else if (buffer[0] == Get_Button && size == sizeof(struct msg_event_button))
+    {
+        struct msg_event_button *msg = (struct msg_event_button *)buffer;
         struct ll_ui_event ui_event;
         ui_event.type = PACKET_ID_LL_UI_EVENT;
         ui_event.button_id = msg->button_id;
@@ -493,6 +543,12 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
     {
         struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
         stock_ui_rain = (msg->value < msg->threshold);
+    }
+    else if (buffer[0] == Get_Subscribe && size == sizeof(struct msg_event_subscribe))
+    {
+        struct msg_event_subscribe *msg = (struct msg_event_subscribe *)buffer;
+        ui_topic_bitmask = msg->topic_bitmask;
+        ui_interval = msg->interval;
     }
 }
 
@@ -645,14 +701,32 @@ void loop() {
 #endif
     }
 
-    if (now - last_UILED_millis > UI_SET_LED_CYCLETIME) {
-        manageUILEDS();
-        last_UILED_millis = now;
+    if (now > next_ui_msg_millis)
+    {
+        next_ui_msg_millis = now + ui_interval;
+        manageUISubscriptions();
 #ifdef ENABLE_SOUND_MODULE
         if (sound_available) {
             my_sound.processSounds();
         }
 #endif
+    }
+
+    // Check UI version/available
+    if (ui_get_version_respond_timeout && now > ui_get_version_respond_timeout)
+    {
+        status_message.status_bitmask &= ~LL_STATUS_BIT_UI_AVAIL;
+        ui_version = 0;
+        ui_get_version_respond_timeout = 0;
+        stock_ui_emergency_state = 0; // Ensure that a stock-emergency state doesn't remain active if the UI got unplugged
+    }
+    if (now > ui_get_version_next_millis)
+    {
+        ui_get_version_next_millis = now + UI_GET_VERSION_CYCLETIME;
+        ui_get_version_respond_timeout = now + UI_GET_VERSION_TIMEOUT;
+        struct msg_get_version msg;
+        msg.type = Get_Version;
+        sendUIMessage(&msg, sizeof(msg));
     }
 }
 

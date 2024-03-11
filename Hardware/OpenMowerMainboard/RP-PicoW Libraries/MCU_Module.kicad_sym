@@ -359,7 +359,7 @@
     (property "Datasheet" "https://datasheets.raspberrypi.com/picow/pico-w-datasheet.pdf" (id 3) (at 0 -40.64 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (property "ki_keywords" "Pico-W RPL RPTL RPi module RP2040 CYW43439 2.4GHz RF radio Wi-Fi WiFi" (id 4) (at 0 0 0)
+    (property "ki_keywords" "Pico-W RPL RPTL RPi module RP2040 CYW43439 2.4GHz RF radio Wi-Fi Wi-Fi" (id 4) (at 0 0 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "ki_description" "Raspberry Pi Pico W, RP2040-based microcontroller board with wireless" (id 5) (at 0 0 0)

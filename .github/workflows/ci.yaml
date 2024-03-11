@@ -10,12 +10,12 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: INTI-CMNB/KiBot@v2_k6
+      - uses: INTI-CMNB/KiBot@v2_k7
         with:
           config: Hardware/OpenMowerMainboard/OpenMowerMainboard.kibot.yaml
           board: Hardware/OpenMowerMainboard/OpenMowerMainboard.kicad_pcb
           verbose: 1
-      - uses: INTI-CMNB/KiBot@v2_k6
+      - uses: INTI-CMNB/KiBot@v2_k7
         with:
           config: Hardware/DockStation/mower_PowerDeviceCarrier.kibot.yaml
           board: Hardware/DockStation/mower_PowerDeviceCarrier.kicad_pcb
@@ -121,11 +121,11 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: INTI-CMNB/KiBot@v2_k6
+      - uses: INTI-CMNB/KiBot@v2_k7
         with:
           config: Hardware/OpenMowerMainboard/OpenMowerMainboard.kibot.yaml
           board: Hardware/OpenMowerMainboard/OpenMowerMainboard.kicad_pcb
-      - uses: INTI-CMNB/KiBot@v2_k6
+      - uses: INTI-CMNB/KiBot@v2_k7
         with:
           config: Hardware/DockStation/mower_PowerDeviceCarrier.kibot.yaml
           board: Hardware/DockStation/mower_PowerDeviceCarrier.kicad_pcb

@@ -45,6 +45,8 @@ enum HighLevelMode {
 #define LL_EMERGENCY_BIT_STOP2 LL_EMERGENCY_BIT_HALL4
 #define LL_EMERGENCY_BITS_STOP (LL_EMERGENCY_BIT_STOP1 | LL_EMERGENCY_BIT_STOP2)
 
+#define LL_STATUS_BIT_UI_AVAIL 0b10000000
+
 #pragma pack(push, 1)
 struct ll_status {
     // Type of this message. Has to be PACKET_ID_LL_STATUS.
