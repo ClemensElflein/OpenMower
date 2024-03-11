@@ -1,5 +1,11 @@
 #pragma once
 
+#ifdef ARDUINO_RASPBERRY_PI_PICO_W
+#define PIN_SMPS_POWERSAVE 33
+#else
+#define PIN_SMPS_POWERSAVE 23
+#endif
+
 #ifdef HW_0_9_X
 #define PIN_IMU_CS 17
 #define PIN_ANALOG_BATTERY_VOLTAGE 27
