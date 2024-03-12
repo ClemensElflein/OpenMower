@@ -143,30 +143,17 @@ void updateEmergency() {
     }
     uint8_t last_emergency = status_message.emergency_bitmask & LL_EMERGENCY_BIT_LATCH;
 
-    // Mask the emergency bits. 2x Lift sensor, 2x Emergency Button
-    bool emergency1 = !gpio_get(PIN_EMERGENCY_1) | (stock_ui_emergency_state & Emergency_state::Emergency_lift1);
-    bool emergency2 = !gpio_get(PIN_EMERGENCY_2) | (stock_ui_emergency_state & Emergency_state::Emergency_lift2);
-    bool emergency3 = !gpio_get(PIN_EMERGENCY_3) | (stock_ui_emergency_state & Emergency_state::Emergency_stop1);
-    bool emergency4 = !gpio_get(PIN_EMERGENCY_4) | (stock_ui_emergency_state & Emergency_state::Emergency_stop2);
-
+    // Read & assign emergencies in the same manner as in ll_status.emergency_bitmask
+    uint8_t emergency_read = !gpio_get(PIN_EMERGENCY_3) << 1 | // Stop1
+                             !gpio_get(PIN_EMERGENCY_4) << 2 | // Stop2
+                             !gpio_get(PIN_EMERGENCY_1) << 3 | // Lift1
+                             !gpio_get(PIN_EMERGENCY_2) << 4 | // Lift2
+                             stock_ui_emergency_state; // OR with StockUI emergency
     uint8_t emergency_state = 0;
 
-    bool is_tilted = emergency1 || emergency2;
-    bool is_lifted = emergency1 && emergency2;
-    bool stop_pressed = emergency3 || emergency4;
-
-    if (is_lifted) {
-        // We just lifted, store the timestamp
-        if (lift_emergency_started == 0) {
-            lift_emergency_started = millis();
-        }
-    } else {
-        // Not lifted, reset the time
-        lift_emergency_started = 0;
-    }
-
-    if (stop_pressed) {
-        // We just pressed, store the timestamp
+    // Handle emergency "Stop" buttons
+    if (emergency_read && LL_EMERGENCY_BITS_STOP) {
+        // If we just pressed, store the timestamp
         if (button_emergency_started == 0) {
             button_emergency_started = millis();
         }
@@ -175,15 +162,25 @@ void updateEmergency() {
         button_emergency_started = 0;
     }
 
-    if (LIFT_EMERGENCY_MILLIS > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) {
-        if (emergency1)
-            emergency_state |= LL_EMERGENCY_BIT_LIFT1;
-        if (emergency2)
-            emergency_state |= LL_EMERGENCY_BIT_LIFT2;
+    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
+    {
+        emergency_state |= (emergency_read & LL_EMERGENCY_BITS_STOP);
     }
 
-    if (is_tilted) {
-        // We just tilted, store the timestamp
+    // Handle lifted (both wheels are lifted)
+    if ((emergency_read & LL_EMERGENCY_BITS_LIFT) == LL_EMERGENCY_BITS_LIFT) {
+        // If we just lifted, store the timestamp
+        if (lift_emergency_started == 0) {
+            lift_emergency_started = millis();
+        }
+    } else {
+        // Not lifted, reset the time
+        lift_emergency_started = 0;
+    }
+
+    // Handle tilted (one wheel is lifted)
+    if (emergency_read & LL_EMERGENCY_BITS_LIFT) {
+        // If we just tilted, store the timestamp
         if (tilt_emergency_started == 0) {
             tilt_emergency_started = millis();
         }
@@ -192,18 +189,9 @@ void updateEmergency() {
         tilt_emergency_started = 0;
     }
 
-    if (TILT_EMERGENCY_MILLIS > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS) {
-        if (emergency1)
-            emergency_state |= LL_EMERGENCY_BIT_LIFT1;
-        if (emergency2)
-            emergency_state |= LL_EMERGENCY_BIT_LIFT2;
-    }
-    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
-    {
-        if (emergency3)
-            emergency_state |= LL_EMERGENCY_BIT_STOP1;
-        if (emergency4)
-            emergency_state |= LL_EMERGENCY_BIT_STOP2;
+    if ((LIFT_EMERGENCY_MILLIS > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) ||
+        (TILT_EMERGENCY_MILLIS > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS)) {
+        emergency_state |= (emergency_read & LL_EMERGENCY_BITS_LIFT);
     }
 
     if (emergency_state || emergency_latch) {
@@ -214,8 +202,7 @@ void updateEmergency() {
     status_message.emergency_bitmask = emergency_state;
 
     // If it's a new emergency, instantly send the message. This is to not spam the channel during emergencies.
-    if (last_emergency != (emergency_state & LL_EMERGENCY_BIT_LATCH))
-    {
+    if (last_emergency != (emergency_state & LL_EMERGENCY_BIT_LATCH)) {
         sendMessage(&status_message, sizeof(struct ll_status));
 
         // Update UI instantly

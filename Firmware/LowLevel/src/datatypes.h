@@ -33,10 +33,10 @@ enum HighLevelMode {
 };
 
 #define LL_EMERGENCY_BIT_LATCH 0b00000001
-#define LL_EMERGENCY_BIT_HALL1 0b00001000
-#define LL_EMERGENCY_BIT_HALL2 0b00010000
-#define LL_EMERGENCY_BIT_HALL3 0b00000010
-#define LL_EMERGENCY_BIT_HALL4 0b00000100
+#define LL_EMERGENCY_BIT_HALL1 0b00001000 // Lift1
+#define LL_EMERGENCY_BIT_HALL2 0b00010000 // Lift2
+#define LL_EMERGENCY_BIT_HALL3 0b00000010 // Stop1
+#define LL_EMERGENCY_BIT_HALL4 0b00000100 // Stop2
 
 #define LL_EMERGENCY_BIT_LIFT1 LL_EMERGENCY_BIT_HALL1
 #define LL_EMERGENCY_BIT_LIFT2 LL_EMERGENCY_BIT_HALL2
@@ -65,10 +65,10 @@ struct ll_status {
     float uss_ranges_m[5];
     // Emergency bitmask:
     // Bit 0: Emergency latch
-    // Bit 1: Emergency/Hall 3 active
-    // Bit 2: Emergency/Hall 4 active
-    // Bit 3: Emergency/Hall 1 active
-    // Bit 4: Emergency/Hall 2 active
+    // Bit 1: Emergency/Hall 3 (Stop1) active
+    // Bit 2: Emergency/Hall 4 (Stop2) active
+    // Bit 3: Emergency/Hall 1 (Lift1) active
+    // Bit 4: Emergency/Hall 2 (Lift2) active
     uint8_t emergency_bitmask;
     // Charge voltage
     float v_charge;
