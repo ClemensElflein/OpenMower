@@ -22,6 +22,8 @@
 #include "pins.h"
 #include "ui_board.h"
 #include "imu.h"
+#include "debug.h"
+#include "nv_config.h"
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -36,14 +38,6 @@
 #define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button.
 
-// Define to stream debugging messages via USB
-// #define USB_DEBUG
-
-// Only define DEBUG_SERIAL if USB_DEBUG is actually enabled.
-// This enforces compile errors if it's used incorrectly.
-#ifdef USB_DEBUG
-#define DEBUG_SERIAL Serial
-#endif
 #define PACKET_SERIAL Serial1
 SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 
@@ -122,6 +116,8 @@ float imu_temp[9];
 uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
+
+nv_config::Config *config; // Non-volatile configuration
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -476,6 +472,9 @@ void setup() {
 
     status_message.status_bitmask |= 1;
 
+    config = nv_config::get(); // Get latest non-volatile config
+    DEBUG_PRINTF("DBG: Config's volume: %d\n", config->volume);
+
 #ifdef ENABLE_SOUND_MODULE
     p.neoPixelSetValue(0, 0, 255, 255, true);
 
@@ -636,8 +635,14 @@ void loop() {
     imu_loop();
     updateChargingEnabled();
     updateEmergency();
+    nv_config::save();
 
     unsigned long now = millis();
+
+    // DBG: Do some dummy config changes (increase volume every second)
+    if (now > next_ui_msg_millis)
+        config->volume++;
+
     if (now - last_imu_millis > IMU_CYCLETIME) {
         // we have to copy to the temp data structure due to alignment issues
         imu_read(imu_temp, imu_temp + 3, imu_temp + 6);
