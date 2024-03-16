@@ -44,8 +44,6 @@ namespace nv_config
 {
     static_assert(sizeof(Config) <= FLASH_PAGE_SIZE, "Config struct size larger than page size"); // Probably doesn't harm, but didn't tested
 
-    int addr;
-    unsigned int page; // prevent comparison of unsigned and signed int
     int first_empty_page = -1;
 
     Config config; // Last or (if there hasn't been a config flashed before) default config
@@ -62,15 +60,13 @@ namespace nv_config
                      FLASH_TARGET_OFFSET);
 
         // Read flash until first empty page found
+        unsigned int page; // prevent comparison of unsigned and signed int
         for (page = 0; page < FLASH_SECTOR_SIZE / FLASH_PAGE_SIZE; page++)
         {
-            addr = XIP_BASE + FLASH_TARGET_OFFSET + (page * FLASH_PAGE_SIZE);
-            // p = (int *)addr;
+            int addr = XIP_BASE + FLASH_TARGET_OFFSET + (page * FLASH_PAGE_SIZE);
             Config *ptr = (Config *)addr;
-            // DEBUG_PRINTF("First four bytes of page %d (at 0x%x) = %d\n", page, int(p), *p);
 
-            // Instead of test all of our first Config member, lets cast the struct to a long long int, which has the same size than our struct,
-            // which make test for erased flash pages much easier
+            // Instead testing all of our first config member, lets cast the struct to a long long int, which is save to identify an empty page
             long long trix = *((long long *)ptr);
             DEBUG_PRINTF("Config in page %d (at 0x%x) = config_bitmask: 0b" PRINTF_BINARY_PATTERN_INT8 ", rain_threshold: %d, language: %d, volume: %d, trix: %lld\n ",
                          page, int(ptr), PRINTF_BYTE_TO_BINARY_INT8(ptr->config_bitmask), ptr->rain_threshold, ptr->language, ptr->volume, trix);
