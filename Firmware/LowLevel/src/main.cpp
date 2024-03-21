@@ -635,7 +635,7 @@ void loop() {
     imu_loop();
     updateChargingEnabled();
     updateEmergency();
-    nv_config::save();
+    nv_config::delayedSaveChanges();
 
     unsigned long now = millis();
 
