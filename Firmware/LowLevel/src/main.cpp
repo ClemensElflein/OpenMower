@@ -30,13 +30,12 @@
 
 #define IMU_CYCLETIME 20              // cycletime for refresh IMU data
 #define STATUS_CYCLETIME 100          // cycletime for refresh analog and digital Statusvalues
-#define UI_SET_LED_CYCLETIME 1000     // cycletime for refresh UI status LEDs
 #define UI_GET_VERSION_CYCLETIME 5000 // cycletime for UI Get_Version request (UI available check)
 #define UI_GET_VERSION_TIMEOUT 100    // timeout for UI Get_Version response (UI available check)
 
-#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency. This is to filter uneven ground.
-#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency. This is to filter uneven ground.
-#define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button if triggered on bumpy surfaces
+#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
+#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
+#define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button.
 
 #define PACKET_SERIAL Serial1
 SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
@@ -73,7 +72,7 @@ FastCRC16 CRC16;
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
 unsigned long last_heartbeat_millis = 0;
-unsigned long last_UILED_millis = 0;
+unsigned long next_ui_msg_millis = 0;
 
 unsigned long lift_emergency_started = 0;
 unsigned long tilt_emergency_started = 0;
@@ -106,13 +105,16 @@ bool ROS_running = false;
 unsigned long charging_disabled_time = 0;
 
 float imu_temp[9];
-uint16_t ui_version = 0; // Last received UI (firmware =? protocol) version. 200 = Latest Button-/LED-CoverUI. >= 300 = More intelligent Display which handles values & states instead of LEDs & Buttons?!
+
+uint16_t ui_version = 0;                   // Last received UI firmware version
+uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
+uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
 void onUIPacketReceived(const uint8_t *buffer, size_t size);
-void manageUILEDS();
+void manageUISubscriptions();
 
 void setRaspiPower(bool power) {
     // Update status bits in the status message
@@ -160,7 +162,7 @@ void updateEmergency() {
         button_emergency_started = 0;
     }
 
-    if (lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) {
+    if (LIFT_EMERGENCY_MILLIS > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) {
         // Emergency bit 2 (lift wheel 1)set?
         if (emergency1)
             emergency_state |= 0b01000;
@@ -179,7 +181,7 @@ void updateEmergency() {
         tilt_emergency_started = 0;
     }
 
- if (tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS) {
+    if (TILT_EMERGENCY_MILLIS > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS) {
         // Emergency bit 2 (lift wheel 1)set?
         if (emergency1)
             emergency_state |= 0b01000;
@@ -207,12 +209,12 @@ void updateEmergency() {
     if (last_emergency != (emergency_state & 1)) {
         sendMessage(&status_message, sizeof(struct ll_status));
 
-        // Update LEDs instantly
-        manageUILEDS();
+        // Update UI instantly
+        manageUISubscriptions();
     }
 }
 
-// deals with the pyhsical information an control the UI-LEDs und buzzer in depency of voltage und current values
+// Deals with the physical information and control the UI-LEDs und buzzer in dependency of voltage und current values
 void manageUILEDS() {
     // Show Info Docking LED
     if ((status_message.charging_current > 0.80f) && (status_message.v_charge > 20.0f))
@@ -299,6 +301,25 @@ void manageUILEDS() {
     }
 
     sendUIMessage(&leds_message, sizeof(leds_message));
+}
+
+// Manage send status to UI, dependent on ui_topic_bitmask (subscription)
+void manageUISubscriptions()
+{
+    if (ui_topic_bitmask & Topic_set_leds)
+    {
+        manageUILEDS();
+    }
+
+    if (ui_topic_bitmask & Topic_set_ll_status)
+    {
+        sendUIMessage(&status_message, sizeof(struct ll_status));
+    }
+
+    if (ui_topic_bitmask & Topic_set_hl_state)
+    {
+        sendUIMessage(&last_high_level_state, sizeof(struct ll_high_level_state));
+    }
 }
 
 void setup1() {
@@ -542,6 +563,12 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
         stock_ui_rain = (msg->value < msg->threshold);
     }
+    else if (buffer[0] == Get_Subscribe && size == sizeof(struct msg_event_subscribe))
+    {
+        struct msg_event_subscribe *msg = (struct msg_event_subscribe *)buffer;
+        ui_topic_bitmask = msg->topic_bitmask;
+        ui_interval = msg->interval;
+    }
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {
@@ -693,11 +720,10 @@ void loop() {
 #endif
     }
 
-    if (now - last_UILED_millis > UI_SET_LED_CYCLETIME) {
-        manageUILEDS();
-        last_UILED_millis = now;
-    }
-
+    if (now > next_ui_msg_millis)
+    {
+        next_ui_msg_millis = now + ui_interval;
+        manageUISubscriptions();
 #ifdef ENABLE_SOUND_MODULE
     soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
 #endif
@@ -708,6 +734,7 @@ void loop() {
         status_message.status_bitmask &= ~LL_STATUS_BIT_UI_AVAIL;
         ui_version = 0;
         ui_get_version_respond_timeout = 0;
+        stock_ui_emergency_state = 0; // Ensure that a stock-emergency state doesn't remain active if the UI got unplugged
     }
     if (now > ui_get_version_next_millis)
     {

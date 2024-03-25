@@ -10,6 +10,14 @@ preflight:
       error: 'pin_to_pin'
       regex: 'Symbol U3'
 
+    - filter: Kicad 7.0.8 complains about solder jumpers connecting filled areas
+      error: 'clearance'
+      regex: 'Zone \[GND\]'
+
+    - filter: New SMD/THT warning system. Ignoring that for non-used SW1
+      error: 'footprint_type_mismatch'
+      regex: 'Footprint SW1'
+
   set_text_variables:
     - name: 'git_version'
       # Replace n.m.i with n.m."x"
@@ -21,7 +29,7 @@ filters:
   - name: anything_in_Config
     type: 'generic'
     comment: 'Remove components with something in config'
-    keys: ["do not place", "DNP", 'bench_test']
+    keys: [ "do not place", "DNP", 'bench_test' ]
     exclude_config: true
     exclude_value: true
 
@@ -43,6 +51,14 @@ outputs:
       old: origin/main
       pcb: false
       only_different: true
+
+  - name: 'kiri'
+    comment: 'Generates an interactive web page to browse the schematic and/or PCB differences between git commits.'
+    type: 'kiri'
+    dir: 'release'
+    options:
+      dnf_filter: [ anything_in_Config, _mechanical ]
+      max_commits: 16
 
   - name: 'bom'
     comment: 'Used to generate the BoM in CSV, HTML, TSV, TXT, XML or XLSX format using the internal BoM.'
@@ -77,7 +93,7 @@ outputs:
     type: 'position'
     dir: 'release'
     options:
-      dnf_filter: [anything_in_Config, _mechanical]
+      dnf_filter: [ anything_in_Config, _mechanical ]
       format: CSV
 
   - name: 'ibom'
@@ -85,7 +101,9 @@ outputs:
     type: 'ibom'
     dir: 'release'
     options:
-      dnf_filter: [anything_in_Config, _mechanical]
+      # TMP use dnp_field due to bug
+      # dnf_filter: [anything_in_Config, _mechanical]
+      dnp_field: Config
       extra_fields: Stock_PN
       highlight_pin1: true
 
