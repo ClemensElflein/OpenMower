@@ -110,6 +110,10 @@ uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
+// Some vars related to PACKET_ID_LL_HIGH_LEVEL_CONFIG_*
+uint8_t comms_version = 0;  // comms packet version (>0 if implemented)
+uint8_t config_bitmask = 0; // See LL_HIGH_LEVEL_CONFIG_BIT_*
+
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
@@ -128,32 +132,19 @@ void updateEmergency() {
         emergency_latch = true;
         ROS_running = false;
     }
-    uint8_t last_emergency = status_message.emergency_bitmask & 1;
+    uint8_t last_emergency = status_message.emergency_bitmask & LL_EMERGENCY_BIT_LATCH;
 
-    // Mask the emergency bits. 2x Lift sensor, 2x Emergency Button
-    bool emergency1 = !gpio_get(PIN_EMERGENCY_1) | (stock_ui_emergency_state & Emergency_state::Emergency_lift1);
-    bool emergency2 = !gpio_get(PIN_EMERGENCY_2) | (stock_ui_emergency_state & Emergency_state::Emergency_lift2);
-    bool emergency3 = !gpio_get(PIN_EMERGENCY_3) | (stock_ui_emergency_state & Emergency_state::Emergency_stop1);
-    bool emergency4 = !gpio_get(PIN_EMERGENCY_4) | (stock_ui_emergency_state & Emergency_state::Emergency_stop2);
-
+    // Read & assign emergencies in the same manner as in ll_status.emergency_bitmask
+    uint8_t emergency_read = !gpio_get(PIN_EMERGENCY_3) << 1 | // Stop1
+                             !gpio_get(PIN_EMERGENCY_4) << 2 | // Stop2
+                             !gpio_get(PIN_EMERGENCY_1) << 3 | // Lift1
+                             !gpio_get(PIN_EMERGENCY_2) << 4 | // Lift2
+                             stock_ui_emergency_state; // OR with StockUI emergency
     uint8_t emergency_state = 0;
 
-    bool is_tilted = emergency1 || emergency2;
-    bool is_lifted = emergency1 && emergency2;
-    bool stop_pressed = emergency3 || emergency4;
-
-    if (is_lifted) {
-        // We just lifted, store the timestamp
-        if (lift_emergency_started == 0) {
-            lift_emergency_started = millis();
-        }
-    } else {
-        // Not lifted, reset the time
-        lift_emergency_started = 0;
-    }
-
-    if (stop_pressed) {
-        // We just pressed, store the timestamp
+    // Handle emergency "Stop" buttons
+    if (emergency_read && LL_EMERGENCY_BITS_STOP) {
+        // If we just pressed, store the timestamp
         if (button_emergency_started == 0) {
             button_emergency_started = millis();
         }
@@ -162,17 +153,25 @@ void updateEmergency() {
         button_emergency_started = 0;
     }
 
-    if (LIFT_EMERGENCY_MILLIS > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) {
-        // Emergency bit 2 (lift wheel 1)set?
-        if (emergency1)
-            emergency_state |= 0b01000;
-        // Emergency bit 1 (lift wheel 2)set?
-        if (emergency2)
-            emergency_state |= 0b10000;
+    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
+    {
+        emergency_state |= (emergency_read & LL_EMERGENCY_BITS_STOP);
     }
 
-    if (is_tilted) {
-        // We just tilted, store the timestamp
+    // Handle lifted (both wheels are lifted)
+    if ((emergency_read & LL_EMERGENCY_BITS_LIFT) == LL_EMERGENCY_BITS_LIFT) {
+        // If we just lifted, store the timestamp
+        if (lift_emergency_started == 0) {
+            lift_emergency_started = millis();
+        }
+    } else {
+        // Not lifted, reset the time
+        lift_emergency_started = 0;
+    }
+
+    // Handle tilted (one wheel is lifted)
+    if (emergency_read & LL_EMERGENCY_BITS_LIFT) {
+        // If we just tilted, store the timestamp
         if (tilt_emergency_started == 0) {
             tilt_emergency_started = millis();
         }
@@ -181,32 +180,20 @@ void updateEmergency() {
         tilt_emergency_started = 0;
     }
 
-    if (TILT_EMERGENCY_MILLIS > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS) {
-        // Emergency bit 2 (lift wheel 1)set?
-        if (emergency1)
-            emergency_state |= 0b01000;
-        // Emergency bit 1 (lift wheel 2)set?
-        if (emergency2)
-            emergency_state |= 0b10000;
-    }
-    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS) {
-        // Emergency bit 2 (stop button) set?
-        if (emergency3)
-            emergency_state |= 0b00010;
-        // Emergency bit 1 (stop button)set?
-        if (emergency4)
-            emergency_state |= 0b00100;
+    if ((LIFT_EMERGENCY_MILLIS > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) ||
+        (TILT_EMERGENCY_MILLIS > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS)) {
+        emergency_state |= (emergency_read & LL_EMERGENCY_BITS_LIFT);
     }
 
     if (emergency_state || emergency_latch) {
-        emergency_latch |= 1;
-        emergency_state |= 1;
+        emergency_latch = true;
+        emergency_state |= LL_EMERGENCY_BIT_LATCH;
     }
 
     status_message.emergency_bitmask = emergency_state;
 
     // If it's a new emergency, instantly send the message. This is to not spam the channel during emergencies.
-    if (last_emergency != (emergency_state & 1)) {
+    if (last_emergency != (emergency_state & LL_EMERGENCY_BIT_LATCH)) {
         sendMessage(&status_message, sizeof(struct ll_status));
 
         // Update UI instantly
@@ -290,11 +277,11 @@ void manageUILEDS() {
     }
 
     // Show Info mower lifted or stop button pressed
-    if (status_message.emergency_bitmask & 0b00110) {
+    if (status_message.emergency_bitmask & LL_EMERGENCY_BITS_STOP) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_blink_fast);
-    } else if (status_message.emergency_bitmask & 0b11000) {
+    } else if (status_message.emergency_bitmask & LL_EMERGENCY_BITS_LIFT) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_blink_slow);
-    } else if (status_message.emergency_bitmask & 0b0000001) {
+    } else if (status_message.emergency_bitmask & LL_EMERGENCY_BIT_LATCH) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_on);
     } else {
         setLed(leds_message, LED_MOWER_LIFTED, LED_off);
@@ -571,6 +558,15 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
     }
 }
 
+void sendConfigMessage(uint8_t pkt_type) {
+    struct ll_high_level_config ll_config;
+    ll_config.type = pkt_type;
+    ll_config.config_bitmask = config_bitmask;
+    ll_config.volume = 80;            // FIXME: Adapt once nv_config or improve-sound got merged
+    strcpy(ll_config.language, "en"); // FIXME: Adapt once nv_config or improve-sound got merged
+    sendMessage(&ll_config, sizeof(struct ll_high_level_config));
+}
+
 void onPacketReceived(const uint8_t *buffer, size_t size) {
     // sanity check for CRC to work (1 type, 1 data, 2 CRC)
     if (size < 4)
@@ -587,7 +583,6 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
 
         // CRC and packet is OK, reset watchdog
         last_heartbeat_millis = millis();
-        ROS_running = true;
         struct ll_heartbeat *heartbeat = (struct ll_heartbeat *) buffer;
         if (heartbeat->emergency_release_requested) {
             emergency_latch = false;
@@ -596,9 +591,30 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
         if (heartbeat->emergency_requested) {
             emergency_latch = true;
         }
+        if (!ROS_running) {
+            // ROS is running (again (i.e. due to restart after reconfiguration))
+            ROS_running = true;
+
+            // Send current LL config (and request HL config response)
+            sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ);
+        }
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_STATE && size == sizeof(struct ll_high_level_state)) {
         // copy the state
         last_high_level_state = *((struct ll_high_level_state *) buffer);
+    }
+    else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) && size == sizeof(struct ll_high_level_config))
+    {
+        // Read and handle received config
+        struct ll_high_level_config *pkt = (struct ll_high_level_config *)buffer;
+        if (pkt->comms_version <= LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION)
+            comms_version = pkt->comms_version;
+        else
+            comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;
+        config_bitmask = pkt->config_bitmask; // Take over as sent. HL is leading (for now)
+        // FIXME: Assign volume & language if not already stored in flash-config
+
+        if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
+            sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);
     }
 }
 
