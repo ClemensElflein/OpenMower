@@ -23,6 +23,7 @@
 #include "ui_board.h"
 #include "imu.h"
 #include "debug.h"
+#include "nv_config.h"
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -109,6 +110,8 @@ float imu_temp[9];
 uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
+
+nv_config::Config *config; // Non-volatile configuration
 
 // Some vars related to PACKET_ID_LL_HIGH_LEVEL_CONFIG_*
 uint8_t comms_version = 0;  // comms packet version (>0 if implemented)
@@ -478,6 +481,8 @@ void setup() {
 
     status_message.status_bitmask |= 1;
 
+    config = nv_config::get(); // Get latest non-volatile config
+
     rp2040.resumeOtherCore();
 
     // Cover UI board clear all LEDs
@@ -563,7 +568,10 @@ void sendConfigMessage(uint8_t pkt_type) {
     ll_config.type = pkt_type;
     ll_config.config_bitmask = config_bitmask;
     ll_config.volume = 80;            // FIXME: Adapt once nv_config or improve-sound got merged
-    strcpy(ll_config.language, "en"); // FIXME: Adapt once nv_config or improve-sound got merged
+    // FIXME: Adapt once nv_config or improve-sound got merged
+    ll_config.language[0] = 'e';
+    ll_config.language[1] = 'n';
+
     sendMessage(&ll_config, sizeof(struct ll_high_level_config));
 }
 
@@ -667,6 +675,7 @@ void loop() {
     imu_loop();
     updateChargingEnabled();
     updateEmergency();
+    nv_config::delayedSaveChanges();
 
     unsigned long now = millis();
     if (now - last_imu_millis > IMU_CYCLETIME) {
@@ -740,6 +749,7 @@ void loop() {
     {
         next_ui_msg_millis = now + ui_interval;
         manageUISubscriptions();
+    }
 #ifdef ENABLE_SOUND_MODULE
     soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
 #endif
