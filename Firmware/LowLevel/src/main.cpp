@@ -571,7 +571,6 @@ void sendConfigMessage(uint8_t pkt_type) {
     // FIXME: Adapt once nv_config or improve-sound got merged
     ll_config.language[0] = 'e';
     ll_config.language[1] = 'n';
-
     sendMessage(&ll_config, sizeof(struct ll_high_level_config));
 }
 
