@@ -77,8 +77,9 @@ namespace soundSystem
         bool current_playing_is_background_;    // Current/last playing sound is a background sound
         unsigned long current_playing_started_; // Millis when current/last playing sound got started
 
-        unsigned long ros_running_since_ = 0; // ros_running since millis state
-        unsigned long last_advert_end_;       // Millis when the last played advert sound ended. Used for pauseAfter calculation
+        bool ros_running = false;              // ROS running state
+        unsigned long ros_running_since_ = 0;  // ros_running since millis state
+        unsigned long last_advert_end_;        // Millis when the last played advert sound ended. Used for pauseAfter calculation
 
         // Describe specific (assumed) mode flags
         enum ModeFlags : uint8_t
@@ -386,10 +387,14 @@ namespace soundSystem
             last_ll_state.status_bitmask = t_ll_state.status_bitmask;
 
             // ROS running changed
-            if (t_ros_running && !ros_running_since_) {
+            if (!ros_running && t_ros_running && !ros_running_since_) {
                 ros_running_since_ = millis();
                 playSound(tracks[SOUND_TRACK_ADV_ROS_STARTUP_SUCCESS]);  // ROS startup successful
+            } else if (ros_running && !t_ros_running) {
+                ros_running_since_ = 0;
+                playSound(tracks[SOUND_TRACK_ADV_ROS_STOPPED]);  // ROS stopped
             }
+            ros_running = t_ros_running;
 
             // HL mode changed
             if (t_hl_state.current_mode != last_hl_state_.current_mode) {
