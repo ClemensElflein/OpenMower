@@ -217,7 +217,7 @@ namespace soundSystem
         volume -= VOLUME_STEPS;
         setVolume(volume);
         if (dfp_is_5v)
-            playSoundAdHoc(tracks[SOUND_TRACK_ADV_UP]);
+            playSoundAdHoc(tracks[SOUND_TRACK_ADV_DOWN]);
         return volume;
     }
 
