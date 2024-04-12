@@ -27,7 +27,12 @@
 #define _NV_CONFIG_H
 
 #include <Arduino.h>
+
+#ifdef ENABLE_SOUND_MODULE
 #include "soundsystem.h"
+#else
+#define VOLUME_DEFAULT 80
+#endif
 
 #include "../src/datatypes.h"
 

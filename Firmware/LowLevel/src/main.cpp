@@ -611,27 +611,31 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
             comms_version = pkt->comms_version;
         else
             comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;
-        
+
         config_bitmask = pkt->config_bitmask;  // Take over as sent. HL is leading (for now)
 
         // nv_config.Config specific members ...
         // config_bitmask. Do NOT mistake with global config_bitmask (ll_high_level_config.config_bitmask). Similar, but not mandatory the same in future,
         // to ensure that a possible instable/flipping future global config_bitmask doesn't wear level our flash, we only add those which are known to be stable.
         (config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V) ? nv_cfg->config_bitmask |= NV_CONFIG_BIT_DFPIS5V : nv_cfg->config_bitmask &= ~NV_CONFIG_BIT_DFPIS5V;
+#ifdef ENABLE_SOUND_MODULE
         soundSystem::setDFPis5V(nv_cfg->config_bitmask & NV_CONFIG_BIT_DFPIS5V);
-
+#endif
         // Volume
         if (pkt->volume >= 0) {
             nv_cfg->volume = pkt->volume;
+#ifdef ENABLE_SOUND_MODULE
             soundSystem::setVolume(nv_cfg->volume);
+#endif
         }
 
         // Language
         for (unsigned int i = 0; i < sizeof(nv_cfg->language); i++) {
             nv_cfg->language[i] = pkt->language[i];
         }
+#ifdef ENABLE_SOUND_MODULE
         soundSystem::setLanguage(&nv_cfg->language);
-
+#endif
         // Sender requested a config-response packet
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
             sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);
