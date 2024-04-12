@@ -111,7 +111,7 @@ uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
-nv_config::Config *config; // Non-volatile configuration
+nv_config::Config *nv_cfg; // Non-volatile configuration
 
 // Some vars related to PACKET_ID_LL_HIGH_LEVEL_CONFIG_*
 uint8_t comms_version = 0;  // comms packet version (>0 if implemented)
@@ -408,20 +408,20 @@ void setup() {
     UISerial.setStream(&UI1_SERIAL);
     UISerial.setPacketHandler(&onUIPacketReceived);
 
+    nv_cfg = nv_config::get();  // Get latest non-volatile config (from flash)
+
 #ifdef ENABLE_SOUND_MODULE
     p.neoPixelSetValue(0, 0, 255, 255, true);
-
     sound_available = soundSystem::begin();
-    if (sound_available)
-    {
+    if (sound_available) {
         p.neoPixelSetValue(0, 0, 0, 255, true);
-        soundSystem::setVolume(VOLUME_DEFAULT);
+        soundSystem::setDFPis5V(nv_cfg->config_bitmask & NV_CONFIG_BIT_DFPIS5V);
+        soundSystem::setLanguage(&nv_cfg->language, true);
+        soundSystem::setVolume(nv_cfg->volume);
         // Do NOT play any initial sound now, as we've to handle the special case of
         // old DFPlayer SD-Card format @ DFROBOT LISP3. See soundSystem::processSounds()
         p.neoPixelSetValue(0, 255, 255, 0, true);
-    }
-    else
-    {
+    } else {
         for (uint8_t b = 0; b < 3; b++)
         {
             p.neoPixelSetValue(0, 0, 0, 0, true);
@@ -481,8 +481,6 @@ void setup() {
 
     status_message.status_bitmask |= 1;
 
-    config = nv_config::get(); // Get latest non-volatile config
-
     rp2040.resumeOtherCore();
 
     // Cover UI board clear all LEDs
@@ -531,13 +529,10 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         switch (msg->button_id)
         {
         case 8: // Mon = Volume up
-            soundSystem::setVolumeUp();
+            nv_cfg->volume = soundSystem::setVolumeUp();
             break;
         case 9: // Tue = Volume down
-            soundSystem::setVolumeDown();
-            break;
-        case 10: // Wed = Next Language
-            soundSystem::setNextLanguage();
+            nv_cfg->volume = soundSystem::setVolumeDown();
             break;
 
         default:
@@ -567,10 +562,10 @@ void sendConfigMessage(uint8_t pkt_type) {
     struct ll_high_level_config ll_config;
     ll_config.type = pkt_type;
     ll_config.config_bitmask = config_bitmask;
-    ll_config.volume = 80;            // FIXME: Adapt once nv_config or improve-sound got merged
-    // FIXME: Adapt once nv_config or improve-sound got merged
-    ll_config.language[0] = 'e';
-    ll_config.language[1] = 'n';
+    ll_config.volume = nv_cfg->volume;
+    for (unsigned int i = 0; i < sizeof(nv_cfg->language); i++) {
+        ll_config.language[i] = nv_cfg->language[i];
+    }
     sendMessage(&ll_config, sizeof(struct ll_high_level_config));
 }
 
@@ -607,19 +602,37 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
         }
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_STATE && size == sizeof(struct ll_high_level_state)) {
         // copy the state
-        last_high_level_state = *((struct ll_high_level_state *) buffer);
-    }
-    else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) && size == sizeof(struct ll_high_level_config))
-    {
+        last_high_level_state = *((struct ll_high_level_state *)buffer);
+    } else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) && size == sizeof(struct ll_high_level_config)) {
         // Read and handle received config
         struct ll_high_level_config *pkt = (struct ll_high_level_config *)buffer;
+        // Apply comms_version
         if (pkt->comms_version <= LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION)
             comms_version = pkt->comms_version;
         else
             comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;
-        config_bitmask = pkt->config_bitmask; // Take over as sent. HL is leading (for now)
-        // FIXME: Assign volume & language if not already stored in flash-config
+        
+        config_bitmask = pkt->config_bitmask;  // Take over as sent. HL is leading (for now)
 
+        // nv_config.Config specific members ...
+        // config_bitmask. Do NOT mistake with global config_bitmask (ll_high_level_config.config_bitmask). Similar, but not mandatory the same in future,
+        // to ensure that a possible instable/flipping future global config_bitmask doesn't wear level our flash, we only add those which are known to be stable.
+        (config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V) ? nv_cfg->config_bitmask |= NV_CONFIG_BIT_DFPIS5V : nv_cfg->config_bitmask &= ~NV_CONFIG_BIT_DFPIS5V;
+        soundSystem::setDFPis5V(nv_cfg->config_bitmask & NV_CONFIG_BIT_DFPIS5V);
+
+        // Volume
+        if (pkt->volume >= 0) {
+            nv_cfg->volume = pkt->volume;
+            soundSystem::setVolume(nv_cfg->volume);
+        }
+
+        // Language
+        for (unsigned int i = 0; i < sizeof(nv_cfg->language); i++) {
+            nv_cfg->language[i] = pkt->language[i];
+        }
+        soundSystem::setLanguage(&nv_cfg->language);
+
+        // Sender requested a config-response packet
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
             sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);
     }

@@ -41,7 +41,7 @@ End of October 2023, I discussed my doubts with Clemens and he answered:
 | ------ | -------- | ---
 | <kbd>Mon</kbd> | <kbd>4H</kbd> | Volume up |
 | <kbd>Tue</kbd> | <kbd>6H</kbd> | Volume down
-| <kbd>Wed</kbd> | <kbd>8H</kbd> | Language switch (English, German)
+| <kbd>Wed</kbd> | <kbd>8H</kbd> | ~~Language switch (English, German)~~
 
 ## DFPlayer Module / Clones
 

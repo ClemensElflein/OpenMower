@@ -20,6 +20,8 @@
 #include <Arduino.h>
 #include <stdint.h>
 #include <list>
+#include <map>
+#include <string>
 #include <DFMiniMp3.h>
 
 #include "datatypes.h"
@@ -40,7 +42,7 @@
 #define MOW_SOUND_MIN_PAUSE_AFTER 60000    // Minimum pause before a new randomized mow sounds get played
 #define MOW_SOUND_CHANCE 50                // % change to play a new sound within the next minute after MOW_SOUND_MIN_PAUSE_AFTER
 #define ROS_RUNNING_BEFORE_EMERGENCY 10000 // Min. millis of running ROS before emergencies get handled
-#define VOLUME_DEFAULT 100
+#define VOLUME_DEFAULT 80
 #define VOLUME_STEPS 5 // Amount of volume setps for volumeUp() and volumeDown()
 
 // For better reading, let's use track names which point to tracks[] indexes
@@ -76,29 +78,26 @@
 #define DFP_DETECTION_BIT_HANDLED (1 << 3)            // Autoplay existence handled
 #define DFP_AUTOPLAY_TIMEOUT 6000                     // Autoplayed track detection timeout. "Hi I'm Steve ..." is about 4.x seconds
 
-namespace soundSystem
-{
-    enum TrackTypes : uint8_t
-    {
-        background = 1, // Background tracks are stored in folder mp3 and get interrupted/aborted by higher priority sound like advert
-        advert,         // Advert tracks are stored in language specific folder, i.e. "01" US or "49" German, and interrupt/stop background sounds
-        advertRaw,      // Raw-Advert tracks are stored in folder 'advert' and interrupt/stop background or advert sounds.
-                        // Due to DFPlayer incompatibilities, advert_raw should only be used if you know their drawbacks!
+namespace soundSystem {
+    const std::map<std::string, uint8_t> language_to_playFolder_map{{"en", 1}, {"de", 49}};  // ISO639-1 (string) to playFolder (uint) map for localized advert sounds
+
+    enum TrackTypes : uint8_t {
+        background = 1,  // Background tracks are stored in folder mp3 and get interrupted/aborted by higher priority sound like advert
+        advert,          // Advert tracks are stored in language specific folder, i.e. "01" US or "49" German, and interrupt/stop background sounds
+        advertRaw,       // Raw-Advert tracks are stored in folder 'advert' and interrupt/stop background or advert sounds.
+                         // Due to DFPlayer incompatibilities, advert_raw should only be used if you know their drawbacks!
     };
-    enum TrackFlags : uint8_t
-    {
-        repeat = 0x01,         // Repeat this track. This flag is limited to background sounds!
-        stopBackground = 0x02, // Stop replaying of a current running background track after this sound got played
+    enum TrackFlags : uint8_t {
+        repeat = 0x01,          // Repeat this track. This flag is limited to background sounds!
+        stopBackground = 0x02,  // Stop replaying of a current running background track after this sound got played
     };
-    struct TrackDef
-    {
-        uint16_t num; // Source (SD-Card) track number
+    struct TrackDef {
+        uint16_t num;  // Source (SD-Card) track number
         TrackTypes type;
-        uint8_t flags = 0;               // See TrackFlags
-        unsigned long pauseAfter = 0;    // Cosmetic pause in ms, after advert track got played, before the next sound get processed from queue.
-        int32_t repeatDuration = 180000; // How long (ms) to repeat a background sound. Default to 180 sec. noise pollution (i.e. VdS 2300)
+        uint8_t flags = 0;                // See TrackFlags
+        unsigned long pauseAfter = 0;     // Cosmetic pause in ms, after advert track got played, before the next sound get processed from queue.
+        int32_t repeatDuration = 180000;  // How long (ms) to repeat a background sound. Default to 180 sec. noise pollution (i.e. VdS 2300)
     };
-    const uint8_t languages[] = {1, 49}; // Available advert language sounds. 1 = English(US), 49 = German
 
     // For easier reading and simpler code, let's have a list of predefined tracks and its (default) settings
     const TrackDef tracks[] = {
@@ -134,10 +133,13 @@ namespace soundSystem
                                                // will play the sounds according to the list
     void playSoundAdHoc(TrackDef t_track_def); // Play sound track number immediately without waiting until the end of sound
 
-    void setNextLanguage();        // Select next (available) language
-    void setVolume(uint8_t t_vol); // Scales loudness from 0 to 100 %
-    void setVolumeUp();            // Scale volume up by VOLUME_STEPS
-    void setVolumeDown();          // Scale volume down by VOLUME_STEPS
+    void setDFPis5V(bool t_dfpis5v);  // Set if DFP is set to 5V Vcc
+
+    void setLanguage(iso639_1 *language_p, bool quiet = false);  // Set language to the pointing ISO639-1 (2 char) language code and announce if changed and not quiet
+
+    void setVolume(uint8_t t_vol);  // Set volume (0-100%)
+    uint8_t setVolumeUp();          // Scale volume up by VOLUME_STEPS and return new volume (%)
+    uint8_t setVolumeDown();        // Scale volume down by VOLUME_STEPS and return new volume (%)
 
     void processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_level_state t_hl_state); // This method has to be called cyclic, e.g. every second.
 }

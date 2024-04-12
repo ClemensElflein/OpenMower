@@ -23,53 +23,55 @@
  * https://github.com/MakerMatrix/RP2040_flash_programming
  */
 
+#ifndef _NV_CONFIG_H
+#define _NV_CONFIG_H
+
 #include <Arduino.h>
+#include "soundsystem.h"
 
-// #define NV_CONFIG_MAX_SAVE_INTERVAL 60000UL // Don't save more often than once every 1 minute(s)
-#define NV_CONFIG_MAX_SAVE_INTERVAL 2000UL // DBG: Don't save more often than once every 1 second(s)
+#include "../src/datatypes.h"
 
-// config_bitmask
-#define LL_CONFIG_BIT_HL_CONFIG_RECEIVED 0x1 // ROS config packet received
-#define LL_CONFIG_BIT_DFPIS5V 0x2            // DFP is set to 5V
+#define NV_CONFIG_MAX_SAVE_INTERVAL 60000UL  // Don't save more often than once a minute
 
-#define NV_RECORD_ID 0x4F4D4331                  // Record struct identifier "OMC1" for future flexible length Record.config
-#define NV_RECORD_ALIGNMENT (_Alignof(uint32_t)) // Ptr alignment of Record.id for quick in memory access
+// config_bitmask. Don't mistake with LL_HIGH_LEVEL_CONFIG_BIT. Similar, but not mandatory equal!
+#define NV_CONFIG_BIT_DFPIS5V 1 << 0  // DFP is set to 5V
 
-namespace nv_config
-{
+#define NV_RECORD_ID 0x4F4D4331                   // Record struct identifier "OMC1" for future flexible length Record.config
+#define NV_RECORD_ALIGNMENT (_Alignof(uint32_t))  // Ptr alignment of Record.id for quick in memory access
+
+namespace nv_config {
 #pragma pack(push, 1)
-    // Config struct example with reasonable defaults.
-    // This is where our application values should go.
-    // It's possible to extended it, but any extension should add an extension related CRC so that an old/last stored Record.config isn't lost.
-    //    (a new extension-crc isn't valid with a old Record.config. Thus the new extension values may get set i.e. with default values)
-    struct Config
-    {
-        // Config bitmask:
-        // Bit 0: ROS config packet received. See LL_CONFIG_BIT_HL_CONFIG_RECEIVED
-        // Bit 1: DFP is 5V (enable full sound). See LL_CONFIG_BIT_DFPIS5V
-        uint8_t config_bitmask = 0;
-        uint8_t language = 0;          // Sound language index 0 = Folder "01" = English(US), 1 = Folder "49" = German
-        uint8_t volume = 100;          // Sound loudness from 0 to 100 %
-        uint32_t rain_threshold = 700; // If (stock CoverUI) rain value < rain_threshold then it rains. Expected to differ between C500, SA and SC types
+// This is where our application values should go.
+// It's possible to extended it, but any extension should add an extension related CRC so that an old/last stored Record.config isn't lost.
+// (a new extension-crc isn't valid with a old Record.config. Thus the new extension values may get set i.e. with default values)
+struct Config {
+    // Config bitmask:
+    // Bit 0: DFP is 5V (enable full sound). See NV_CONFIG_BIT_DFPIS5V
+    uint8_t config_bitmask = 0;       // Don't mistake with LL_HIGH_LEVEL_CONFIG_BIT. Similar, but not mandatory equal!
+    uint8_t volume = VOLUME_DEFAULT;  // Sound volume (0-100%)
+    iso639_1 language = {'e', 'n'};   // Default to 'en'
+    uint32_t rain_threshold = 700;    // If (stock CoverUI) rain value < rain_threshold then it rains. Expected to differ between C500, SA and SC types
 
-        /* Possible future config settings
-        uint16_t free;                 // Future config setting
-        uint16_t free_n;               // Future config setting
-        uint16_t crc_n;                // Future config CRC16 (for the new member) for detection if loaded (possibly old) config already has the new member */
-    } __attribute__((packed));
+    /* Possible future config settings
+    uint16_t free;                 // Future config setting
+    uint16_t free_n;               // Future config setting
+    uint16_t crc_n;                // Future config CRC16 (for the new member) for detection if loaded (possibly old) config already has the new member */
+} __attribute__((packed));
 
-    // Record(s) get placed sequentially into a flash page.
-    // The Record structure shouldn't get changed, because it would make old flash Record's unusable. Instead of, change Record.config
-    struct Record
-    {
-        const uint32_t id = NV_RECORD_ID; // Fixed record identifier, used to identify a possible Record within a flash page. If width get changed, change also NV_RECORD_ALIGNMENT
-        uint32_t num_sector_erase = 0;
-        uint32_t num_page_write = 0;
-        uint16_t crc; // Required to ensure that a found NV_RECORD_ID is really a Record
-        Config config;
-    } __attribute__((packed));
+// Record(s) get placed sequentially into a flash page.
+// The Record structure shouldn't get changed, because it would make old flash Record's unusable. Instead of, change Record.config
+struct Record {
+    const uint32_t id = NV_RECORD_ID;  // Fixed record identifier, used to identify a possible Record within a flash page. If width get changed, change also NV_RECORD_ALIGNMENT
+    uint32_t num_sector_erase = 0;     // For wear level stats
+    uint32_t num_page_write = 0;       // For informational purposes
+    uint16_t crc;                      // Required to ensure that a found NV_RECORD_ID is really a Record
+    Config config;
+} __attribute__((packed));
 #pragma pack(pop)
 
-    Config *get();             // Returned pointer hold the last saved Record.config, or the default one. Config member are writable, see delayedSaveChanges()
-    void delayedSaveChanges(); // Handle a possible changed nv_config::config member and save it to flash, but only within NV_CONFIG_MAX_SAVE_INTERVAL timeout for wear level protection
-}
+Config *get();              // Returned Config pointer hold the data of the last saved Record.config, or a default one. Config member are writable, see delayedSaveChanges()
+void delayedSaveChanges();  // Handle a possible changed nv_config::config member and save it to flash, but only within NV_CONFIG_MAX_SAVE_INTERVAL timeout for wear level protection
+
+}  // namespace nv_config
+
+#endif  // _NV_CONFIG_H

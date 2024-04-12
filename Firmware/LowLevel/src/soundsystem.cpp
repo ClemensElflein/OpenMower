@@ -59,11 +59,13 @@ namespace soundSystem
         DfMp3 myMP3(soundSerial);
 
         std::list<TrackDef> active_sounds_;
-        bool sound_available_ = false;   // Sound module available as well as SD-Card with some kind of files
-        uint8_t volume = VOLUME_DEFAULT; // Last set volume (%)
-        uint8_t language = 0;            // Selected language. See soundystem.h `const uint8_t languages[]`
+        bool sound_available_ = false;    // Sound module available as well as SD-Card with some kind of files
+        bool dfp_is_5v = false;           // Enable full sound if DFP is set to 5V Vcc
+        uint8_t volume = VOLUME_DEFAULT;  // Last set volume (%)
+        std::string language_str = "en";  // Default ISO639-1 language string
+        uint8_t play_folder = 1;          // Default play folder, has to be related to language_str
 
-        uint16_t last_error_code_ = 0; // Last DFPlayer error code. See DfMp3_Error for code meaning
+        uint16_t last_error_code_ = 0;  // Last DFPlayer error code. See DfMp3_Error for code meaning
 
         ll_status last_ll_state = {0};            // Last processed low-level state
         ll_high_level_state last_hl_state_ = {0}; // Last processed high-level state
@@ -164,19 +166,25 @@ namespace soundSystem
         return sound_available_;
     }
 
-    void setNextLanguage()
-    {
-        if (!sound_available_)
+    void setDFPis5V(bool t_dfpis5v) {
+        dfp_is_5v = t_dfpis5v;
+    }
+
+    void setLanguage(iso639_1 *language_p, bool quiet) {  // Set language to the pointing ISO639-1 (2 char) language code and announce if changed and not quiet
+        uint8_t last_play_folder = play_folder;
+
+        language_str = *language_p;
+        language_str[sizeof(iso639_1)] = 0; // FIXME: Why does the previous command doesn't terminate the string in the right way?!
+        if (auto it = language_to_playFolder_map.find(language_str.c_str()); it != language_to_playFolder_map.end()) {
+            play_folder = it->second;
+        }
+        if (!sound_available_ || play_folder == last_play_folder || quiet || !dfp_is_5v)
             return;
-
-        language++;
-        if (language >= sizeof(languages) / sizeof(uint8_t))
-            language = 0;
-
+            
         playSoundAdHoc(tracks[SOUND_TRACK_ADV_LANGUAGE]);
     }
 
-    void setVolume(uint8_t t_vol) // scales from 0 to 100 %
+    void setVolume(uint8_t t_vol)  // Set volume (0-100%)
     {
         if (!sound_available_)
             return;
@@ -186,27 +194,31 @@ namespace soundSystem
         DEBUG_PRINTF("Set volume %d\n", val);
         myMP3.setVolume(val);
         volume = t_vol;
-        delay(50); // (sometimes) required for "DFR LISP3"
+        delay(50);  // (sometimes) required for "DFR LISP3"
     }
 
-    void setVolumeUp()
+    uint8_t setVolumeUp()
     {
         if (!sound_available_ || volume > (100 - VOLUME_STEPS))
-            return;
+            return volume;
 
         volume += VOLUME_STEPS;
         setVolume(volume);
-        playSoundAdHoc(tracks[SOUND_TRACK_ADV_UP]);
+        if (dfp_is_5v)
+            playSoundAdHoc(tracks[SOUND_TRACK_ADV_UP]);
+        return volume;
     }
 
-    void setVolumeDown()
+    uint8_t setVolumeDown()
     {
         if (!sound_available_ || volume < VOLUME_STEPS)
-            return;
+            return volume;
 
         volume -= VOLUME_STEPS;
         setVolume(volume);
-        playSoundAdHoc(tracks[SOUND_TRACK_ADV_DOWN]);
+        if (dfp_is_5v)
+            playSoundAdHoc(tracks[SOUND_TRACK_ADV_UP]);
+        return volume;
     }
 
     void playSoundAdHoc(TrackDef t_track_def)
@@ -236,9 +248,8 @@ namespace soundSystem
             }
             else
             {
-                // FIXME: playFolderTrack16() does not work reliable across DFPlayer clones. playFolderTrack() does.
-                // myMP3.playFolderTrack16(DFP_ADVERT_FOLDER, t_track_def.num);
-                myMP3.playFolderTrack(languages[language], t_track_def.num);
+                // ATTENTION: Don't use playFolderTrack16() as it does NOT work reliable across DFPlayer clones (as of writing). But playFolderTrack() does.
+                myMP3.playFolderTrack(play_folder, t_track_def.num);
             }
             delay(50); // (sometimes) required for "MH2024K-24SS"
             advert_track_def_ = t_track_def;
@@ -335,136 +346,121 @@ namespace soundSystem
         }
         next_cycle = millis() + PROCESS_CYCLETIME;
 
-#ifdef DFPIS5V
-        // Docked ?
-        if (t_ll_state.v_charge > 20.0f)
-        {
-            if (last_ll_state.v_charge < 10.0f)
-            {
-                myMP3.stop();
-                background_track_def_ = {0};
-                active_sounds_.clear();
-            }
-        }
-        last_ll_state.v_charge = t_ll_state.v_charge;
-
-        handleEmergencies(t_ll_state, t_ros_running);
-
-        // Handle LL status_bitmask changes
-        const uint8_t changed_status = t_ll_state.status_bitmask ^ last_ll_state.status_bitmask;
-        DEBUG_PRINTF("Changed status_bitmask " PRINTF_BINARY_PATTERN_INT8 " (new status " PRINTF_BINARY_PATTERN_INT8 " XOR last status " PRINTF_BINARY_PATTERN_INT8 "), HL mode %d\n",
-                     PRINTF_BYTE_TO_BINARY_INT8(changed_status),
-                     PRINTF_BYTE_TO_BINARY_INT8(t_ll_state.status_bitmask),
-                     PRINTF_BYTE_TO_BINARY_INT8(last_ll_state.status_bitmask),
-                     t_hl_state.current_mode);
-
-        if (!(last_ll_state.status_bitmask & LL_STATUS_BIT_INITIALIZED) && (t_ll_state.status_bitmask & LL_STATUS_BIT_INITIALIZED))
-        {
-            playSound(tracks[SOUND_TRACK_ADV_OM_STARTUP_SUCCESS]); // OM startup successful
-        }
-        if (!t_ros_running && !(last_ll_state.status_bitmask & LL_STATUS_BIT_RASPI_POWER) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RASPI_POWER))
-        {
-            playSound(tracks[SOUND_TRACK_ADV_ROS_INIT]); // Initializing ROS
-            // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
-            playSound(tracks[SOUND_TRACK_BGD_ROS_BOOT]);
-        }
-        if (!(last_ll_state.status_bitmask & LL_STATUS_BIT_RAIN) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RAIN))
-        {
-            if (t_hl_state.current_mode == MODE_AUTONOMOUS && !((hl_mode_flags_ & ModeFlags::rainDetected) || (hl_mode_flags_ & ModeFlags::docking)))
-            {
-                playSoundAdHoc(tracks[SOUND_TRACK_ADV_RAIN]);                                     // Rain detected, heading back to base
-                playSound({num : (uint16_t)(100 + (rand() % 3)), type : TrackTypes::background}); // Play background track 100-102 by random
-                hl_mode_flags_ |= ModeFlags::docking;
-            }
-            hl_mode_flags_ |= ModeFlags::rainDetected;
-        }
-        last_ll_state.status_bitmask = t_ll_state.status_bitmask;
-
-        // ROS running changed
-        if (t_ros_running && !ros_running_since_)
-        {
-            ros_running_since_ = millis();
-            playSound(tracks[SOUND_TRACK_ADV_ROS_STARTUP_SUCCESS]); // ROS startup successful
-        }
-
-        // HL mode changed
-        if (t_hl_state.current_mode != last_hl_state_.current_mode)
-        {
-            switch (t_hl_state.current_mode)
-            {
-            case MODE_RECORDING:
-                hl_mode_flags_ |= ModeFlags::started;
-                playSound(tracks[SOUND_TRACK_ADV_MAP_RECORD_START]); // Starting map area recording
-                if (t_hl_state.gps_quality < 75)
-                    playSound(tracks[SOUND_TRACK_ADV_RTKGPS_WAIT]); // Waiting for RTK GPS signal
-                break;
-
-            case MODE_AUTONOMOUS:
-                hl_mode_flags_ |= ModeFlags::started;
-                playSound(tracks[SOUND_TRACK_ADV_AUTONOMOUS_START]); // Stay back, autonomous robot mower in use
-                if (t_hl_state.gps_quality < 75)
-                    playSound(tracks[SOUND_TRACK_ADV_RTKGPS_WAIT]); // Waiting for RTK GPS signal
-                break;
-
-            default:
-                hl_mode_has_fix_ms_ = 0;
-                hl_mode_flags_ = 0;
-                break;
-            }
-        }
-        last_hl_state_.current_mode = t_hl_state.current_mode;
-
-        // GPS quality changed
-        static unsigned long next_gps_sound_cycle = millis(); // Next cycle when a GPS ping sound got played
-        if (t_hl_state.gps_quality != last_hl_state_.gps_quality)
-        {
-            switch (t_hl_state.current_mode)
-            {
-            case MODE_RECORDING:
-                if (millis() < next_gps_sound_cycle)
-                    break;
-
-                // Ping only rated GPS quality changes
-                if (t_hl_state.gps_quality < 50)
-                {
-                    if (last_hl_state_.gps_quality >= 50)
-                        playSound(tracks[SOUND_TRACK_ADV_RTKGPS_POOR]); // GPS poor ping
+        if (dfp_is_5v) { // Full sound support if DFP is set to 5V Vcc
+            // Docked ?
+            if (t_ll_state.v_charge > 20.0f) {
+                if (last_ll_state.v_charge < 10.0f) {
+                    myMP3.stop();
+                    background_track_def_ = {0};
+                    active_sounds_.clear();
                 }
-                else if (t_hl_state.gps_quality < 75)
-                {
-                    if (last_hl_state_.gps_quality < 50 || last_hl_state_.gps_quality >= 75)
-                        playSound(tracks[SOUND_TRACK_ADV_RTKGPS_MODERATE]); // GPS moderate/acceptable ping
-                }
-                else // GPS quality >= 75
-                {
-                    if (last_hl_state_.gps_quality < 75)
-                        playSound(tracks[SOUND_TRACK_ADV_RTKGPS_GOOD]); // GPS good ping
-
-                    hl_mode_flags_ |= ModeFlags::initialGpsFix;
-                    if (!hl_mode_has_fix_ms_)
-                        hl_mode_has_fix_ms_ = millis();
-                }
-                next_gps_sound_cycle = millis() + GPS_SOUND_CYCLETIME;
-                break;
-
-            case MODE_AUTONOMOUS:
-                if ((hl_mode_flags_ & ModeFlags::initialGpsFix) || (t_hl_state.gps_quality < 75))
-                    break;
-                playSound(tracks[SOUND_TRACK_BGD_MUSIC_PINK_PANTHER]); // Stalking "Pink Panther"
-                hl_mode_flags_ |= ModeFlags::initialGpsFix;
-                if (!hl_mode_has_fix_ms_)
-                    hl_mode_has_fix_ms_ = millis();
-                break;
-
-            default:
-                break;
             }
-        }
-        last_hl_state_.gps_quality = t_hl_state.gps_quality;
+            last_ll_state.v_charge = t_ll_state.v_charge;
 
-        // Generic, state-change independent sounds
-        playMowSound();
-#endif // DFPIS5V
+            handleEmergencies(t_ll_state, t_ros_running);
+
+            // Handle LL status_bitmask changes
+            const uint8_t changed_status = t_ll_state.status_bitmask ^ last_ll_state.status_bitmask;
+            DEBUG_PRINTF("Changed status_bitmask " PRINTF_BINARY_PATTERN_INT8 " (new status " PRINTF_BINARY_PATTERN_INT8 " XOR last status " PRINTF_BINARY_PATTERN_INT8 "), HL mode %d\n",
+                         PRINTF_BYTE_TO_BINARY_INT8(changed_status),
+                         PRINTF_BYTE_TO_BINARY_INT8(t_ll_state.status_bitmask),
+                         PRINTF_BYTE_TO_BINARY_INT8(last_ll_state.status_bitmask),
+                         t_hl_state.current_mode);
+
+            if (!(last_ll_state.status_bitmask & LL_STATUS_BIT_INITIALIZED) && (t_ll_state.status_bitmask & LL_STATUS_BIT_INITIALIZED)) {
+                playSound(tracks[SOUND_TRACK_ADV_OM_STARTUP_SUCCESS]);  // OM startup successful
+            }
+            if (!t_ros_running && !(last_ll_state.status_bitmask & LL_STATUS_BIT_RASPI_POWER) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RASPI_POWER)) {
+                playSound(tracks[SOUND_TRACK_ADV_ROS_INIT]);  // Initializing ROS
+                // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
+                playSound(tracks[SOUND_TRACK_BGD_ROS_BOOT]);
+            }
+            if (!(last_ll_state.status_bitmask & LL_STATUS_BIT_RAIN) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RAIN)) {
+                if (t_hl_state.current_mode == MODE_AUTONOMOUS && !((hl_mode_flags_ & ModeFlags::rainDetected) || (hl_mode_flags_ & ModeFlags::docking))) {
+                    playSoundAdHoc(tracks[SOUND_TRACK_ADV_RAIN]);                                      // Rain detected, heading back to base
+                    playSound({num : (uint16_t)(100 + (rand() % 3)), type : TrackTypes::background});  // Play background track 100-102 by random
+                    hl_mode_flags_ |= ModeFlags::docking;
+                }
+                hl_mode_flags_ |= ModeFlags::rainDetected;
+            }
+            last_ll_state.status_bitmask = t_ll_state.status_bitmask;
+
+            // ROS running changed
+            if (t_ros_running && !ros_running_since_) {
+                ros_running_since_ = millis();
+                playSound(tracks[SOUND_TRACK_ADV_ROS_STARTUP_SUCCESS]);  // ROS startup successful
+            }
+
+            // HL mode changed
+            if (t_hl_state.current_mode != last_hl_state_.current_mode) {
+                switch (t_hl_state.current_mode) {
+                    case MODE_RECORDING:
+                        hl_mode_flags_ |= ModeFlags::started;
+                        playSound(tracks[SOUND_TRACK_ADV_MAP_RECORD_START]);  // Starting map area recording
+                        if (t_hl_state.gps_quality < 75)
+                            playSound(tracks[SOUND_TRACK_ADV_RTKGPS_WAIT]);  // Waiting for RTK GPS signal
+                        break;
+
+                    case MODE_AUTONOMOUS:
+                        hl_mode_flags_ |= ModeFlags::started;
+                        playSound(tracks[SOUND_TRACK_ADV_AUTONOMOUS_START]);  // Stay back, autonomous robot mower in use
+                        if (t_hl_state.gps_quality < 75)
+                            playSound(tracks[SOUND_TRACK_ADV_RTKGPS_WAIT]);  // Waiting for RTK GPS signal
+                        break;
+
+                    default:
+                        hl_mode_has_fix_ms_ = 0;
+                        hl_mode_flags_ = 0;
+                        break;
+                }
+            }
+            last_hl_state_.current_mode = t_hl_state.current_mode;
+
+            // GPS quality changed
+            static unsigned long next_gps_sound_cycle = millis();  // Next cycle when a GPS ping sound got played
+            if (t_hl_state.gps_quality != last_hl_state_.gps_quality) {
+                switch (t_hl_state.current_mode) {
+                    case MODE_RECORDING:
+                        if (millis() < next_gps_sound_cycle)
+                            break;
+
+                        // Ping only rated GPS quality changes
+                        if (t_hl_state.gps_quality < 50) {
+                            if (last_hl_state_.gps_quality >= 50)
+                                playSound(tracks[SOUND_TRACK_ADV_RTKGPS_POOR]);  // GPS poor ping
+                        } else if (t_hl_state.gps_quality < 75) {
+                            if (last_hl_state_.gps_quality < 50 || last_hl_state_.gps_quality >= 75)
+                                playSound(tracks[SOUND_TRACK_ADV_RTKGPS_MODERATE]);  // GPS moderate/acceptable ping
+                        } else                                                       // GPS quality >= 75
+                        {
+                            if (last_hl_state_.gps_quality < 75)
+                                playSound(tracks[SOUND_TRACK_ADV_RTKGPS_GOOD]);  // GPS good ping
+
+                            hl_mode_flags_ |= ModeFlags::initialGpsFix;
+                            if (!hl_mode_has_fix_ms_)
+                                hl_mode_has_fix_ms_ = millis();
+                        }
+                        next_gps_sound_cycle = millis() + GPS_SOUND_CYCLETIME;
+                        break;
+
+                    case MODE_AUTONOMOUS:
+                        if ((hl_mode_flags_ & ModeFlags::initialGpsFix) || (t_hl_state.gps_quality < 75))
+                            break;
+                        playSound(tracks[SOUND_TRACK_BGD_MUSIC_PINK_PANTHER]);  // Stalking "Pink Panther"
+                        hl_mode_flags_ |= ModeFlags::initialGpsFix;
+                        if (!hl_mode_has_fix_ms_)
+                            hl_mode_has_fix_ms_ = millis();
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            last_hl_state_.gps_quality = t_hl_state.gps_quality;
+
+            // Generic, state-change independent sounds
+            playMowSound();
+        }  // dfp_is_5v
 
         // Process sound queue
         int n = active_sounds_.size();
@@ -519,25 +515,25 @@ namespace soundSystem
             }
 
             // Play "Hi I'm Steve ..." if ...
-            if (!(dfp_detection_status & DFP_DETECTION_BIT_HAS_AUTOPLAY) ||     // DFPlayer didn't auo-played, or ...
-                !(dfp_detection_status & DFP_DETECTION_BIT_OLD_CARD_STRUCTURE)) // new SD-Card detected (or assumed)
+            if (!(dfp_detection_status & DFP_DETECTION_BIT_HAS_AUTOPLAY) ||      // DFPlayer didn't auo-played, or ...
+                !(dfp_detection_status & DFP_DETECTION_BIT_OLD_CARD_STRUCTURE))  // new SD-Card detected (or assumed)
             {
                 playSoundAdHoc(tracks[SOUND_TRACK_ADV_HI_IM_STEVE]);
-#ifdef DFPIS5V
-                playSound(tracks[SOUND_TRACK_BGD_OM_BOOT]);
-#endif
+                if (dfp_is_5v)  // Full sound support if DFP is set to 5V Vcc
+                    playSound(tracks[SOUND_TRACK_BGD_OM_BOOT]);
             }
             dfp_detection_status |= DFP_DETECTION_BIT_HANDLED;
 
             return true;
         }
 
-#ifdef DFPIS5V
         /**
          * @brief Play a randomized mow- background sound at randomized times
          */
-        void playMowSound()
-        {
+        void playMowSound() {
+            if (!dfp_is_5v)
+                return;
+
             static unsigned long last_mow_sound_started_ms = 0;
 
             if (last_hl_state_.current_mode != MODE_AUTONOMOUS || last_hl_state_.gps_quality < 50)
@@ -554,13 +550,12 @@ namespace soundSystem
             int dice = rand() % (tries_per_minute * 60000 / PROCESS_CYCLETIME);
             // DEBUG_PRINTF("tries_per_minute %u, chance %u, rand %i\n", tries_per_minute, MOW_SOUND_CHANCE, dice);
             if (dice > MOW_SOUND_CHANCE)
-                return; // No luck
+                return;  // No luck
 
             // Play sound
-            playSound({num : (uint16_t)(200 + (rand() % 7)), type : TrackTypes::background}); // Play background track 200 to 206 by random
+            playSound({num : (uint16_t)(200 + (rand() % 7)), type : TrackTypes::background});  // Play background track 200 to 206 by random
             last_mow_sound_started_ms = now;
         }
-#endif // DFPIS5V
 
         /**
          * @brief Notification class required by DFMiniMP3's lib (see https://github.com/Makuna/DFMiniMp3/wiki/Notification-Method)
