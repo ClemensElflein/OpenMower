@@ -170,7 +170,7 @@ jobs:
 
   pre-release-latest-firmware:
     runs-on: ubuntu-latest
-    if: github.ref_type != 'tag' && ${{ github.event_name != 'pull_request' }}
+    if: github.ref_type != 'tag' && github.event_name != 'pull_request'
     needs: firmware
     steps:
       - uses: actions/checkout@v3
