@@ -72,13 +72,6 @@
 #define SOUND_TRACK_ADV_DOWN 23
 #define SOUND_TRACK_ADV_LANGUAGE 24
 
-// Some quirky defines for old- sound-card-format detection
-#define DFP_DETECTION_BIT_END (1 << 0)                // Detection phase ended
-#define DFP_DETECTION_BIT_HAS_AUTOPLAY (1 << 1)       // DFPlayer has played a track after reset
-#define DFP_DETECTION_BIT_OLD_CARD_STRUCTURE (1 << 2) // Detected old SD-Card structure
-#define DFP_DETECTION_BIT_HANDLED (1 << 3)            // Autoplay existence handled
-#define DFP_AUTOPLAY_TIMEOUT 6000                     // Autoplayed track detection timeout. "Hi I'm Steve ..." is about 4.x seconds
-
 namespace soundSystem {
     const std::map<std::string, uint8_t> language_to_playFolder_map{{"en", 1}, {"de", 49}};  // ISO639-1 (string) to playFolder (uint) map for localized advert sounds
 

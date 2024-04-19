@@ -48,6 +48,13 @@
 #include "pins.h"
 #include "soundsystem.h"
 
+// Some quirky defines for old- sound-card-format detection
+#define DFP_DETECTION_BIT_END (1 << 0)                 // Detection phase ended
+#define DFP_DETECTION_BIT_HAS_AUTOPLAY (1 << 1)        // DFPlayer has played a track after reset
+#define DFP_DETECTION_BIT_OLD_CARD_STRUCTURE (1 << 2)  // Detected old SD-Card structure
+#define DFP_DETECTION_BIT_HANDLED (1 << 3)             // Autoplay existence handled
+#define DFP_AUTOPLAY_TIMEOUT 6000                      // Autoplayed track detection timeout. "Hi I'm Steve ..." is about 4.x seconds
+
 namespace soundSystem
 {
     namespace // anonymous (private) namespace
@@ -226,7 +233,7 @@ namespace soundSystem
     {
         DEBUG_PRINTF("playSoundAdHoc(num %d, type %d, flags " PRINTF_BINARY_PATTERN_INT8 ")\n", t_track_def.num, t_track_def.type, PRINTF_BYTE_TO_BINARY_INT8(t_track_def.flags));
 
-        if (!sound_available_)
+        if (!sound_available_ || !(dfp_detection_status & DFP_DETECTION_BIT_HANDLED))
             return;
 
         switch (t_track_def.type)
@@ -518,6 +525,7 @@ namespace soundSystem
                         dfp_detection_status |= DFP_DETECTION_BIT_OLD_CARD_STRUCTURE;
                 }
             }
+            dfp_detection_status |= DFP_DETECTION_BIT_HANDLED;
 
             // Play "Hi I'm Steve ..." if ...
             if (!(dfp_detection_status & DFP_DETECTION_BIT_HAS_AUTOPLAY) ||      // DFPlayer didn't auo-played, or ...
@@ -527,7 +535,6 @@ namespace soundSystem
                 if (dfp_is_5v)  // Full sound support if DFP is set to 5V Vcc
                     playSound(tracks[SOUND_TRACK_BGD_OM_BOOT]);
             }
-            dfp_detection_status |= DFP_DETECTION_BIT_HANDLED;
 
             return true;
         }
