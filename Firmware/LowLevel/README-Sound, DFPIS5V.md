@@ -1,6 +1,13 @@
 # Sound via "DFPlayer Mini"
 
-> **Warning**
+> [!IMPORTANT]  
+> Owner of mainboard version 0.13.x need to check if the required R7 and R13
+> resistors got assembled.<br>
+> They're located on the top side of the PCB, underneath the DFPlayer.<br>
+> If not assembled, you need to solder 1k resistors (otherwise all sounds get played continuously)
+
+
+> [!WARNING]
 > Consider about switching your DFPlayer's VCC from 3.3V to 5V
 > (via solder jumper JP1 on your OpenMower MainBoard)
 
@@ -32,16 +39,15 @@ I did some measuring today:
 End of October 2023, I discussed my doubts with Clemens and he answered:
 > The short peaks are also what worries me. The overcurrent protection will probably only take effect in the event of a longer overload. That's how you run it above the spec (even if for a short time) and that potentially breaks it at some point
 
-> **Important**
-> You may run `..._DFPIS5V` (to get full sound support), even if **not** switched to 5V, but we worry that you might kill your Pico's VREG on long time
+> [!IMPORTANT]  
+> You may run `OM_DFP_IS_5V=true` (to get full sound support), even if **not** switched to 5V, but we worry that you might kill your Pico's PMIC after some time
 
 ## Sound Buttons
 
-| Button<br>C500(B) | Button<br>RM-ECOW-V1.0.0 | Function |
-| ------ | -------- | ---
-| <kbd>Mon</kbd> | <kbd>4H</kbd> | Volume up |
-| <kbd>Tue</kbd> | <kbd>6H</kbd> | Volume down
-| <kbd>Wed</kbd> | <kbd>8H</kbd> | ~~Language switch (English, German)~~
+| Custom CoverUI V1<br>Stock C500(A/B) | Custom CoverUI V2 | RM-ECOW-V1.0.0<br>(NX80i, ...) | RM-EC3-V1.1<br>(NX100i) | SA/SC-Pro<br>(240*160 Pixel) | Function |
+| ------ | -------- | ---- | ---- | --- | --- |
+| <kbd>Mon</kbd> | <kbd>Sun</kbd> | <kbd>4H</kbd> | <kbd>1</kbd> | <kbd>↑</kbd> | Volume up |
+| <kbd>Tue</kbd> | <kbd>Mon</kbd> | <kbd>6H</kbd> | <kbd>2</kbd> | <kbd>↓</kbd> | Volume down
 
 ## DFPlayer Module / Clones
 
