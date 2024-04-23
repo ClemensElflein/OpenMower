@@ -694,7 +694,11 @@ void loop() {
 
 
         // If mowing use charge current ADC to determine adc offset
-        if( last_high_level_state.current_mode == HighLevelMode::MODE_AUTONOMOUS && last_high_level_state.gps_quality != 0 ) {
+        if(
+                ROS_running &&
+                last_high_level_state.current_mode == HighLevelMode::MODE_AUTONOMOUS &&
+                last_high_level_state.gps_quality != 0
+            ) {
             adc_offset_samples[next_adc_offset_sample++] = (float)analogRead(PIN_ANALOG_CHARGE_VOLTAGE);
             next_adc_offset_sample %= 20;
 
