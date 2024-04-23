@@ -65,6 +65,8 @@ SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 int next_adc_offset_sample = 0;
 float adc_offset_samples[20] = {0};
 float adc_offset = 0.0f;
+// Limit adc_offset to 3%
+#define MAX_ADC_OFFSET_PC 0.03f
 
 #define BATT_ABS_MAX 28.7f
 #define BATT_ABS_Min 21.7f
@@ -700,7 +702,13 @@ void loop() {
             for(int i=0; i<20; i++) {
                 tmp += adc_offset_samples[i];
             }
-            adc_offset = tmp / 20.0f;
+            float new_adc_offset = tmp / 20.0f;
+            // Limit maximum offset
+            if(new_adc_offset > 0.0f) {
+                adc_offset = min(new_adc_offset, (4096 * MAX_ADC_OFFSET_PC));
+            } else {
+                adc_offset = max(new_adc_offset, -(4096 * MAX_ADC_OFFSET_PC));
+            }
         }
 
         status_message.status_bitmask = (status_message.status_bitmask & 0b11111011) | ((charging_allowed & 0b1) << 2);
