@@ -179,6 +179,11 @@ jobs:
         run: |
           zip -r release/firmware.zip firmware
 
+      - name: Calculating checksum
+        shell: bash
+        run: |
+          sha256sum release/firmware.zip > release/firmware.sha256
+
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
@@ -227,6 +232,11 @@ jobs:
         run: |
           zip -r firmware.zip firmware
 
+      - name: Calculating checksum
+        shell: bash
+        run: |
+          sha256sum firmware.zip > firmware.sha256
+
       - uses: "marvinpinto/action-automatic-releases@latest"
         if: github.event_name != 'pull_request'
         with:
@@ -234,4 +244,4 @@ jobs:
           title: "Latest Firmware"
           automatic_release_tag: "latest"
           prerelease: true
-          files: firmware.zip
+          files: firmware.{sha256,zip}
