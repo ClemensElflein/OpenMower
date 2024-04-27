@@ -23,6 +23,8 @@
 #define PACKET_ID_LL_STATUS 1
 #define PACKET_ID_LL_IMU 2
 #define PACKET_ID_LL_UI_EVENT 3
+#define PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ 0x21 // ll_high_level_config and request config from receiver
+#define PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP 0x22 // ll_high_level_config response
 #define PACKET_ID_LL_HEARTBEAT 0x42
 #define PACKET_ID_LL_HIGH_LEVEL_STATE 0x43
 
@@ -31,6 +33,19 @@ enum HighLevelMode {
     MODE_AUTONOMOUS = 2, // ROS connected, Autonomous mode, either mowing or docking or undocking
     MODE_RECORDING = 3 // ROS connected, Manual mode during recording etc
 };
+
+#define LL_EMERGENCY_BIT_LATCH 0b00000001
+#define LL_EMERGENCY_BIT_HALL1 0b00001000 // Lift1
+#define LL_EMERGENCY_BIT_HALL2 0b00010000 // Lift2
+#define LL_EMERGENCY_BIT_HALL3 0b00000010 // Stop1
+#define LL_EMERGENCY_BIT_HALL4 0b00000100 // Stop2
+
+#define LL_EMERGENCY_BIT_LIFT1 LL_EMERGENCY_BIT_HALL1
+#define LL_EMERGENCY_BIT_LIFT2 LL_EMERGENCY_BIT_HALL2
+#define LL_EMERGENCY_BITS_LIFT (LL_EMERGENCY_BIT_LIFT1 | LL_EMERGENCY_BIT_LIFT2)
+#define LL_EMERGENCY_BIT_STOP1 LL_EMERGENCY_BIT_HALL3
+#define LL_EMERGENCY_BIT_STOP2 LL_EMERGENCY_BIT_HALL4
+#define LL_EMERGENCY_BITS_STOP (LL_EMERGENCY_BIT_STOP1 | LL_EMERGENCY_BIT_STOP2)
 
 #define LL_STATUS_BIT_UI_AVAIL 0b10000000
 
@@ -52,10 +67,10 @@ struct ll_status {
     float uss_ranges_m[5];
     // Emergency bitmask:
     // Bit 0: Emergency latch
-    // Bit 1: Emergency 0 active
-    // Bit 2: Emergency 1 active
-    // Bit 3: Emergency 2 active
-    // Bit 4: Emergency 3 active
+    // Bit 1: Emergency/Hall 3 (Stop1) active
+    // Bit 2: Emergency/Hall 4 (Stop2) active
+    // Bit 3: Emergency/Hall 1 (Lift1) active
+    // Bit 4: Emergency/Hall 2 (Lift2) active
     uint8_t emergency_bitmask;
     // Charge voltage
     float v_charge;
@@ -113,6 +128,25 @@ struct ll_ui_event {
     uint8_t type;
     uint8_t button_id; 
     uint8_t press_duration;   // 0 for single press, 1 for long, 2 for very long press
+    uint16_t crc;
+} __attribute__((packed));
+#pragma pack(pop)
+
+#define LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION 1           // Max. comms packet version supported by this open_mower LL FW
+#define LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V 1 << 0            // Enable full sound via mower_config env var "OM_DFP_IS_5V"
+#define LL_HIGH_LEVEL_CONFIG_BIT_EMERGENCY_INVERSE 1 << 1  // Sample, for possible future usage, i.e. for SA-Type emergency
+
+typedef char iso639_1[2]; // Two char ISO 639-1 language code
+
+#pragma pack(push, 1)
+struct ll_high_level_config {
+    uint8_t type;
+    uint8_t comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;  // Increasing comms packet-version number for packet compatibility (n > 0)
+    uint8_t config_bitmask = 0;                                      // See LL_HIGH_LEVEL_CONFIG_BIT_*
+    int8_t volume;                                                   // Volume (0-100%) feedback (if directly changed via CoverUI)
+    iso639_1 language;                                               // ISO 639-1 (2-char) language code (en, de, ...)
+    uint16_t spare1 = 0;                                             // Spare for future use
+    uint16_t spare2 = 0;                                             // Spare for future use
     uint16_t crc;
 } __attribute__((packed));
 #pragma pack(pop)
