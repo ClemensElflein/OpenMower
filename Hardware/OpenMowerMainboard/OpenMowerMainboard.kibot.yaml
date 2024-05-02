@@ -2,8 +2,8 @@ kibot:
   version: 1
 
 preflight:
-  run_drc: true
-  run_erc: true
+  drc: true
+  erc: true
 
   filters:
     - filter: SIP32509DT has 2 VOUTs
