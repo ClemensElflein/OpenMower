@@ -22,7 +22,6 @@
 #include <list>
 #include <map>
 #include <string>
-#include <DFMiniMp3.h>
 
 #include "datatypes.h"
 

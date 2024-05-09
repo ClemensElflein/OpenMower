@@ -45,6 +45,7 @@
 
 #include <Arduino.h>
 #include "debug.h"
+#include <DFMiniMp3.h>
 #include "pins.h"
 #include "soundsystem.h"
 
