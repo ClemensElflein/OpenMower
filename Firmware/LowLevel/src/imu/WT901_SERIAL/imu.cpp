@@ -42,3 +42,12 @@ void imu_loop()
 {
     IMU.update();
 }
+
+bool imu_overflow()
+{
+#ifdef WT901
+    return imuSerial.overflow();
+#else
+    return false;
+#endif
+}

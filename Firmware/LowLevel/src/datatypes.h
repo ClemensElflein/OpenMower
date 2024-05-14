@@ -151,4 +151,10 @@ struct ll_high_level_config {
 } __attribute__((packed));
 #pragma pack(pop)
 
+struct Color {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+};
+
 #endif

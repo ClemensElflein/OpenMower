@@ -8,4 +8,6 @@ bool imu_read(float *acceleration_mss,float *gyro_rads,float *mag_uT);
 // call once per loop, used to process serial or do sensor fusion or do nothing.
 void imu_loop();
 
+bool imu_overflow(); // get IMU serial overflow flag (and reset it)
+
 #endif

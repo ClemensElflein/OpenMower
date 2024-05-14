@@ -631,19 +631,24 @@ void updateChargingEnabled() {
 }
 
 void updateNeopixel() {
+    Color color;
     led_blink_counter++;
-    // flash red on emergencies
-    if (emergency_latch && led_blink_counter & 0b10) {
-        p.neoPixelSetValue(0, 128, 0, 0, true);
+
+    if (emergency_latch && led_blink_counter & 0b10) {  // blink on emergencies
+        color = {128, 0, 0};                            // 1/2 red
     } else {
         if (ROS_running) {
-            // Green, if ROS is running
-            p.neoPixelSetValue(0, 0, 255, 0, true);
+            color = {0, 255, 0};  // green
         } else {
-            // Yellow, if it's not running
-            p.neoPixelSetValue(0, 255, 50, 0, true);
+            color = {255, 50, 0};  // yellow
         }
     }
+
+    if (imu_overflow() && led_blink_counter & 0b1) {  // flash on communication error (i.e. serial overflow)
+        color = {255, 0, 255};  // magenta
+    }
+
+    p.neoPixelSetValue(0, color.r, color.g, color.b, true);
 }
 
 void loop() {
