@@ -43,11 +43,7 @@ void imu_loop()
     IMU.update();
 }
 
-bool imu_overflow()
+bool imu_comms_error()
 {
-#ifdef WT901
-    return imuSerial.overflow();
-#else
-    return false;
-#endif
+    return IMU.commsError();
 }
