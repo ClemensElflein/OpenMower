@@ -112,7 +112,10 @@ void CJY901::writeRegister(uint8_t address, uint16_t data) {
 }
 
 bool CJY901::commsError() {
-    bool hold = (commsError_ || serial->overflow());
-	commsError_ = false;
-	return hold;
+    bool hold = commsError_;
+#ifdef WT901
+    hold |= serial->overflow();
+#endif
+    commsError_ = false;
+    return hold;
 }
