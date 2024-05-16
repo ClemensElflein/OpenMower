@@ -548,7 +548,10 @@ void sendConfigMessage(uint8_t pkt_type) {
     ll_config.type = pkt_type;
     ll_config.config_bitmask = config_bitmask;
     ll_config.volume = 80;            // FIXME: Adapt once nv_config or improve-sound got merged
-    strcpy(ll_config.language, "en"); // FIXME: Adapt once nv_config or improve-sound got merged
+    iso639_1 language = {'e', 'n'};   // FIXME: Adapt once nv_config or improve-sound got merged
+    for (unsigned int i = 0; i < sizeof(language); i++) {
+        ll_config.language[i] = language[i];
+    }
     sendMessage(&ll_config, sizeof(struct ll_high_level_config));
 }
 
