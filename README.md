@@ -1,3 +1,7 @@
+## I am available for hire
+Hello! With a background in software engineering, embedded programming, hardware design, and robotics, I'm on the lookout for new challenges.
+If you're in search of someone with my skills, let's team up and create something amazing! https://x-tech.online/
+
 # OpenMower - The DIY Smart Mowing Robot for Everyone
 
 ![OpenMower the DIY smart robot mower](./img/open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/jE7QNaSxW7)

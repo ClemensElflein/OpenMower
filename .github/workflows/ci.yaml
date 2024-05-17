@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: INTI-CMNB/KiBot@v2_k7
+      - uses: INTI-CMNB/KiBot@v2_k8
         with:
           config: Hardware/OpenMowerMainboard/OpenMowerMainboard.kibot.yaml
           board: Hardware/OpenMowerMainboard/OpenMowerMainboard.kicad_pcb
@@ -81,6 +81,10 @@ jobs:
           mkdir ./artifacts/0_9_X_MPU9250
           cp Firmware/LowLevel/.pio/build/0_9_X_MPU9250/firmware.elf ./artifacts/0_9_X_MPU9250
           cp Firmware/LowLevel/.pio/build/0_9_X_MPU9250/firmware.uf2 ./artifacts/0_9_X_MPU9250
+
+          mkdir ./artifacts/0_9_X_WT901
+          cp Firmware/LowLevel/.pio/build/0_9_X_WT901/firmware.elf ./artifacts/0_9_X_WT901
+          cp Firmware/LowLevel/.pio/build/0_9_X_WT901/firmware.uf2 ./artifacts/0_9_X_WT901
 
           mkdir ./artifacts/0_9_X_WT901_INSTEAD_OF_SOUND
           cp Firmware/LowLevel/.pio/build/0_9_X_WT901_INSTEAD_OF_SOUND/firmware.elf ./artifacts/0_9_X_WT901_INSTEAD_OF_SOUND
