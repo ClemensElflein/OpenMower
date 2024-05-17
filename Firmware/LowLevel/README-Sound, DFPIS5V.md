@@ -6,6 +6,12 @@
 > They're located on the top side of the PCB, underneath the DFPlayer.<br>
 > If not assembled, you need to solder 1k resistors (otherwise all sounds get played continuously)
 
+> [!IMPORTANT]  
+> <a href="../../img/dfplayer-clone_cut-pin.png"><img src="../../img/dfplayer-clone_cut-pin.png" title="Cut-off Pin-11 if DFP-Clone and MoBo <= 0.13.x" width="25%" align="right"></a>
+> User who use a DFPlayer-Clone with a chip like MH2024 or GD3200,<br>
+> in an open-mower-mainboard up to version 0.13.x,<br>
+> should cut off Pin-11 from their DFPlayer-Clone.<br>
+> If not, volume control will not work and always play at 100%!<br><br>
 
 > [!WARNING]
 > Consider about switching your DFPlayer's VCC from 3.3V to 5V
