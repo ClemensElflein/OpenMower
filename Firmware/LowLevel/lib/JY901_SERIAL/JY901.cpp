@@ -13,10 +13,10 @@ CJY901 ::CJY901(SerialPIO *serial)
 void CJY901::begin(unsigned long baudrate) {
 	serial->begin(baudrate);
 	delay(1000);
-	/*uint8_t unlock[] = {0xFF,0xF0,0xF0,0xF0,0xF0}; // undocumented / unknown?
+	uint8_t unlock[] = {0xFF,0xF0,0xF0,0xF0,0xF0}; // undocumented but required magic unlock sequence
 	serial->write(unlock, 5);
 	serial->flush();
-	delay(10);*/
+	delay(10);
 	writeRegister(RSW, 0b0000000000010110);  // Return data content
 	delay(10);
 	writeRegister(RRATE, 0x08); // Return rate 0x06 = 10Hz (default), 0x08 = 50Hz, 0x09 = 100Hz
