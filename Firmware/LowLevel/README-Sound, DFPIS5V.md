@@ -8,7 +8,7 @@
 
 > [!IMPORTANT]  
 > <a href="../../img/dfplayer-clone_cut-pin.png"><img src="../../img/dfplayer-clone_cut-pin.png" title="Cut-off Pin-11 if DFP-Clone and MoBo <= 0.13.x" width="25%" align="right"></a>
-> User who use a DFPlayer-Clone with a chip like MH2024 or GD3200,<br>
+> Users who use any of the DFPlayer-Clones,<br>
 > in an open-mower-mainboard up to version 0.13.x,<br>
 > should cut off Pin-11 from their DFPlayer-Clone.<br>
 > If not, volume control will not work and always play at 100%!<br><br>
