@@ -16,28 +16,30 @@
 // SOFTWARE.
 //
 
-/*                          | Original      |        Old clones          |        Newer clones    | Unknown
- * DFPlayer Chip            | DFROBOT LISP3 | YX5200-24SS | MH2024K-24SS | MH2024K-16SS | GD3200B | YX6200-16S
- * -------------------------------------------------------------------------------------------------------
- * Tested/working with OM   |      ok       |             |     ok       |              |  partly |
- * Autoplay files *1        |      yes      |             |     no       |              |   no    |
- * Require reset()          |               |             |              |              |   YES   |
- * Reset->isOnline *2       |   800-850ms   |             |    750ms     |              |  600ms  |
- * Without SD Card          |   error 0x1   |             |              |              |         |
- * getTotalTrackCount()     |       0       |             |     24       |              |   24    |
- * getTotalFolderCount()    |       5       |             |      0       |              |    3    |
- * getStatus().source       |       2       |             |      0       |              |    0    |
- * playAdvertisement()      |     yes*4     |             |   yes*4      |              |   yes   |
- * setRepeatPlayAllInRoot() |   Plays ALL   |             |     yes      |              |         |
- * getCurrentTrack()        |      *3       |             |     *4       |              |    *3   |
- * OnPlayFinished()         | Play&Advert*5 |             |   *5,*6      |              | Play&Adv|
- * -------------------------------------------------------------------------------------------------------
- * *1 = Autoplay (unasked) all (at least) root files (after reset()).
+/*                          | Original      |        Old clones          |             Newer clones                |
+ * DFPlayer Chip            | DFROBOT LISP3 | YX5200-24SS | MH2024K-24SS | MH2024K-16SS | GD3200B | JL AB23A799755 |
+ * -----------------------------------------------------------------------------------------------------------------
+ * Tested/working with OM   |      ok       |             |     ok       |              |  partly |       ok       |
+ * Autoplay files *1        |      yes      |             |     no       |              |   no    |       no       |
+ * Require reset()          |               |             |              |              |   YES   |                |
+ * Reset->isOnline *2       |   800-850ms   |             |    750ms     |              |  600ms  |                |
+ * Without SD Card          |   error 0x1   |             |              |              |         |                |
+ * getTotalTrackCount()     |       0       |             |     24       |              |   24    |                |
+ * getTotalFolderCount()    |       5       |             |      0       |              |    3    |                |
+ * getStatus().source       |       2       |             |      0       |              |    0    |                |
+ * playAdvertisement()      |     yes*4     |             |   yes*4      |              |   yes   |                |
+ * setRepeatPlayAllInRoot() |   Plays ALL   |             |     yes      |              |         |                |
+ * getCurrentTrack()        |      *3       |             |     *4       |              |    *3   |                |
+ * OnPlayFinished()         | Play&Advert*5 |             |   *5,*6      |              | Play&Adv|                |
+ * Auto increase volume *7  |      no       |             |     yes      |              |   yes   |      yes       |
+ * -----------------------------------------------------------------------------------------------------------------
+ * *1 = Autoplay (unasked) all (at least) root files (after reset()) when Pin-11 (IO_2) at GND (0.9.x-0.13.x)
  * *2 = Highly depends on SD-Card and content
  * *3 = Advert track get returned with an internal track number
  * *4 = Advert get only played with a current running play sound
  * *5 = Sometimes called a second time within 10-150ms
  * *6 = Two callbacks (advert & play) at the end of play sound
+ * *7 = Auto increase volume if Pin-11 (IO_2) at GND (0.9.x-0.13.x)
  *
  * Conclusion by this evaluation:
  * DFPlayer's "advert" functionality is not usable for our requirements, as MH2024K-24S don't return a usable advert state.
