@@ -156,7 +156,7 @@ void updateEmergency() {
     uint8_t emergency_state = 0;
 
     // Handle emergency "Stop" buttons
-    if (emergency_read && LL_EMERGENCY_BITS_STOP) {
+    if (emergency_read & LL_EMERGENCY_BITS_STOP) {
         // If we just pressed, store the timestamp
         if (button_emergency_started == 0) {
             button_emergency_started = millis();
