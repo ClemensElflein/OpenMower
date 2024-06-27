@@ -22,6 +22,8 @@
 #include "pins.h"
 #include "ui_board.h"
 #include "imu.h"
+#include "debug.h"
+#include "nv_config.h"
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -36,20 +38,10 @@
 #define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button.
 
-// Define to stream debugging messages via USB
-// #define USB_DEBUG
-
-// Only define DEBUG_SERIAL if USB_DEBUG is actually enabled.
-// This enforces compile errors if it's used incorrectly.
-#ifdef USB_DEBUG
-#define DEBUG_SERIAL Serial
-#endif
 #define PACKET_SERIAL Serial1
 SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 
 #define UI1_SERIAL uiSerial
-
-#define ANZ_SOUND_SD_FILES 3
 
 // Millis after charging is retried
 #define CHARGING_RETRY_MILLIS 10000
@@ -77,10 +69,6 @@ uint8_t led_blink_counter = 0;
 PacketSerial packetSerial; // COBS communication PICO <> Raspi
 PacketSerial UISerial;     // COBS communication PICO UI-Board
 FastCRC16 CRC16;
-
-#ifdef ENABLE_SOUND_MODULE
-MP3Sound my_sound; // Soundsystem
-#endif
 
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
@@ -122,6 +110,8 @@ float imu_temp[9];
 uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
+
+nv_config::Config *nv_cfg; // Non-volatile configuration
 
 // Some vars related to PACKET_ID_LL_HIGH_LEVEL_CONFIG_*
 uint8_t comms_version = 0;  // comms packet version (>0 if implemented)
@@ -349,9 +339,9 @@ void loop1() {
             case 6:
                 mutex_enter_blocking(&mtx_status_message);
                 if (state) {
-                    status_message.status_bitmask |= 0b01000000;
+                    status_message.status_bitmask &= ~LL_STATUS_BIT_SOUND_BUSY;
                 } else {
-                    status_message.status_bitmask &= 0b10111111;
+                    status_message.status_bitmask |= LL_STATUS_BIT_SOUND_BUSY;
                 }
                 mutex_exit(&mtx_status_message);
                 break;
@@ -368,9 +358,7 @@ void setup() {
     //  Therefore, we pause the other core until setup() was a success
     rp2040.idleOtherCore();
 
-#ifdef USB_DEBUG
-    DEBUG_SERIAL.begin(9600);
-#endif
+    DEBUG_BEGIN(9600);
 
     emergency_latch = true;
     ROS_running = false;
@@ -420,6 +408,30 @@ void setup() {
     UISerial.setStream(&UI1_SERIAL);
     UISerial.setPacketHandler(&onUIPacketReceived);
 
+    nv_cfg = nv_config::get();  // Get latest non-volatile config (from flash)
+
+#ifdef ENABLE_SOUND_MODULE
+    p.neoPixelSetValue(0, 0, 255, 255, true);
+    sound_available = soundSystem::begin();
+    if (sound_available) {
+        p.neoPixelSetValue(0, 0, 0, 255, true);
+        soundSystem::setDFPis5V(nv_cfg->config_bitmask & NV_CONFIG_BIT_DFPIS5V);
+        soundSystem::setLanguage(&nv_cfg->language, true);
+        soundSystem::setVolume(nv_cfg->volume);
+        // Do NOT play any initial sound now, as we've to handle the special case of
+        // old DFPlayer SD-Card format @ DFROBOT LISP3. See soundSystem::processSounds()
+        p.neoPixelSetValue(0, 255, 255, 0, true);
+    } else {
+        for (uint8_t b = 0; b < 3; b++)
+        {
+            p.neoPixelSetValue(0, 0, 0, 0, true);
+            delay(200);
+            p.neoPixelSetValue(0, 0, 0, 255, true);
+            delay(200);
+        }
+    }
+#endif
+
     /*
      * IMU INITIALIZATION
      */
@@ -453,6 +465,12 @@ void setup() {
             delay(500);
             p.neoPixelSetValue(0, 0, 0, 0, true);
             delay(500);
+#ifdef ENABLE_SOUND_MODULE
+            loop1(); // Need to get sound busy flag for proper SD-Card detection, but it's handled in loop1() whose core is still idle. Quirky!!
+            soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
+            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_ADV_IMU_INIT_FAILED]);
+            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_OM_ALARM]);
+#endif
         }
     }
     p.neoPixelSetValue(0, 255, 255, 255, true);     // White for IMU Success
@@ -462,25 +480,6 @@ void setup() {
 #endif
 
     status_message.status_bitmask |= 1;
-
-#ifdef ENABLE_SOUND_MODULE
-    p.neoPixelSetValue(0, 0, 255, 255, true);
-
-    sound_available = my_sound.begin();
-    if (sound_available) {
-        p.neoPixelSetValue(0, 0, 0, 255, true);
-        my_sound.setvolume(100);
-        my_sound.playSoundAdHoc(1);
-        p.neoPixelSetValue(0, 255, 255, 0, true);
-    } else {
-        for (uint8_t b = 0; b < 3; b++) {
-            p.neoPixelSetValue(0, 0, 0, 0, true);
-            delay(200);
-            p.neoPixelSetValue(0, 0, 0, 255, true);
-            delay(200);
-        }
-    }
-#endif
 
     rp2040.resumeOtherCore();
 
@@ -524,6 +523,22 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         ui_event.button_id = msg->button_id;
         ui_event.press_duration = msg->press_duration;
         sendMessage(&ui_event, sizeof(ui_event));
+
+#ifdef ENABLE_SOUND_MODULE
+        // Handle Sound Buttons. FIXME: Should/might go to mower_logic? But as sound isn't hip ... :-/
+        switch (msg->button_id)
+        {
+        case 8: // Mon = Volume up
+            nv_cfg->volume = soundSystem::setVolumeUp();
+            break;
+        case 9: // Tue = Volume down
+            nv_cfg->volume = soundSystem::setVolumeDown();
+            break;
+
+        default:
+            break;
+        }
+#endif
     }
     else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency))
     {
@@ -547,8 +562,10 @@ void sendConfigMessage(uint8_t pkt_type) {
     struct ll_high_level_config ll_config;
     ll_config.type = pkt_type;
     ll_config.config_bitmask = config_bitmask;
-    ll_config.volume = 80;            // FIXME: Adapt once nv_config or improve-sound got merged
-    strcpy(ll_config.language, "en"); // FIXME: Adapt once nv_config or improve-sound got merged
+    ll_config.volume = nv_cfg->volume;
+    for (unsigned int i = 0; i < sizeof(nv_cfg->language); i++) {
+        ll_config.language[i] = nv_cfg->language[i];
+    }
     sendMessage(&ll_config, sizeof(struct ll_high_level_config));
 }
 
@@ -585,19 +602,41 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
         }
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_STATE && size == sizeof(struct ll_high_level_state)) {
         // copy the state
-        last_high_level_state = *((struct ll_high_level_state *) buffer);
-    }
-    else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) && size == sizeof(struct ll_high_level_config))
-    {
+        last_high_level_state = *((struct ll_high_level_state *)buffer);
+    } else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) && size == sizeof(struct ll_high_level_config)) {
         // Read and handle received config
         struct ll_high_level_config *pkt = (struct ll_high_level_config *)buffer;
+        // Apply comms_version
         if (pkt->comms_version <= LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION)
             comms_version = pkt->comms_version;
         else
             comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;
-        config_bitmask = pkt->config_bitmask; // Take over as sent. HL is leading (for now)
-        // FIXME: Assign volume & language if not already stored in flash-config
 
+        config_bitmask = pkt->config_bitmask;  // Take over as sent. HL is leading (for now)
+
+        // nv_config.Config specific members ...
+        // config_bitmask. Do NOT mistake with global config_bitmask (ll_high_level_config.config_bitmask). Similar, but not mandatory the same in future,
+        // to ensure that a possible instable/flipping future global config_bitmask doesn't wear level our flash, we only add those which are known to be stable.
+        (config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V) ? nv_cfg->config_bitmask |= NV_CONFIG_BIT_DFPIS5V : nv_cfg->config_bitmask &= ~NV_CONFIG_BIT_DFPIS5V;
+#ifdef ENABLE_SOUND_MODULE
+        soundSystem::setDFPis5V(nv_cfg->config_bitmask & NV_CONFIG_BIT_DFPIS5V);
+#endif
+        // Volume
+        if (pkt->volume >= 0) {
+            nv_cfg->volume = pkt->volume;
+#ifdef ENABLE_SOUND_MODULE
+            soundSystem::setVolume(nv_cfg->volume);
+#endif
+        }
+
+        // Language
+        for (unsigned int i = 0; i < sizeof(nv_cfg->language); i++) {
+            nv_cfg->language[i] = pkt->language[i];
+        }
+#ifdef ENABLE_SOUND_MODULE
+        soundSystem::setLanguage(&nv_cfg->language);
+#endif
+        // Sender requested a config-response packet
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
             sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);
     }
@@ -652,6 +691,7 @@ void loop() {
     imu_loop();
     updateChargingEnabled();
     updateEmergency();
+    nv_config::delayedSaveChanges();
 
     unsigned long now = millis();
     if (now - last_imu_millis > IMU_CYCLETIME) {
@@ -725,12 +765,10 @@ void loop() {
     {
         next_ui_msg_millis = now + ui_interval;
         manageUISubscriptions();
-#ifdef ENABLE_SOUND_MODULE
-        if (sound_available) {
-            my_sound.processSounds();
-        }
-#endif
     }
+#ifdef ENABLE_SOUND_MODULE
+    soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
+#endif
 
     // Check UI version/available
     if (ui_get_version_respond_timeout && now > ui_get_version_respond_timeout)
