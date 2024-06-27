@@ -2,28 +2,45 @@
 Hello! With a background in software engineering, embedded programming, hardware design, and robotics, I'm on the lookout for new challenges.
 If you're in search of someone with my skills, let's team up and create something amazing! https://x-tech.online/
 
-# OpenMower - The DIY Smart Mowing Robot for Everyone
+<br>
+<hr>
+<br>
+<p align="center">
+  <a>
+    <h1 align="center">OpenMower - The DIY Smart Mowing Robot for Everyone</h1>
+    <img align="center" src="./img/open_mower_header.jpg">
+  </a>
+</p>
+<br>
+<p align="center">
+  <a href="#license"><img src="https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg" /></a></p>
+  <br>
+  <p align="center"><b>Join the Discord server for OpenMower discussion:</b>
+  <p align="center"><a href="https://discord.gg/jE7QNaSxW7" target="_blank"><img src="https://badgen.net/badge/icon/discord?icon=discord&label" /></a></p>
+</p>
+<br>
+<br>
 
-![OpenMower the DIY smart robot mower](./img/open_mower_header.jpg)[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![Discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/jE7QNaSxW7)
+> [!WARNING]
+> <p align="center"><b>DISCLAIMER:</b></p>
+>
+> **IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME! ASK IN [DISCORD](https://discord.gg/jE7QNaSxW7), IF YOU HAVE ANY QUESTIONS!**
 
-# Join the Discord server for OpenMower discussion: [HERE](https://discord.gg/jE7QNaSxW7)
+> [!IMPORTANT]
+> <p align="center"><b>This project is active!</b></p>
+>
+> This is the hardware repository, so it might seem that the project is inactive, since hardware is pretty stable by now.
+> Most of the development work is done on the ROS code here: https://github.com/ClemensElflein/open_mower_ros
 
-
-
-*:warning: DISCLAIMER:**
-
-**IF YOU ARE NOT 100% SURE WHAT YOU ARE DOING, PLEASE DON'T TRY THIS AT HOME! ASK IN [DISCORD](https://discord.gg/jE7QNaSxW7), IF YOU HAVE ANY QUESTIONS!**
-
-# This project is active!
-This is the hardware repository, so it might seem that the project is inactive, since hardware is pretty stable by now.
-Most of the development work is done on the ROS code here: https://github.com/ClemensElflein/open_mower_ros
-
+<br>
 
 # About the Project
 
 If you want to see a quick overview, you can check out this video:
 
-<a href="https://www.youtube.com/watch?v=BSF04i3zNGw" target="_blank"><img src="https://user-images.githubusercontent.com/2864655/161540069-f4263fa7-a47b-49d2-a7bc-d1cdc3a47704.jpg" /></a>
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=BSF04i3zNGw" target="_blank"><img src="https://user-images.githubusercontent.com/2864655/161540069-f4263fa7-a47b-49d2-a7bc-d1cdc3a47704.jpg" /></a>
+</p>
 
 
 
@@ -155,6 +172,7 @@ If you want to have a look at the disassembled mowers, check the Google Docs [he
 This page only contains the basic overview of the project. To follow my current development state, check out my [Blog](https://x-tech.online/).
 
 # Patents, Local Laws, Liability
+
 Before building a robot based on the designs published here, please make sure that you are allowed to do so in your specific regions.
 There may be patents and / or laws prohibiting you of doing so.
 
