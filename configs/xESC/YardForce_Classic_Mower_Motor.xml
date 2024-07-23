@@ -6,9 +6,9 @@
     <motor_type>2</motor_type>
     <sensor_mode>0</sensor_mode>
     <l_current_max>5</l_current_max>
-    <l_current_min>-5</l_current_min>
+    <l_current_min>-2</l_current_min>
     <l_in_current_max>2</l_in_current_max>
-    <l_in_current_min>-2</l_in_current_min>
+    <l_in_current_min>-1</l_in_current_min>
     <l_abs_current_max>15</l_abs_current_max>
     <l_min_erpm>-100000</l_min_erpm>
     <l_max_erpm>100000</l_max_erpm>
