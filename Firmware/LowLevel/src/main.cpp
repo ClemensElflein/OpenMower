@@ -632,17 +632,20 @@ void updateChargingEnabled() {
 
 void updateNeopixel() {
     led_blink_counter++;
-    // flash red on emergencies
-    if (emergency_latch && led_blink_counter & 0b10) {
-        p.neoPixelSetValue(0, 128, 0, 0, true);
+
+    if (emergency_latch && led_blink_counter & 0b100) {  // slow blink on emergencies
+        p.neoPixelSetValue(0, 128, 0, 0, true);          // 1/2 red
     } else {
         if (ROS_running) {
-            // Green, if ROS is running
-            p.neoPixelSetValue(0, 0, 255, 0, true);
+            p.neoPixelSetValue(0, 0, 255, 0, true);  // green
         } else {
-            // Yellow, if it's not running
-            p.neoPixelSetValue(0, 255, 50, 0, true);
+            p.neoPixelSetValue(0, 255, 50, 0, true);  // yellow
         }
+#if defined(WT901) || defined(WT901_INSTEAD_OF_SOUND)
+        if (led_blink_counter & 0b10 && imu_comms_error()) {  // fast blink on communication error (condition order matters -> short-circuit evaluation)
+            p.neoPixelSetValue(0, 255, 0, 255, true);         // magenta
+        }
+#endif
     }
 }
 

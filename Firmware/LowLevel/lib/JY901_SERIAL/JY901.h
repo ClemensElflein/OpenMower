@@ -142,15 +142,16 @@ class CJY901
 	struct SGPSV 		stcGPSV;
 	
     #ifdef WT901_INSTEAD_OF_SOUND
-	CJY901 (HardwareSerial *serial); 
+		CJY901 (HardwareSerial *serial);
+    	void begin(unsigned long baudrate = 9600UL);
 	#elif WT901
-	CJY901 (SerialPIO *serial); 
-	#endif 
-	
-	void begin(int baudrate = 9600);
+		CJY901 (SerialPIO *serial);
+		void begin(unsigned long baudrate = 9700UL);  // YES, 9700 baud! See SerialPIO timing issue https://github.com/earlephilhower/arduino-pico/issues/1276
+	#endif
+
 	// Call as often as possible to fetch data from serial
 	void update();
-
+	bool commsError();  // Get (and reset) communication error flag
 	
 	
   private: 
@@ -161,6 +162,7 @@ class CJY901
 	#endif
 	unsigned char ucRxBuffer[250];
 	unsigned char ucRxCnt = 0;	
+	bool commsError_ = false;  // Any kind of communication error
 
 	void writeRegister(uint8_t address, uint16_t data);
 };

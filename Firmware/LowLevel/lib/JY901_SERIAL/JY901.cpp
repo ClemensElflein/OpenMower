@@ -10,26 +10,23 @@ CJY901 ::CJY901(SerialPIO *serial)
 	this->serial = serial;
 }
 
-void CJY901::begin(int baudrate) {
+void CJY901::begin(unsigned long baudrate) {
 	serial->begin(baudrate);
 	delay(1000);
-	uint8_t unlock[] = {0xFF,0xF0,0xF0,0xF0,0xF0};
+	uint8_t unlock[] = {0xFF,0xF0,0xF0,0xF0,0xF0}; // undocumented but required magic unlock sequence
 	serial->write(unlock, 5);
 	serial->flush();
 	delay(10);
-	writeRegister(RSW, 0b0000000000010110);
+	writeRegister(RSW, 0b0000000000010110);  // Return data content
 	delay(10);
-	writeRegister(RRATE, 0x09);
+	writeRegister(RRATE, 0x08); // Return rate 0x06 = 10Hz (default), 0x08 = 50Hz, 0x09 = 100Hz
 	delay(10);
-	writeRegister(0x0b,0x00);
+	writeRegister(0x0b, 0x00);  // X axis Magnetic bias
 	delay(10);
-	writeRegister(0x0c,0x00);
+	writeRegister(0x0c, 0x00);  // Y axis Magnetic bias
 	delay(10);
-	writeRegister(0x0d,0x00);
+	writeRegister(0x0d, 0x00);  // Z axis Magnetic bias
 	delay(10);
-
-
-	
 
 	ucRxCnt = 0;
 }
@@ -43,6 +40,7 @@ void CJY901 ::update()
 		if (ucRxBuffer[0] != 0x55)
 		{
 			ucRxCnt = 0;
+			commsError_ = true;
 			continue;
 		}
 		if (ucRxCnt < 11)
@@ -111,4 +109,13 @@ void CJY901::writeRegister(uint8_t address, uint16_t data) {
 	serial->flush();
 	delay(100);
 	
+}
+
+bool CJY901::commsError() {
+    bool hold = commsError_;
+#ifdef WT901
+    hold |= serial->overflow();
+#endif
+    commsError_ = false;
+    return hold;
 }
