@@ -214,7 +214,7 @@ jobs:
 
   pre-release-latest-firmware:
     runs-on: ubuntu-latest
-    if: github.ref_type != 'tag'
+    if: github.ref_type != 'tag' && github.ref == 'refs/heads/main'
     needs: firmware
     steps:
       - uses: actions/checkout@v4
