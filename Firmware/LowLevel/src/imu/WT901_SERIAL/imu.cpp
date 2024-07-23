@@ -23,6 +23,7 @@ bool init_imu()
 
 bool imu_read(float *acceleration_mss, float *gyro_rads, float *mag_uT)
 {
+    // WT901 axes seem to be corrected?
     acceleration_mss[0] = (float)IMU.stcAcc.a[0] / 32768.0f * 16.0f * 9.81f;
     acceleration_mss[1] = (float)IMU.stcAcc.a[1] / 32768.0f * 16.0f * 9.81f;
     acceleration_mss[2] = (float)IMU.stcAcc.a[2] / 32768.0f * 16.0f * 9.81f;

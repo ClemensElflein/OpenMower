@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <MCConfiguration>
-    <ConfigVersion>2</ConfigVersion>
     <pwm_mode>1</pwm_mode>
     <comm_mode>0</comm_mode>
     <motor_type>2</motor_type>
     <sensor_mode>0</sensor_mode>
-    <l_current_max>6.51866</l_current_max>
-    <l_current_min>-6.51866</l_current_min>
-    <l_in_current_max>5</l_in_current_max>
-    <l_in_current_min>-5</l_in_current_min>
+    <l_current_max>2</l_current_max>
+    <l_current_min>-2</l_current_min>
+    <l_in_current_max>1</l_in_current_max>
+    <l_in_current_min>-1</l_in_current_min>
     <l_abs_current_max>15</l_abs_current_max>
     <l_min_erpm>-100000</l_min_erpm>
     <l_max_erpm>100000</l_max_erpm>
@@ -17,14 +16,14 @@
     <l_max_erpm_fbrake_cc>1500</l_max_erpm_fbrake_cc>
     <l_min_vin>8</l_min_vin>
     <l_max_vin>40</l_max_vin>
-    <l_battery_cut_start>23.8</l_battery_cut_start>
-    <l_battery_cut_end>21</l_battery_cut_end>
+    <l_battery_cut_start>6</l_battery_cut_start>
+    <l_battery_cut_end>6</l_battery_cut_end>
     <l_slow_abs_current>0</l_slow_abs_current>
     <l_temp_fet_start>85</l_temp_fet_start>
     <l_temp_fet_end>90</l_temp_fet_end>
-    <l_temp_motor_start>85</l_temp_motor_start>
-    <l_temp_motor_end>100</l_temp_motor_end>
-    <l_temp_accel_dec>0.15</l_temp_accel_dec>
+    <l_temp_motor_start>190</l_temp_motor_start>
+    <l_temp_motor_end>190</l_temp_motor_end>
+    <l_temp_accel_dec>0</l_temp_accel_dec>
     <l_min_duty>0.005</l_min_duty>
     <l_max_duty>0.95</l_max_duty>
     <l_watt_max>1.5e+06</l_watt_max>
@@ -48,8 +47,8 @@
     <hall_table__6>4</hall_table__6>
     <hall_table__7>-1</hall_table__7>
     <hall_sl_erpm>2000</hall_sl_erpm>
-    <foc_current_kp>2.1884</foc_current_kp>
-    <foc_current_ki>1238.79</foc_current_ki>
+    <foc_current_kp>2.2089</foc_current_kp>
+    <foc_current_ki>2605.41</foc_current_ki>
     <foc_f_zv>25000</foc_f_zv>
     <foc_dt_us>0.12</foc_dt_us>
     <foc_encoder_inverted>0</foc_encoder_inverted>
@@ -63,11 +62,11 @@
     <foc_sensor_mode>2</foc_sensor_mode>
     <foc_pll_kp>2000</foc_pll_kp>
     <foc_pll_ki>30000</foc_pll_ki>
-    <foc_motor_l>0.00218841</foc_motor_l>
-    <foc_motor_ld_lq_diff>0.00085154</foc_motor_ld_lq_diff>
-    <foc_motor_r>1.2388</foc_motor_r>
-    <foc_motor_flux_linkage>0.013281</foc_motor_flux_linkage>
-    <foc_observer_gain>5.67e+06</foc_observer_gain>
+    <foc_motor_l>0.00220893</foc_motor_l>
+    <foc_motor_ld_lq_diff>0.00135457</foc_motor_ld_lq_diff>
+    <foc_motor_r>2.6054</foc_motor_r>
+    <foc_motor_flux_linkage>0.007529</foc_motor_flux_linkage>
+    <foc_observer_gain>1.764e+07</foc_observer_gain>
     <foc_observer_gain_slow>0.05</foc_observer_gain_slow>
     <foc_observer_offset>-1</foc_observer_offset>
     <foc_duty_dowmramp_kp>10</foc_duty_dowmramp_kp>
@@ -81,12 +80,12 @@
     <foc_sl_openloop_time_ramp>0.1</foc_sl_openloop_time_ramp>
     <foc_sl_openloop_time>0.05</foc_sl_openloop_time>
     <foc_hall_table__0>255</foc_hall_table__0>
-    <foc_hall_table__1>167</foc_hall_table__1>
-    <foc_hall_table__2>36</foc_hall_table__2>
-    <foc_hall_table__3>2</foc_hall_table__3>
+    <foc_hall_table__1>166</foc_hall_table__1>
+    <foc_hall_table__2>34</foc_hall_table__2>
+    <foc_hall_table__3>0</foc_hall_table__3>
     <foc_hall_table__4>101</foc_hall_table__4>
-    <foc_hall_table__5>135</foc_hall_table__5>
-    <foc_hall_table__6>68</foc_hall_table__6>
+    <foc_hall_table__5>134</foc_hall_table__5>
+    <foc_hall_table__6>67</foc_hall_table__6>
     <foc_hall_table__7>255</foc_hall_table__7>
     <foc_hall_interp_erpm>500</foc_hall_interp_erpm>
     <foc_sl_erpm>4000</foc_sl_erpm>
@@ -106,12 +105,12 @@
     <foc_hfi_obs_ovr_sec>0.001</foc_hfi_obs_ovr_sec>
     <foc_hfi_samples>1</foc_hfi_samples>
     <foc_offsets_cal_on_boot>1</foc_offsets_cal_on_boot>
-    <foc_offsets_current__0>2061.01</foc_offsets_current__0>
-    <foc_offsets_current__1>2052.83</foc_offsets_current__1>
-    <foc_offsets_current__2>2059.88</foc_offsets_current__2>
-    <foc_offsets_voltage__0>-0.0004</foc_offsets_voltage__0>
-    <foc_offsets_voltage__1>0.0011</foc_offsets_voltage__1>
-    <foc_offsets_voltage__2>-0.0006</foc_offsets_voltage__2>
+    <foc_offsets_current__0>2060.26</foc_offsets_current__0>
+    <foc_offsets_current__1>2108.85</foc_offsets_current__1>
+    <foc_offsets_current__2>2033.53</foc_offsets_current__2>
+    <foc_offsets_voltage__0>0.0003</foc_offsets_voltage__0>
+    <foc_offsets_voltage__1>0.0016</foc_offsets_voltage__1>
+    <foc_offsets_voltage__2>-0.002</foc_offsets_voltage__2>
     <foc_offsets_voltage_undriven__0>0</foc_offsets_voltage_undriven__0>
     <foc_offsets_voltage_undriven__1>0</foc_offsets_voltage_undriven__1>
     <foc_offsets_voltage_undriven__2>0</foc_offsets_voltage_undriven__2>
@@ -163,7 +162,7 @@
     <m_motor_temp_sens_type>0</m_motor_temp_sens_type>
     <m_ptc_motor_coeff>0.61</m_ptc_motor_coeff>
     <m_hall_extra_samples>1</m_hall_extra_samples>
-    <si_motor_poles>14</si_motor_poles>
+    <si_motor_poles>4</si_motor_poles>
     <si_gear_ratio>1</si_gear_ratio>
     <si_wheel_diameter>0.083</si_wheel_diameter>
     <si_battery_type>0</si_battery_type>
@@ -187,7 +186,7 @@ p, li { white-space: pre-wrap; }
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Roboto'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Some comments about the motor quality. Images can be added as well.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</motor_quality_description>
-    <bms.type>1</bms.type>
+    <bms.type>0</bms.type>
     <bms.t_limit_start>45</bms.t_limit_start>
     <bms.t_limit_end>65</bms.t_limit_end>
     <bms.soc_limit_start>0.05</bms.soc_limit_start>
