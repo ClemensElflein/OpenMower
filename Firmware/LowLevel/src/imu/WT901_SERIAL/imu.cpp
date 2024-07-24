@@ -42,3 +42,8 @@ void imu_loop()
 {
     IMU.update();
 }
+
+bool imu_comms_error()
+{
+    return IMU.commsError();
+}

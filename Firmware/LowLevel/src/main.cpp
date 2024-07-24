@@ -562,10 +562,8 @@ void sendConfigMessage(uint8_t pkt_type) {
     struct ll_high_level_config ll_config;
     ll_config.type = pkt_type;
     ll_config.config_bitmask = config_bitmask;
-    ll_config.volume = nv_cfg->volume;
-    for (unsigned int i = 0; i < sizeof(nv_cfg->language); i++) {
-        ll_config.language[i] = nv_cfg->language[i];
-    }
+    ll_config.volume = 80;            // FIXME: Adapt once nv_config or improve-sound got merged
+    strncpy(ll_config.language, "en", 2); // FIXME: Adapt once nv_config or improve-sound got merged
     sendMessage(&ll_config, sizeof(struct ll_high_level_config));
 }
 
@@ -671,17 +669,20 @@ void updateChargingEnabled() {
 
 void updateNeopixel() {
     led_blink_counter++;
-    // flash red on emergencies
-    if (emergency_latch && led_blink_counter & 0b10) {
-        p.neoPixelSetValue(0, 128, 0, 0, true);
+
+    if (emergency_latch && led_blink_counter & 0b100) {  // slow blink on emergencies
+        p.neoPixelSetValue(0, 128, 0, 0, true);          // 1/2 red
     } else {
         if (ROS_running) {
-            // Green, if ROS is running
-            p.neoPixelSetValue(0, 0, 255, 0, true);
+            p.neoPixelSetValue(0, 0, 255, 0, true);  // green
         } else {
-            // Yellow, if it's not running
-            p.neoPixelSetValue(0, 255, 50, 0, true);
+            p.neoPixelSetValue(0, 255, 50, 0, true);  // yellow
         }
+#if defined(WT901) || defined(WT901_INSTEAD_OF_SOUND)
+        if (led_blink_counter & 0b10 && imu_comms_error()) {  // fast blink on communication error (condition order matters -> short-circuit evaluation)
+            p.neoPixelSetValue(0, 255, 0, 255, true);         // magenta
+        }
+#endif
     }
 }
 
