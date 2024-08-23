@@ -680,12 +680,12 @@ void loop() {
         updateNeopixel();
 
         status_message.v_battery =
-                (float) analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
+                ((float) analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2)) * 0.1f + status_message.v_battery * 0.9f;
         status_message.v_charge =
-                (float) analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
+                ((float) analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2)) * 0.1f + status_message.v_charge * 0.9f;
 #ifndef IGNORE_CHARGING_CURRENT
         status_message.charging_current =
-                (float) analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
+                ((float) analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT)) * 0.1f + status_message.charging_current * 0.9f;
 #else
         status_message.charging_current = -1.0f;
 #endif
