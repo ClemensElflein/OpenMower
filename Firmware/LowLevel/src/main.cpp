@@ -62,11 +62,38 @@ SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 #define R_SHUNT 0.003f
 #define CURRENT_SENSE_GAIN 100.0f
 
+// These are the absolute maximum voltage levels, for a 7S-pack with cells of 4.2V max the BATT_ABS_MAX will be 29.4V. Might be good 
+// with a safety margin here as well.
+// 7S parameters:
 #define BATT_ABS_MAX 28.7f
 #define BATT_ABS_Min 21.7f
+// 6S parameters:
+// #define BATT_ABS_MAX 25.2f
+// #define BATT_ABS_Min 19.2f
+
+// We really want to avoid going higher than BATT_ABS_MAX. All battery packs should have a bms that safeguards against overvoltage, 
+// but in worst case overvoltage can lead to explossions. 
+// Since the ADC will not give you very accurate readings, it might be worth measuring the values and try to correct the figures.
+// This can be done in the CORRECTION-defines.
+// Another step to avoid danger which can also prolong the life of the pack is not to charge it up to 100%. The threshold is
+// defined in BATT_FULL below. 
 
 #define BATT_FULL BATT_ABS_MAX - 0.3f
 #define BATT_EMPTY BATT_ABS_Min + 0.3f
+
+// Make some corrections to the ADC values. Assuming the error is linear the value from the adc is multiplied by the "FACTOR" and then "OFFSET" is added.
+#define ADC_BATTERY_CORRECTION_FACTOR 1.04f
+#define ADC_BATTERY_CORRECTION_OFFSET -0.2f
+#define ADC_CHARGE_CORRECTION_FACTOR 1.05f
+#define ADC_CHARGE_CORRECTION_OFFSET -0.4f
+#define ADC_CHARGE_CURRENT_CORRECTION_FACTOR 1.12f
+#define ADC_CHARGE_CURRENT_CORRECTION_OFFSET -0.4f
+
+// To avoid charge/discharge toggling don't restart charging until the battery voltage is below the value below.
+#define BATT_FULL_HYSTERESIS BATT_FULL - 1.0f
+
+// Will stop/won't start charging if the current is above this value.
+#define MAX_CHARGE_CURRENT 1.5f
 
 // Emergency will be engaged, if no heartbeat was received in this time frame.
 #define HEARTBEAT_MILLIS 500
@@ -605,7 +632,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
 
 // returns true, if it's a good idea to charge the battery (current, voltages, ...)
 bool checkShouldCharge() {
-    return status_message.v_charge < 30.0 && status_message.charging_current < 1.5 && status_message.v_battery < 29.0;
+    return status_message.v_charge < (BATT_ABS_MAX + 1.3) && status_message.charging_current < MAX_CHARGE_CURRENT && status_message.v_battery < BATT_FULL;
 }
 
 void updateChargingEnabled() {
@@ -618,13 +645,14 @@ void updateChargingEnabled() {
     } else {
         // enable charging after CHARGING_RETRY_MILLIS
         if (millis() - charging_disabled_time > CHARGING_RETRY_MILLIS) {
-            if (!checkShouldCharge()) {
-                digitalWrite(PIN_ENABLE_CHARGE, LOW);
-                charging_allowed = false;
-                charging_disabled_time = millis();
-            } else {
+            // Also check that battery voltage is not close to being full to avoid charge/discharge toggling
+            if ((checkShouldCharge()) && (status_message.v_battery < BATT_FULL_HYSTERESIS)) {
                 digitalWrite(PIN_ENABLE_CHARGE, HIGH);
                 charging_allowed = true;
+            } else { // Should already be disabled, so why do this?
+                    digitalWrite(PIN_ENABLE_CHARGE, LOW);
+                    charging_allowed = false;
+                    charging_disabled_time = millis();
             }
         }
     }
@@ -679,13 +707,14 @@ void loop() {
     if (now - last_status_update_millis > STATUS_CYCLETIME) {
         updateNeopixel();
 
+        // Read the ADCs and put the value through a filter to scrub off the peaks of values being off
         status_message.v_battery =
-                (float) analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
+                ((float) analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2) * ADC_BATTERY_CORRECTION_FACTOR + ADC_BATTERY_CORRECTION_OFFSET) * 0.2f + status_message.v_battery * 0.8f;
         status_message.v_charge =
-                (float) analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
+                ((float) analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2) * ADC_CHARGE_CORRECTION_FACTOR + ADC_CHARGE_CORRECTION_OFFSET) * 0.2f + status_message.v_charge * 0.8f;
 #ifndef IGNORE_CHARGING_CURRENT
         status_message.charging_current =
-                (float) analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
+                ((float) analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT) * ADC_CHARGE_CURRENT_CORRECTION_FACTOR + ADC_CHARGE_CURRENT_CORRECTION_OFFSET) * 0.2f + status_message.charging_current * 0.8f;
 #else
         status_message.charging_current = -1.0f;
 #endif
