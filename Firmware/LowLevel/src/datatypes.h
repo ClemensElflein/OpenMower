@@ -28,11 +28,14 @@
 #define PACKET_ID_LL_HEARTBEAT 0x42
 #define PACKET_ID_LL_HIGH_LEVEL_STATE 0x43
 
+#define HL_MODE_MASK 0b11111
 enum HighLevelMode {
-    MODE_IDLE = 1, // ROS connected, idle mode
-    MODE_AUTONOMOUS = 2, // ROS connected, Autonomous mode, either mowing or docking or undocking
-    MODE_RECORDING = 3 // ROS connected, Manual mode during recording etc
+    MODE_IDLE = 1,        // ROS connected, idle mode
+    MODE_AUTONOMOUS = 2,  // ROS connected, Autonomous mode, either mowing or docking or undocking
+    MODE_RECORDING = 3    // ROS connected, Manual mode during recording etc
 };
+#define HL_SUBMODE_SHIFT 6
+#define HL_SUBMODE_MASK 0b11
 
 #define LL_EMERGENCY_BIT_LATCH 0b00000001
 #define LL_EMERGENCY_BIT_HALL1 0b00001000 // Lift1
