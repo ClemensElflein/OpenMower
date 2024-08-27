@@ -123,18 +123,18 @@ namespace soundSystem {
 
     bool begin(); // Init serial stream, soundmodule and sound_available_
 
-    void playSound(TrackDef t_track_def);      // Play sound trackDef. This method writes sound trackDef in a list, the method processSounds() (has to run in loop)
-                                               // will play the sounds according to the list
-    void playSoundAdHoc(TrackDef t_track_def); // Play sound track number immediately without waiting until the end of sound
+    void playSound(const TrackDef t_track_def);       // Play sound trackDef. This method writes sound trackDef in a list, the method processSounds() (has to run in loop)
+                                                      // will play the sounds according to the list
+    void playSoundAdHoc(const TrackDef t_track_def);  // Play sound track number immediately without waiting until the end of sound
 
-    void setDFPis5V(bool t_dfpis5v);  // Set if DFP is set to 5V Vcc
+    void setDFPis5V(const bool t_dfpis5v);  // Set if DFP is set to 5V Vcc
 
-    void setLanguage(iso639_1 *language_p, bool quiet = false);  // Set language to the pointing ISO639-1 (2 char) language code and announce if changed and not quiet
+    void setLanguage(const iso639_1 language_p, const bool quiet = false);  // Set language to the pointing ISO639-1 (2 char) language code and announce if changed and not quiet
 
-    void setVolume(uint8_t t_vol);  // Set volume (0-100%)
-    uint8_t setVolumeUp();          // Scale volume up by VOLUME_STEPS and return new volume (%)
-    uint8_t setVolumeDown();        // Scale volume down by VOLUME_STEPS and return new volume (%)
+    void setVolume(const uint8_t t_vol);  // Set volume (0-100%)
+    uint8_t setVolumeUp();                // Scale volume up by VOLUME_STEPS and return new volume (%)
+    uint8_t setVolumeDown();              // Scale volume down by VOLUME_STEPS and return new volume (%)
 
-    void processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_level_state t_hl_state); // This method has to be called cyclic, e.g. every second.
-}
+    void processSounds(const ll_status t_ll_state, const bool t_ros_running, const ll_high_level_state t_hl_state);  // This method has to be called cyclic, e.g. every second.
+    }  // namespace soundSystem
 #endif // _SOUND_SYSTEM_H_  HEADER_FILE

@@ -177,25 +177,27 @@ namespace soundSystem
         return sound_available_;
     }
 
-    void setDFPis5V(bool t_dfpis5v) {
+    void setDFPis5V(const bool t_dfpis5v) {
         dfp_is_5v = t_dfpis5v;
     }
 
-    void setLanguage(iso639_1 *language_p, bool quiet) {  // Set language to the pointing ISO639-1 (2 char) language code and announce if changed && not quiet
+    void setLanguage(const iso639_1 language_p, const bool quiet) {  // Set language to the pointing ISO639-1 (2 char) language code and announce if changed && not quiet
         uint8_t last_play_folder = play_folder;
 
-        language_str = *language_p;
-        language_str[sizeof(iso639_1)] = 0; // FIXME: Why does the previous command doesn't terminate the string in the right way?!
+        std::string language_str;
+        for (size_t i = 0; i < sizeof(iso639_1); i++)
+            language_str += language_p[i];
+
         if (auto it = language_to_playFolder_map.find(language_str.c_str()); it != language_to_playFolder_map.end()) {
             play_folder = it->second;
         }
         if (!sound_available_ || play_folder == last_play_folder || quiet || !dfp_is_5v)
             return;
-            
+
         playSoundAdHoc(tracks[SOUND_TRACK_ADV_LANGUAGE]);
     }
 
-    void setVolume(uint8_t t_vol)  // Set volume (0-100%)
+    void setVolume(const uint8_t t_vol)  // Set volume (0-100%)
     {
         if (!sound_available_)
             return;
@@ -232,7 +234,7 @@ namespace soundSystem
         return volume;
     }
 
-    void playSoundAdHoc(TrackDef t_track_def)
+    void playSoundAdHoc(const TrackDef t_track_def)
     {
         DEBUG_PRINTF("playSoundAdHoc(num %d, type %d, flags " PRINTF_BINARY_PATTERN_INT8 ")\n", t_track_def.num, t_track_def.type, PRINTF_BYTE_TO_BINARY_INT8(t_track_def.flags));
 
@@ -284,7 +286,7 @@ namespace soundSystem
         }
     }
 
-    void playSound(TrackDef t_track_def)
+    void playSound(const TrackDef t_track_def)
     {
         DEBUG_PRINTF("playSound(num %d, type %d, flags " PRINTF_BINARY_PATTERN_INT8 ")\n", t_track_def.num, t_track_def.type, PRINTF_BYTE_TO_BINARY_INT8(t_track_def.flags));
 
@@ -299,7 +301,7 @@ namespace soundSystem
      *
      * @param t_ll_state
      */
-    void handleEmergencies(ll_status t_ll_state, bool t_ros_running)
+    void handleEmergencies(const ll_status t_ll_state, const bool t_ros_running)
     {
         if ((last_ll_state.emergency_bitmask & LL_EMERGENCY_BIT_LATCH) == (t_ll_state.emergency_bitmask & LL_EMERGENCY_BIT_LATCH))
             return; // Ignore stop button or wheel lift changes if latch didn't changed
@@ -340,7 +342,7 @@ namespace soundSystem
         last_ll_state.emergency_bitmask = t_ll_state.emergency_bitmask;
     }
 
-    void processSounds(ll_status t_ll_state, bool t_ros_running, ll_high_level_state t_hl_state)
+    void processSounds(const ll_status t_ll_state, const bool t_ros_running, const ll_high_level_state t_hl_state)
     {
         if (!sound_available_)
             return;
@@ -510,7 +512,7 @@ namespace soundSystem
          * @return true if it already got handled
          * @return false if not yet handled (because still in detection phase)
          */
-        bool handleAutoplay(ll_status t_ll_state)
+        bool handleAutoplay(const ll_status t_ll_state)
         {
             if (dfp_detection_status & DFP_DETECTION_BIT_HANDLED)
                 return true;

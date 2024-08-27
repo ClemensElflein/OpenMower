@@ -416,7 +416,7 @@ void setup() {
     if (sound_available) {
         p.neoPixelSetValue(0, 0, 0, 255, true);
         soundSystem::setDFPis5V(nv_cfg->config_bitmask & NV_CONFIG_BIT_DFPIS5V);
-        soundSystem::setLanguage(&nv_cfg->language, true);
+        soundSystem::setLanguage(nv_cfg->language, true);
         soundSystem::setVolume(nv_cfg->volume);
         // Do NOT play any initial sound now, as we've to handle the special case of
         // old DFPlayer SD-Card format @ DFROBOT LISP3. See soundSystem::processSounds()
@@ -632,7 +632,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
             nv_cfg->language[i] = pkt->language[i];
         }
 #ifdef ENABLE_SOUND_MODULE
-        soundSystem::setLanguage(&nv_cfg->language);
+        soundSystem::setLanguage(nv_cfg->language);
 #endif
         // Sender requested a config-response packet
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
