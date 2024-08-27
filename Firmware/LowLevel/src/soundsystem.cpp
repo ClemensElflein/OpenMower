@@ -1,7 +1,7 @@
 // Created by Elmar Elflein on 18/07/22.
 // Copyright (c) 2022 Elmar Elflein. All rights reserved.
 // Restructured by Jörg Ebeling on 10/16/23.
-// Copyright (c) 2023 Jörg Ebeling. All rights reserved.
+// Copyright (c) 2023, 2024 Jörg Ebeling. All rights reserved.
 //
 // This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
 //
@@ -115,10 +115,10 @@ namespace soundSystem
 
         // Some DFPlayer chips need a reset cmd for a defined 'ready' state, which is more precise than some kind of static (and large) 'delay(3000)'
         DEBUG_PRINTF("Reset...\n");
-        myMP3.reset(false);
+        myMP3.reset(false); // Non-blocking reset
 
         unsigned long start_ms = millis();
-        while (!myMP3.isOnline()) // loop till module is ready and play media is online
+        while (!myMP3.isOnline()) // loop till module is ready and "play media" is online
         {
             if (last_error_code_ == DfMp3_Error_Busy) // Usually "media not found"
             {
@@ -135,7 +135,7 @@ namespace soundSystem
         }
         DEBUG_PRINTF("Online after %dms\n", millis() - start_ms);
 
-        // Check max. 600ms if sound-busy get set, which would identify a "DFROBOT LISP3" due to auto-playing
+        // Check max. 600ms if sound-busy get set, which would identify a "DFROBOT LISP3" chip, because only this chip auto-play if IO2 is pinned to GND
         start_ms = millis();
         while (millis() < start_ms + 600)
         {
@@ -181,7 +181,7 @@ namespace soundSystem
         dfp_is_5v = t_dfpis5v;
     }
 
-    void setLanguage(iso639_1 *language_p, bool quiet) {  // Set language to the pointing ISO639-1 (2 char) language code and announce if changed and not quiet
+    void setLanguage(iso639_1 *language_p, bool quiet) {  // Set language to the pointing ISO639-1 (2 char) language code and announce if changed && not quiet
         uint8_t last_play_folder = play_folder;
 
         language_str = *language_p;
@@ -473,8 +473,9 @@ namespace soundSystem
             }
             last_hl_state_.gps_quality = t_hl_state.gps_quality;
 
-            // Generic, state-change independent sounds
-            playMowSound();
+            // Generic, state-change-independent sounds
+            if(ros_running)
+                playMowSound();
         }  // dfp_is_5v
 
         // Process sound queue
@@ -531,7 +532,7 @@ namespace soundSystem
             dfp_detection_status |= DFP_DETECTION_BIT_HANDLED;
 
             // Play "Hi I'm Steve ..." if ...
-            if (!(dfp_detection_status & DFP_DETECTION_BIT_HAS_AUTOPLAY) ||      // DFPlayer didn't auo-played, or ...
+            if (!(dfp_detection_status & DFP_DETECTION_BIT_HAS_AUTOPLAY) ||      // DFPlayer didn't auto-played, or ...
                 !(dfp_detection_status & DFP_DETECTION_BIT_OLD_CARD_STRUCTURE))  // new SD-Card detected (or assumed)
             {
                 playSoundAdHoc(tracks[SOUND_TRACK_ADV_HI_IM_STEVE]);
@@ -546,9 +547,6 @@ namespace soundSystem
          * @brief Play a randomized mow- background sound at randomized times
          */
         void playMowSound() {
-            if (!dfp_is_5v)
-                return;
-
             static unsigned long last_mow_sound_started_ms = 0;
 
             if (last_hl_state_.current_mode != MODE_AUTONOMOUS || last_hl_state_.gps_quality < 50)
