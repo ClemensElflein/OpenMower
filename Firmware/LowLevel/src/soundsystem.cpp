@@ -87,7 +87,7 @@ namespace soundSystem
         bool current_playing_is_background_;    // Current/last playing sound is a background sound
         unsigned long current_playing_started_; // Millis when current/last playing sound got started
 
-        bool ros_running = false;              // ROS running state
+        bool last_ros_running_ = false;        // Last ROS running state
         unsigned long ros_running_since_ = 0;  // ros_running since millis state
         unsigned long last_advert_end_;        // Millis when the last played advert sound ended. Used for pauseAfter calculation
 
@@ -389,7 +389,7 @@ namespace soundSystem
                 playSound(tracks[SOUND_TRACK_BGD_ROS_BOOT]);
             }
             if (!(last_ll_state.status_bitmask & LL_STATUS_BIT_RAIN) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RAIN)) {
-                if (t_hl_state.current_mode == MODE_AUTONOMOUS && !((hl_mode_flags_ & ModeFlags::rainDetected) || (hl_mode_flags_ & ModeFlags::docking))) {
+                if (HighLevelState::getMode(t_hl_state.current_mode) == HighLevelState::Mode::Autonomous && !((hl_mode_flags_ & ModeFlags::rainDetected) || (hl_mode_flags_ & ModeFlags::docking))) {
                     playSoundAdHoc(tracks[SOUND_TRACK_ADV_RAIN]);                                      // Rain detected, heading back to base
                     playSound({num : (uint16_t)(100 + (rand() % 3)), type : TrackTypes::background});  // Play background track 100-102 by random
                     hl_mode_flags_ |= ModeFlags::docking;
@@ -399,26 +399,26 @@ namespace soundSystem
             last_ll_state.status_bitmask = t_ll_state.status_bitmask;
 
             // ROS running changed
-            if (!ros_running && t_ros_running && !ros_running_since_) {
+            if (!last_ros_running_ && t_ros_running && !ros_running_since_) {
                 ros_running_since_ = millis();
                 playSound(tracks[SOUND_TRACK_ADV_ROS_STARTUP_SUCCESS]);  // ROS startup successful
-            } else if (ros_running && !t_ros_running) {
+            } else if (last_ros_running_ && !t_ros_running) {
                 ros_running_since_ = 0;
                 playSound(tracks[SOUND_TRACK_ADV_ROS_STOPPED]);  // ROS stopped
             }
-            ros_running = t_ros_running;
+            last_ros_running_ = t_ros_running;
 
             // HL mode changed
-            if (t_hl_state.current_mode != last_hl_state_.current_mode) {
-                switch (t_hl_state.current_mode) {
-                    case MODE_RECORDING:
+            if (HighLevelState::getMode(t_hl_state.current_mode) != HighLevelState::getMode(last_hl_state_.current_mode)) {
+                switch (HighLevelState::getMode(t_hl_state.current_mode)) {
+                    case HighLevelState::Mode::Recording:
                         hl_mode_flags_ |= ModeFlags::started;
                         playSound(tracks[SOUND_TRACK_ADV_MAP_RECORD_START]);  // Starting map area recording
                         if (t_hl_state.gps_quality < 75)
                             playSound(tracks[SOUND_TRACK_ADV_RTKGPS_WAIT]);  // Waiting for RTK GPS signal
                         break;
 
-                    case MODE_AUTONOMOUS:
+                    case HighLevelState::Mode::Autonomous:
                         hl_mode_flags_ |= ModeFlags::started;
                         playSound(tracks[SOUND_TRACK_ADV_AUTONOMOUS_START]);  // Stay back, autonomous robot mower in use
                         if (t_hl_state.gps_quality < 75)
@@ -436,8 +436,8 @@ namespace soundSystem
             // GPS quality changed
             static unsigned long next_gps_sound_cycle = millis();  // Next cycle when a GPS ping sound got played
             if (t_hl_state.gps_quality != last_hl_state_.gps_quality) {
-                switch (t_hl_state.current_mode) {
-                    case MODE_RECORDING:
+                switch (HighLevelState::getMode(t_hl_state.current_mode)) {
+                    case HighLevelState::Mode::Recording:
                         if (millis() < next_gps_sound_cycle)
                             break;
 
@@ -460,7 +460,7 @@ namespace soundSystem
                         next_gps_sound_cycle = millis() + GPS_SOUND_CYCLETIME;
                         break;
 
-                    case MODE_AUTONOMOUS:
+                    case HighLevelState::Mode::Autonomous:
                         if ((hl_mode_flags_ & ModeFlags::initialGpsFix) || (t_hl_state.gps_quality < 75))
                             break;
                         playSound(tracks[SOUND_TRACK_BGD_MUSIC_PINK_PANTHER]);  // Stalking "Pink Panther"
@@ -476,7 +476,7 @@ namespace soundSystem
             last_hl_state_.gps_quality = t_hl_state.gps_quality;
 
             // Generic, state-change-independent sounds
-            if(ros_running)
+            if (last_ros_running_)
                 playMowSound();
         }  // dfp_is_5v
 
@@ -551,7 +551,7 @@ namespace soundSystem
         void playMowSound() {
             static unsigned long last_mow_sound_started_ms = 0;
 
-            if (last_hl_state_.current_mode != MODE_AUTONOMOUS || last_hl_state_.gps_quality < 50)
+            if (HighLevelState::getMode(last_hl_state_.current_mode) != HighLevelState::Mode::Autonomous || last_hl_state_.gps_quality < 50)
                 return;
 
             unsigned long now = millis();
