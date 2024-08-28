@@ -325,8 +325,6 @@ void manageUISubscriptions()
 void setup1() {
     // Core
     digitalWrite(LED_BUILTIN, HIGH);
-    // Put the 3.3V power supply into PWM mode.
-    digitalWrite(PIN_POWER_SELECT, HIGH);
 }
 
 void loop1() {
