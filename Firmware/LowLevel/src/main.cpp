@@ -385,7 +385,6 @@ void setup() {
 
     // Setup pins
     pinMode(LED_BUILTIN, OUTPUT);
-    pinMode(PIN_POWER_SELECT, OUTPUT);
     pinMode(PIN_ENABLE_CHARGE, OUTPUT);
     digitalWrite(PIN_ENABLE_CHARGE, HIGH);
 
