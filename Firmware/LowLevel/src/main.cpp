@@ -252,25 +252,25 @@ void manageUILEDS() {
     if (!ROS_running) {
         setLed(leds_message, LED_S1, LED_off);
     } else {
-        switch (last_high_level_state.current_mode & HL_MODE_MASK) {
-            case HighLevelMode::MODE_IDLE:
+        switch (HighLevelState::getMode(last_high_level_state.current_mode)) {
+            case HighLevelState::Mode::Idle:
                 setLed(leds_message, LED_S1, LED_on);
                 break;
-            case HighLevelMode::MODE_AUTONOMOUS:
+            case HighLevelState::Mode::Autonomous:
                 setLed(leds_message, LED_S1, LED_blink_slow);
                 break;
             default:
                 setLed(leds_message, LED_S1, LED_blink_fast);
                 break;
         }
-        switch ((last_high_level_state.current_mode >> HL_SUBMODE_SHIFT) & HL_SUBMODE_MASK) {
+        switch (HighLevelState::getSubMode(last_high_level_state.current_mode)) {
             case 1:  // Docking or Record outline
                 setLed(leds_message, LED_S2, LED_blink_slow);
                 break;
             case 2:  // Undocking or Record obstacle
                 setLed(leds_message, LED_S2, LED_blink_fast);
                 break;
-            case 3:
+            case 3:  // Not defined yet
                 setLed(leds_message, LED_S2, LED_on);
                 break;
             default:

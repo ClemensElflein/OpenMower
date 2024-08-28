@@ -29,13 +29,44 @@
 #define PACKET_ID_LL_HIGH_LEVEL_STATE 0x43
 
 #define HL_MODE_MASK 0b11111
-enum HighLevelMode {
-    MODE_IDLE = 1,        // ROS connected, idle mode
-    MODE_AUTONOMOUS = 2,  // ROS connected, Autonomous mode, either mowing or docking or undocking
-    MODE_RECORDING = 3    // ROS connected, Manual mode during recording etc
-};
 #define HL_SUBMODE_SHIFT 6
 #define HL_SUBMODE_MASK 0b11
+/**
+ * @brief Simple class containing only the static methods,
+ *  for more comfortable as well as more speaking HighLevel-Mode and SubMode handling
+ */
+class HighLevelState {
+   public:
+    enum Mode : uint8_t {
+        Idle = 1,        // ROS connected, idle mode
+        Autonomous = 2,  // ROS connected, Autonomous mode, either mowing or docking or undocking
+        Recording = 3,   // ROS connected, Manual mode during recording etc
+    };
+    enum SubModeIdle : uint8_t {
+        IdleIdle_AutonomousMowing = 0,
+    };
+    enum SubModeAutonomous : uint8_t {
+        Mowing = 0,
+        Docking = 1,
+        Undocking = 2,
+    };
+    enum SubModeRecording : uint8_t {
+        Outline = 1,
+        Obstacle = 2,
+    };
+
+    static Mode getMode(uint8_t t_mode) {
+        return Mode(t_mode & HL_MODE_MASK);
+    }
+
+    static uint8_t getSubMode(uint8_t t_mode) {
+        return (t_mode >> HL_SUBMODE_SHIFT) & HL_SUBMODE_MASK;
+    }
+
+    static SubModeAutonomous getAutonomousSubMode(uint8_t t_mode) {
+        return SubModeAutonomous(getSubMode(t_mode));
+    }
+};
 
 #define LL_EMERGENCY_BIT_LATCH 0b00000001
 #define LL_EMERGENCY_BIT_HALL1 0b00001000 // Lift1
