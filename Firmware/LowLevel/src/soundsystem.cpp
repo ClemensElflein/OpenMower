@@ -390,8 +390,8 @@ namespace soundSystem
             }
             if (!(last_ll_state.status_bitmask & LL_STATUS_BIT_RAIN) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RAIN)) {
                 if (HighLevelState::getMode(t_hl_state.current_mode) == HighLevelState::Mode::Autonomous && !((hl_mode_flags_ & ModeFlags::rainDetected) || (hl_mode_flags_ & ModeFlags::docking))) {
-                    playSoundAdHoc(tracks[SOUND_TRACK_ADV_RAIN]);                                      // Rain detected, heading back to base
-                    playSound({num : (uint16_t)(100 + (rand() % 3)), type : TrackTypes::background});  // Play background track 100-102 by random
+                    playSoundAdHoc(tracks[SOUND_TRACK_ADV_RAIN]);                                        // Rain detected, heading back to base
+                    playSound({.num = (uint16_t)(100 + (rand() % 3)), .type = TrackTypes::background});  // Play background track 100-102 by random
                     hl_mode_flags_ |= ModeFlags::docking;
                 }
                 hl_mode_flags_ |= ModeFlags::rainDetected;
@@ -408,8 +408,12 @@ namespace soundSystem
             }
             last_ros_running_ = t_ros_running;
 
-            // HL mode changed
-            if (HighLevelState::getMode(t_hl_state.current_mode) != HighLevelState::getMode(last_hl_state_.current_mode)) {
+            // HL mode or sub-mode changed
+            if (t_hl_state.current_mode != last_hl_state_.current_mode) {
+                auto mode = HighLevelState::getMode(t_hl_state.current_mode);
+                auto last_mode = HighLevelState::getMode(last_hl_state_.current_mode);
+                auto sub_mode = HighLevelState::getSubMode(t_hl_state.current_mode);
+                auto last_sub_mode = HighLevelState::getSubMode(last_hl_state_.current_mode);
                 switch (HighLevelState::getMode(t_hl_state.current_mode)) {
                     case HighLevelState::Mode::Recording:
                         hl_mode_flags_ |= ModeFlags::started;
@@ -420,9 +424,16 @@ namespace soundSystem
 
                     case HighLevelState::Mode::Autonomous:
                         hl_mode_flags_ |= ModeFlags::started;
-                        playSound(tracks[SOUND_TRACK_ADV_AUTONOMOUS_START]);  // Stay back, autonomous robot mower in use
-                        if (t_hl_state.gps_quality < 75)
-                            playSound(tracks[SOUND_TRACK_ADV_RTKGPS_WAIT]);  // Waiting for RTK GPS signal
+                        if (last_mode == HighLevelState::Mode::Idle && sub_mode == HighLevelState::SubModeAutonomous::Undocking) {
+                            // IDLE => Autonomous-Undocking
+                            playSound(tracks[SOUND_TRACK_ADV_AUTONOMOUS_START]);  // Stay back, autonomous robot mower in use
+                            if (t_hl_state.gps_quality < 75)
+                                playSound(tracks[SOUND_TRACK_ADV_RTKGPS_WAIT]);  // Waiting for RTK GPS signal
+                        } else if (last_sub_mode != HighLevelState::SubModeAutonomous::Docking && sub_mode == HighLevelState::SubModeAutonomous::Docking) {
+                            // !Docking => Docking
+                            playSound(tracks[SOUND_TRACK_ADV_MOW_DONE_DOCK]);                                    // OM has completed mowing the lawn, heading back to docking station
+                            playSound({.num = (uint16_t)(300 + (rand() % 4)), .type = TrackTypes::background});  // Play background track 300 to 203 by random
+                        }
                         break;
 
                     default:
@@ -568,7 +579,7 @@ namespace soundSystem
                 return;  // No luck
 
             // Play sound
-            playSound({num : (uint16_t)(200 + (rand() % 7)), type : TrackTypes::background});  // Play background track 200 to 206 by random
+            playSound({.num = (uint16_t)(200 + (rand() % 6)), .type = TrackTypes::background});  // Play background track 200 to 205 by random
             last_mow_sound_started_ms = now;
         }
 

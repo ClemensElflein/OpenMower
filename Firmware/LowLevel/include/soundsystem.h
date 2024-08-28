@@ -70,6 +70,7 @@
 #define SOUND_TRACK_ADV_UP 22
 #define SOUND_TRACK_ADV_DOWN 23
 #define SOUND_TRACK_ADV_LANGUAGE 24
+#define SOUND_TRACK_ADV_MOW_DONE_DOCK 25
 
 namespace soundSystem {
     const std::map<std::string, uint8_t> language_to_playFolder_map{{"en", 1}, {"de", 49}};  // ISO639-1 (string) to playFolder (uint) map for localized advert sounds
@@ -94,31 +95,32 @@ namespace soundSystem {
 
     // For easier reading and simpler code, let's have a list of predefined tracks and its (default) settings
     const TrackDef tracks[] = {
-        {2, background, repeat},                           // 0 = OM boot-up background
-        {1, advert, pauseAfter : 1500},                    // 1 = Hi I'm steve
-        {19, advert, pauseAfter : 500},                    // 2 = IMU initialization failed
-        {15, background, repeat, repeatDuration : 20000},  // 3 = Alarm02
-        {8, advert, pauseAfter : 500},                     // 4 = Stop button triggered
-        {9, advert, pauseAfter : 500},                     // 5 = Emergency wheel lift sensor triggered
-        {9, background},                                   // 6 = "Bee daa, Bee daa" Minion fire alarm
-        {2, advert, pauseAfter : 1500},                    // 7 = OM startup successful
-        {3, advert, stopBackground},                       // 8 = Initializing ROS
-        {5, background, repeat},                           // 9 = ROS boot-up background
-        {16, advert, stopBackground},                      // 10 = ROS startup successful
-        {17, advert, stopBackground},                      // 11 = ROS stopped
-        {4, advert, stopBackground},                       // 12 = Starting map area recording
-        {12, advert, stopBackground, pauseAfter : 1500},   // 13 = Stay back, autonomous robot mower in use
-        {10, advert, stopBackground},                      // 14 = Rain detected, heading back to base
-        {5, advert, pauseAfter : 1500},                    // 15 = Waiting for RTK GPS signal
-        {20, background},                                  // 16 = GPS poor ping
-        {21, background},                                  // 17 = GPS moderate/acceptable ping
-        {22, background},                                  // 18 = GPS good ping
-        {12, background},                                  // 19 = Stalking "Pink Panther"
-        {24, advert, pauseAfter : 500},                    // 20 = Emergency triggered by ROS
-        {23, advert, stopBackground, pauseAfter : 500},    // 21 = Emergency cleared
-        {21, advert, pauseAfter : 100},                    // 22 = Volume "up"
-        {20, advert, pauseAfter : 100},                    // 23 = Volume "down"
-        {22, advert, pauseAfter : 100},                    // 24 = Switched to (Englisch/German) language
+        {2, background, repeat},                            // 0 = OM boot-up background
+        {1, advert, .pauseAfter = 1500},                    // 1 = Hi I'm steve
+        {19, advert, .pauseAfter = 500},                    // 2 = IMU initialization failed
+        {15, background, repeat, .repeatDuration = 20000},  // 3 = Alarm02
+        {8, advert, stopBackground, .pauseAfter = 500},     // 4 = Stop button triggered
+        {9, advert, stopBackground, .pauseAfter = 500},     // 5 = Emergency wheel lift sensor triggered
+        {9, background},                                    // 6 = "Bee daa, Bee daa" Minion fire alarm
+        {2, advert, .pauseAfter = 1500},                    // 7 = OM startup successful
+        {3, advert, stopBackground},                        // 8 = Initializing ROS
+        {5, background, repeat},                            // 9 = ROS boot-up background
+        {16, advert, stopBackground},                       // 10 = ROS startup successful
+        {17, advert, stopBackground},                       // 11 = ROS stopped
+        {4, advert, stopBackground},                        // 12 = Starting map area recording
+        {12, advert, stopBackground, .pauseAfter = 1500},   // 13 = Stay back, autonomous robot mower in use
+        {10, advert, stopBackground, .pauseAfter = 3000},   // 14 = Rain detected, heading back to base
+        {5, advert, .pauseAfter = 1500},                    // 15 = Waiting for RTK GPS signal
+        {20, background},                                   // 16 = GPS poor ping
+        {21, background},                                   // 17 = GPS moderate/acceptable ping
+        {22, background},                                   // 18 = GPS good ping
+        {12, background},                                   // 19 = Stalking "Pink Panther"
+        {24, advert, stopBackground, .pauseAfter = 500},    // 20 = Emergency triggered by ROS
+        {23, advert, stopBackground, .pauseAfter = 500},    // 21 = Emergency cleared
+        {21, advert, .pauseAfter = 100},                    // 22 = Volume "up"
+        {20, advert, .pauseAfter = 100},                    // 23 = Volume "down"
+        {22, advert, .pauseAfter = 100},                    // 24 = Switched to (Englisch/German) language
+        {11, advert, stopBackground, .pauseAfter = 3000},   // 25 = OM has completed mowing the lawn, heading back to docking station
     };
 
     bool begin(); // Init serial stream, soundmodule and sound_available_
