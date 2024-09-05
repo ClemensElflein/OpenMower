@@ -82,12 +82,12 @@ SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 #define BATT_EMPTY BATT_ABS_Min + 0.3f
 
 // Make some corrections to the ADC values. Assuming the error is linear the value from the adc is multiplied by the "FACTOR" and then "OFFSET" is added.
-#define ADC_BATTERY_CORRECTION_FACTOR 1.04f
-#define ADC_BATTERY_CORRECTION_OFFSET -0.2f
-#define ADC_CHARGE_CORRECTION_FACTOR 1.05f
-#define ADC_CHARGE_CORRECTION_OFFSET -0.4f
-#define ADC_CHARGE_CURRENT_CORRECTION_FACTOR 1.12f
-#define ADC_CHARGE_CURRENT_CORRECTION_OFFSET -0.4f
+#define ADC_BATTERY_CORRECTION_FACTOR 1.0f
+#define ADC_BATTERY_CORRECTION_OFFSET 0
+#define ADC_CHARGE_CORRECTION_FACTOR 1.0f
+#define ADC_CHARGE_CORRECTION_OFFSET 0
+#define ADC_CHARGE_CURRENT_CORRECTION_FACTOR 1.0f
+#define ADC_CHARGE_CURRENT_CORRECTION_OFFSET 0
 
 // To avoid charge/discharge toggling don't restart charging until the battery voltage is below the value below.
 #define BATT_FULL_HYSTERESIS BATT_FULL - 1.0f
