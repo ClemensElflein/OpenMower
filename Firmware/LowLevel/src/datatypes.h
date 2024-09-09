@@ -57,7 +57,7 @@ struct ll_status {
     // Bit 0: Initialized (i.e. setup() was a success). If this is 0, all other bits are meaningless.
     // Bit 1: Raspberry Power
     // Bit 2: Charging enabled
-    // Bit 3: don't care
+    // Bit 3: ESC power
     // Bit 4: Rain detected
     // Bit 5: Sound available
     // Bit 6: Sound busy

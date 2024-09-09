@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <MCConfiguration>
-    <ConfigVersion>2</ConfigVersion>
     <pwm_mode>1</pwm_mode>
     <comm_mode>0</comm_mode>
     <motor_type>2</motor_type>
     <sensor_mode>0</sensor_mode>
     <l_current_max>2</l_current_max>
     <l_current_min>-2</l_current_min>
-    <l_in_current_max>5</l_in_current_max>
-    <l_in_current_min>-5</l_in_current_min>
+    <l_in_current_max>1</l_in_current_max>
+    <l_in_current_min>-1</l_in_current_min>
     <l_abs_current_max>15</l_abs_current_max>
     <l_min_erpm>-100000</l_min_erpm>
     <l_max_erpm>100000</l_max_erpm>
@@ -24,7 +23,7 @@
     <l_temp_fet_end>90</l_temp_fet_end>
     <l_temp_motor_start>85</l_temp_motor_start>
     <l_temp_motor_end>100</l_temp_motor_end>
-    <l_temp_accel_dec>0.15</l_temp_accel_dec>
+    <l_temp_accel_dec>0</l_temp_accel_dec>
     <l_min_duty>0.005</l_min_duty>
     <l_max_duty>0.95</l_max_duty>
     <l_watt_max>1.5e+06</l_watt_max>
@@ -187,7 +186,7 @@ p, li { white-space: pre-wrap; }
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Roboto'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Some comments about the motor quality. Images can be added as well.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</motor_quality_description>
-    <bms.type>1</bms.type>
+    <bms.type>0</bms.type>
     <bms.t_limit_start>45</bms.t_limit_start>
     <bms.t_limit_end>65</bms.t_limit_end>
     <bms.soc_limit_start>0.05</bms.soc_limit_start>
