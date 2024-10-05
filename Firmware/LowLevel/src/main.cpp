@@ -145,6 +145,10 @@ void updateEmergency() {
                              stock_ui_emergency_state; // OR with StockUI emergency
     uint8_t emergency_state = 0;
 
+    // Some mowers have the logic level inverted, fix this...
+    emergency_read = emergency_read ^ (LL_EMERGENCY_BIT_LIFT1 * LIFT1_IS_INVERTED);
+    emergency_read = emergency_read ^ (LL_EMERGENCY_BIT_LIFT2 * LIFT2_IS_INVERTED);
+
     // Handle emergency "Stop" buttons
     if (emergency_read & LL_EMERGENCY_BITS_STOP) {
         // If we just pressed, store the timestamp
