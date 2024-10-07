@@ -60,7 +60,7 @@ struct ll_status {
     // Bit 0: Initialized (i.e. setup() was a success). If this is 0, all other bits are meaningless.
     // Bit 1: Raspberry Power
     // Bit 2: Charging enabled
-    // Bit 3: don't care
+    // Bit 3: don't care (reserved for ESC shutdown PR)
     // Bit 4: Rain detected
     // Bit 5: Sound available
     // Bit 6: Sound busy
@@ -74,6 +74,7 @@ struct ll_status {
     // Bit 2: Emergency/Hall 4 (Stop2) active
     // Bit 3: Emergency/Hall 1 (Lift1) active
     // Bit 4: Emergency/Hall 2 (Lift2) active
+    // Bit 5: Not an emergency but probably usable for pause via SA Handle?
     uint8_t emergency_bitmask;
     // Charge voltage
     float v_charge;
@@ -135,12 +136,22 @@ struct ll_ui_event {
 } __attribute__((packed));
 #pragma pack(pop)
 
-#define LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION 1           // Max. comms packet version supported by this open_mower LL FW
+#define LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION 2           // Max. comms packet version supported by this open_mower LL FW
 #define LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V 1 << 0            // Enable full sound via mower_config env var "OM_DFP_IS_5V"
 #define LL_HIGH_LEVEL_CONFIG_BIT_EMERGENCY_INVERSE 1 << 1  // Sample, for possible future usage, i.e. for SA-Type emergency
 
 typedef char iso639_1[2]; // Two char ISO 639-1 language code
 
+// FIXME: Better name than HallMode?
+enum class HallMode {
+    off = 0,
+    lift,
+    tilt,
+    stop,
+    pause
+};
+
+// Bi-directional LL/HL config packet
 #pragma pack(push, 1)
 struct ll_high_level_config {
     uint8_t type;
@@ -150,6 +161,22 @@ struct ll_high_level_config {
     iso639_1 language;                                               // ISO 639-1 (2-char) language code (en, de, ...)
     uint16_t spare1 = 0;                                             // Spare for future use
     uint16_t spare2 = 0;                                             // Spare for future use
+    uint16_t crc;
+} __attribute__((packed));
+#pragma pack(pop)
+
+// Uni-directional HL->LL config packet extension v2, active since ll_high_level_config.comms_version >= 2
+// (this might change to an Bi-directional packet if HL needs feedback for one of these fields)
+#pragma pack(push, 1)
+struct ll_high_level_config_ext_v2 {
+    float v_charge_max;       // Max. charging voltage before charging get switched off
+    float i_charge_max;       // Max. charging current before charging get switched off
+    float v_battery_max;      // Max. battery voltage before charging get switched off
+    uint32_t halls_config;    // HallMode per [0:2] OM-Hall-1 ... [9:11] OM-Hall-4, [12:14] Stock-CoverUI-1 ... [27:29] Stock-CoverUI-6 (0xFFFFFF do not change)
+    uint16_t halls_inverted;  // 0 = Active high, 1 = Active low (inverted). [0] OM-Hall-1 ... [9] Stock-CoverUI-6. ATTENTION: Opposite than current logic (0xFFFF do not change)
+    uint16_t lift_period;     // Period (ms) for both wheels to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground
+    uint16_t tilt_period;     // Period (ms) for a single wheel to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground
+    uint32_t spare1;          // Spare for future use
     uint16_t crc;
 } __attribute__((packed));
 #pragma pack(pop)

@@ -22,6 +22,7 @@
 #include "pins.h"
 #include "ui_board.h"
 #include "imu.h"
+#include "nv_config.h"
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -61,6 +62,11 @@ SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 #define VIN_R2 1000.0f
 #define R_SHUNT 0.003f
 #define CURRENT_SENSE_GAIN 100.0f
+
+#define V_CHARGE_MAX 30.0f      // Default YF-C500 max. charge voltage
+#define I_CHARGE_MAX 1.5f       // Default YF-C500 max. charge current
+#define V_CHARGE_ABS_MAX 40.0f  // Absolute max. limited by D2/D3 Schottky
+#define I_CHARGE_ABS_MAX 5.0f   // Absolute max. limited by D2/D3 Schottky
 
 #define BATT_ABS_MAX 28.7f
 #define BATT_ABS_Min 21.7f
@@ -122,6 +128,18 @@ float imu_temp[9];
 uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
+
+// Some default thresholds (might be overwritten by HL config packet)
+struct ll_high_level_config_ext_v2 config_v2 = {
+    .v_charge_max = V_CHARGE_MAX,  // Max. charging voltage before charging get switched off
+    .i_charge_max = I_CHARGE_MAX,  // Max. charging current before charging get switched off
+    .v_battery_max = 29.0f,        // Max. battery voltage before charging get switched off
+    .halls_config = 0,             // TODO: Add OM-YF-C500 defaults
+    .halls_inverted = 0,           // TODO: Add OM-YF-C500 defaults
+    .lift_period = LIFT_EMERGENCY_MILLIS,
+    .tilt_period = TILT_EMERGENCY_MILLIS};
+
+nv_config::Config *nv_cfg;  // Non-volatile configuration
 
 // Some vars related to PACKET_ID_LL_HIGH_LEVEL_CONFIG_*
 uint8_t comms_version = 0;  // comms packet version (>0 if implemented)
@@ -590,17 +608,40 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_STATE && size == sizeof(struct ll_high_level_state)) {
         // copy the state
         last_high_level_state = *((struct ll_high_level_state *) buffer);
-    }
-    else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) && size == sizeof(struct ll_high_level_config))
-    {
+    } else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) &&
+               (size == sizeof(struct ll_high_level_config) || size == sizeof(struct ll_high_level_config) + sizeof(struct ll_high_level_config_ext_v2))) {
         // Read and handle received config
         struct ll_high_level_config *pkt = (struct ll_high_level_config *)buffer;
-        if (pkt->comms_version <= LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION)
-            comms_version = pkt->comms_version;
-        else
-            comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;
-        config_bitmask = pkt->config_bitmask; // Take over as sent. HL is leading (for now)
-        // FIXME: Assign volume & language if not already stored in flash-config
+        // Lower comms_version is leading
+        pkt->comms_version <= LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION ? comms_version = pkt->comms_version : comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;
+        config_bitmask = pkt->config_bitmask;  // Take over as sent. HL is leading (for now)
+
+        // PR-80: Assign volume & language if not already stored in flash-config
+
+        // Handle possible ll_high_level_config_ext_v2 extension
+        if (comms_version >= 2) {
+            // Read and handle extension v2
+            struct ll_high_level_config_ext_v2 *pkt = (struct ll_high_level_config_ext_v2 *)buffer + sizeof(struct ll_high_level_config);
+
+            // Fix exceed of absolute max. values
+            pkt->v_charge_max = min(pkt->v_charge_max, V_CHARGE_ABS_MAX);
+            pkt->i_charge_max = min(pkt->i_charge_max, I_CHARGE_ABS_MAX);
+
+            // Copy extension packet to config_v2
+            config_v2 = *((struct ll_high_level_config_ext_v2 *)buffer + sizeof(struct ll_high_level_config));
+
+            // TODO: Parse hall config fields and build a compact iterable vector/array/... of active hall inputs or do it directly in updateEmergency()
+
+            // TODO: Decide which fields should get stored in nv_config (flash) so that it's directly avail after power-up (without the need of ros_running)
+            // My current thoughts are:
+            //   v_charge_max for those who need a much lower or higher charging voltage, so that battery doesn't get empty or overload if ROS is offline for a longer period (or silently crashed)
+            //   i_charge is similar. If one has a higher current DCDC and dock his empty mower, it should charge, even if ROS is down
+            //   v_battery_max for sure (overcharge protection)
+            //
+            // but NOT:
+            //   halls_config/inverted? Think we should always start with default OM halls config but if comms_version >= 2, wait till v2 packet extension got received.
+            //   tilt/lift periods
+        }
 
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
             sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);
@@ -609,7 +650,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
 
 // returns true, if it's a good idea to charge the battery (current, voltages, ...)
 bool checkShouldCharge() {
-    return status_message.v_charge < 30.0 && status_message.charging_current < 1.5 && status_message.v_battery < 29.0;
+    return status_message.v_charge < config_v2.v_charge_max && status_message.charging_current < config_v2.i_charge_max && status_message.v_battery < config_v2.v_battery_max;
 }
 
 void updateChargingEnabled() {
