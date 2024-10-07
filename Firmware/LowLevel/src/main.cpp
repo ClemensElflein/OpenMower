@@ -22,6 +22,7 @@
 #include "pins.h"
 #include "ui_board.h"
 #include "imu.h"
+#include "debug.h"
 #include "nv_config.h"
 
 #ifdef ENABLE_SOUND_MODULE
