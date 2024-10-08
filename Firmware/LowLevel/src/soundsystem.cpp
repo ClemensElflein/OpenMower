@@ -46,6 +46,7 @@
  */
 
 #include <Arduino.h>
+#include <etl/queue.h>
 #include "debug.h"
 #include <DFMiniMp3.h>
 #include "pins.h"
@@ -68,7 +69,7 @@ namespace soundSystem
         SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX, 250);
         DfMp3 myMP3(soundSerial);
 
-        std::list<TrackDef> active_sounds_;
+        etl::queue<TrackDef, SOUND_QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> active_sounds_;
         bool sound_available_ = false;    // Sound module available as well as SD-Card with some kind of files
         bool dfp_is_5v = false;           // Enable full sound if DFP is set to 5V Vcc
         uint8_t volume = VOLUME_DEFAULT;  // Last set volume (%)
@@ -233,7 +234,7 @@ namespace soundSystem
         return volume;
     }
 
-    void playSoundAdHoc(const TrackDef t_track_def)
+    void playSoundAdHoc(const TrackDef &t_track_def)
     {
         DEBUG_PRINTF("playSoundAdHoc(num %d, type %d, flags " PRINTF_BINARY_PATTERN_INT8 ")\n", t_track_def.num, t_track_def.type, PRINTF_BYTE_TO_BINARY_INT8(t_track_def.flags));
 
@@ -285,14 +286,14 @@ namespace soundSystem
         }
     }
 
-    void playSound(const TrackDef t_track_def)
+    void playSound(const TrackDef &t_track_def)
     {
         DEBUG_PRINTF("playSound(num %d, type %d, flags " PRINTF_BINARY_PATTERN_INT8 ")\n", t_track_def.num, t_track_def.type, PRINTF_BYTE_TO_BINARY_INT8(t_track_def.flags));
 
-        if (!sound_available_ || (active_sounds_.size() == BUFFERSIZE))
+        if (!sound_available_ || active_sounds_.full())
             return;
 
-        active_sounds_.push_front(t_track_def);
+        active_sounds_.push(t_track_def);
     }
 
     /**
@@ -410,12 +411,10 @@ namespace soundSystem
 
         if (dfp_is_5v) { // Full sound support if DFP is set to 5V Vcc
             // Docked ?
-            if (t_ll_state.v_charge > 20.0f) {
-                if (last_ll_state.v_charge < 10.0f) {
-                    myMP3.stop();
-                    background_track_def_ = {0};
-                    active_sounds_.clear();
-                }
+            if (t_ll_state.v_charge > 20.0f && last_ll_state.v_charge < 10.0f) {
+                myMP3.stop();
+                background_track_def_ = {0};
+                active_sounds_.clear();
             }
             last_ll_state.v_charge = t_ll_state.v_charge;
 
@@ -502,8 +501,7 @@ namespace soundSystem
         }  // dfp_is_5v
 
         // Process sound queue
-        int n = active_sounds_.size();
-        if (n == 0)
+        if (active_sounds_.empty())
             return;
 
         DfMp3_Status status = myMP3.getStatus();
@@ -519,10 +517,10 @@ namespace soundSystem
             return;
 
         // Play next in queue
-        TrackDef track_def = active_sounds_.back();
+        auto track_def = active_sounds_.front();
         DEBUG_PRINTF("Next (num %d, type %d, flags " PRINTF_BINARY_PATTERN_INT8 ")\n", track_def.num, track_def.type, PRINTF_BYTE_TO_BINARY_INT8(track_def.flags));
         playSoundAdHoc(track_def);
-        active_sounds_.pop_back();
+        active_sounds_.pop();
     }
 
     namespace // anonymous (private) namespace

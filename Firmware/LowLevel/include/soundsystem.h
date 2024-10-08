@@ -33,7 +33,7 @@
 #define DEBUG_PREFIX "[DFP] "
 #endif
 
-#define BUFFERSIZE 100
+#define SOUND_QUEUE_SIZE 10
 #define PROCESS_CYCLETIME 500
 
 #define GPS_SOUND_CYCLETIME 3000
@@ -125,9 +125,8 @@ namespace soundSystem {
 
     bool begin(); // Init serial stream, soundmodule and sound_available_
 
-    void playSound(const TrackDef t_track_def);       // Play sound trackDef. This method writes sound trackDef in a list, the method processSounds() (has to run in loop)
-                                                      // will play the sounds according to the list
-    void playSoundAdHoc(const TrackDef t_track_def);  // Play sound track number immediately without waiting until the end of sound
+    void playSound(const TrackDef&);       // Play sound trackDef. This method writes sound trackDef in a list, the method processSounds() (has to run in loop) will play the sounds according to the list
+    void playSoundAdHoc(const TrackDef&);  // Play sound track number immediately without waiting until the end of sound
 
     void setDFPis5V(const bool t_dfpis5v);  // Set if DFP is set to 5V Vcc
 
