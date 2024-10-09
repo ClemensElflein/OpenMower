@@ -19,6 +19,7 @@
 #define _DATATYPES_H
 
 #include <stdint.h>
+#include "config.h"
 
 #define PACKET_ID_LL_STATUS 1
 #define PACKET_ID_LL_IMU 2
@@ -136,48 +137,52 @@ struct ll_ui_event {
 } __attribute__((packed));
 #pragma pack(pop)
 
-#define LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION 2           // Max. comms packet version supported by this open_mower LL FW
 #define LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V 1 << 0            // Enable full sound via mower_config env var "OM_DFP_IS_5V"
-#define LL_HIGH_LEVEL_CONFIG_BIT_EMERGENCY_INVERSE 1 << 1  // Sample, for possible future usage, i.e. for SA-Type emergency
+#define LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS 1 << 1  // Enable background sounds
 
 typedef char iso639_1[2]; // Two char ISO 639-1 language code
 
-// FIXME: Better name than HallMode?
-enum class HallMode {
+enum class HallMode : unsigned int {
     off = 0,
-    lift,
-    tilt,
+    emergency,  // lift & tilt
     stop,
     pause
 };
 
-// Bi-directional LL/HL config packet
+// FIXME: Decide later which is more comfortable activeLow = 0 | 1
+enum class HallLevel : unsigned int {
+    activeLow = 0,  // If Hall-Sensor (or button) is active/triggered we've this level on our GPIO
+    activeHigh
+};
+
+struct HallConfig {
+    HallMode mode : 4 {0};
+    HallLevel level : 1 {0};
+};
+
+#define MAX_HALL_INPUTS 14  // How much Hall-inputs we support. 4 * OM + 6 * Stock-CoverUI + 4 spare
+
+// LL/HL config packet, bi-directional, flexible-length, with defaults for YF-C500
 #pragma pack(push, 1)
 struct ll_high_level_config {
     uint8_t type;
-    uint8_t comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;  // Increasing comms packet-version number for packet compatibility (n > 0)
-    uint8_t config_bitmask = 0;                                      // See LL_HIGH_LEVEL_CONFIG_BIT_*
-    int8_t volume;                                                   // Volume (0-100%) feedback (if directly changed via CoverUI)
-    iso639_1 language;                                               // ISO 639-1 (2-char) language code (en, de, ...)
-    uint16_t spare1 = 0;                                             // Spare for future use
-    uint16_t spare2 = 0;                                             // Spare for future use
     uint16_t crc;
-} __attribute__((packed));
-#pragma pack(pop)
-
-// Uni-directional HL->LL config packet extension v2, active since ll_high_level_config.comms_version >= 2
-// (this might change to an Bi-directional packet if HL needs feedback for one of these fields)
-#pragma pack(push, 1)
-struct ll_high_level_config_ext_v2 {
-    float v_charge_max;       // Max. charging voltage before charging get switched off
-    float i_charge_max;       // Max. charging current before charging get switched off
-    float v_battery_max;      // Max. battery voltage before charging get switched off
-    uint32_t halls_config;    // HallMode per [0:2] OM-Hall-1 ... [9:11] OM-Hall-4, [12:14] Stock-CoverUI-1 ... [27:29] Stock-CoverUI-6 (0xFFFFFF do not change)
-    uint16_t halls_inverted;  // 0 = Active high, 1 = Active low (inverted). [0] OM-Hall-1 ... [9] Stock-CoverUI-6. ATTENTION: Opposite than current logic (0xFFFF do not change)
-    uint16_t lift_period;     // Period (ms) for both wheels to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground
-    uint16_t tilt_period;     // Period (ms) for a single wheel to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground
-    uint32_t spare1;          // Spare for future use
-    uint16_t crc;
+    uint8_t config_bitmask = 0;                    // See LL_HIGH_LEVEL_CONFIG_BIT_*
+    int8_t volume = 80;                            // Volume (0-100%) feedback (if directly changed via CoverUI)
+    iso639_1 language = {'e', 'n'};                // ISO 639-1 (2-char) language code (en, de, ...)
+    float v_charge_max = V_CHARGE_MAX;             // Max. charging voltage before charging get switched off
+    float i_charge_max = I_CHARGE_MAX;             // Max. charging current before charging get switched off
+    float v_battery_max = 29.0f;                   // Max. battery voltage before charging get switched off
+    uint16_t lift_period = LIFT_EMERGENCY_MILLIS;  // Period (ms) for both wheels to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground
+    uint16_t tilt_period = TILT_EMERGENCY_MILLIS;  // Period (ms) for a single wheel to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground
+    HallConfig hall_configs[MAX_HALL_INPUTS] = {
+        {HallMode::emergency, HallLevel::activeLow},  // [0] OM Hall-1 input
+        {HallMode::emergency, HallLevel::activeLow},  // [1] OM Hall-2 input
+        {HallMode::stop, HallLevel::activeLow},       // [2] OM Hall-3 input
+        {HallMode::stop, HallLevel::activeLow},       // [3] OM Hall-4 input
+        // [4] Stock-CoverUI-1 ... [9] Stock-CoverUI-6 defaults to off
+    };
+    // INFO: Before adding a new member: Do we need to add some hall_config spares?
 } __attribute__((packed));
 #pragma pack(pop)
 

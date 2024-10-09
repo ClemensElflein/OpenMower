@@ -19,6 +19,7 @@
 #include <FastCRC.h>
 #include <PacketSerial.h>
 #include "datatypes.h"
+#include "config.h"
 #include "pins.h"
 #include "ui_board.h"
 #include "imu.h"
@@ -34,8 +35,6 @@
 #define UI_GET_VERSION_CYCLETIME 5000 // cycletime for UI Get_Version request (UI available check)
 #define UI_GET_VERSION_TIMEOUT 100    // timeout for UI Get_Version response (UI available check)
 
-#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
-#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button.
 
 // Define to stream debugging messages via USB
@@ -63,11 +62,6 @@ SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 #define VIN_R2 1000.0f
 #define R_SHUNT 0.003f
 #define CURRENT_SENSE_GAIN 100.0f
-
-#define V_CHARGE_MAX 30.0f      // Default YF-C500 max. charge voltage
-#define I_CHARGE_MAX 1.5f       // Default YF-C500 max. charge current
-#define V_CHARGE_ABS_MAX 40.0f  // Absolute max. limited by D2/D3 Schottky
-#define I_CHARGE_ABS_MAX 5.0f   // Absolute max. limited by D2/D3 Schottky
 
 #define BATT_ABS_MAX 28.7f
 #define BATT_ABS_Min 21.7f
@@ -130,17 +124,8 @@ uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
-// Some default thresholds (might be overwritten by HL config packet)
-struct ll_high_level_config_ext_v2 config_v2 = {
-    .v_charge_max = V_CHARGE_MAX,  // Max. charging voltage before charging get switched off
-    .i_charge_max = I_CHARGE_MAX,  // Max. charging current before charging get switched off
-    .v_battery_max = 29.0f,        // Max. battery voltage before charging get switched off
-    .halls_config = 0,             // TODO: Add OM-YF-C500 defaults
-    .halls_inverted = 0,           // TODO: Add OM-YF-C500 defaults
-    .lift_period = LIFT_EMERGENCY_MILLIS,
-    .tilt_period = TILT_EMERGENCY_MILLIS};
-
-nv_config::Config *nv_cfg;  // Non-volatile configuration
+struct ll_high_level_config llhl_config;  // LL/HL configuration (get initialized with YF-C500 defaults)
+nv_config::Config *nv_cfg;                // Non-volatile configuration
 
 // Some vars related to PACKET_ID_LL_HIGH_LEVEL_CONFIG_*
 uint8_t comms_version = 0;  // comms packet version (>0 if implemented)
@@ -581,11 +566,37 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
         return;
 
     // check the CRC
-    uint16_t crc = CRC16.ccitt(buffer, size - 2);
+    uint16_t crc;
 
-    if (buffer[size - 1] != ((crc >> 8) & 0xFF) ||
-        buffer[size - 2] != (crc & 0xFF))
-        return;
+    // @ClemensElflein: Here is why I decided against having CRC at first packet member:
+    //   We need to select between the two CRC positions. But if CRC would be on first place, type would go somewhere behind it.
+    //   But then type for this packet would be on a position where the other packets place their data(or CRC). This would
+    //   quickly result in wrong packet-type identifications.
+    //   Could also be solved, but would complicate code and double CRC calculations for the packets which got identified wrong.
+    //   The alternative I do see could be a cascaded CRC calculation:
+    //      Nearly 99.99% of all packets have their packet at the end, so we always could try that first, but when it fails,
+    //      we could fall back and try with CRC on first position to see if it's this one-time packet.
+    //      But I would prefer this more strict and defined way.
+
+    // We have two CRC position variants
+    if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) {
+        // Flexible length packet, where the CRC follows the type and type is NOT part of the CRC.
+
+        // Comment: This is just as safe as including the type into the CRC because: If type would be accidentally wrong,
+        // then it also wouldn't validate in the "else" CRC calculation where type is included
+        crc = CRC16.ccitt(buffer + 3, size - 3);
+
+        if (buffer[1] != ((crc >> 8) & 0xFF) ||
+            buffer[2] != (crc & 0xFF))
+            return;
+    } else {
+        // Normal, fixed length packet, where the CRC is the last member
+        crc = CRC16.ccitt(buffer, size - 2);
+
+        if (buffer[size - 1] != ((crc >> 8) & 0xFF) ||
+            buffer[size - 2] != (crc & 0xFF))
+            return;
+    }
 
     if (buffer[0] == PACKET_ID_LL_HEARTBEAT && size == sizeof(struct ll_heartbeat)) {
 
