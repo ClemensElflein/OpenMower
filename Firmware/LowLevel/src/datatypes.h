@@ -142,31 +142,34 @@ struct ll_ui_event {
 
 typedef char iso639_1[2]; // Two char ISO 639-1 language code
 
-enum class HallMode : unsigned int {
+enum class HallMode : uint8_t {
     off = 0,
     emergency,  // lift & tilt
     stop,
     pause
 };
 
-// FIXME: Decide later which is more comfortable activeLow = 0 | 1
-enum class HallLevel : unsigned int {
+// FIXME: Decide later which is more comfortable, activeLow = 0 | 1
+enum class HallLevel : uint8_t {
     activeLow = 0,  // If Hall-Sensor (or button) is active/triggered we've this level on our GPIO
     activeHigh
 };
 
+#pragma pack(push, 1)
 struct HallConfig {
-    HallMode mode : 4 {0};
-    HallLevel level : 1 {0};
-};
+    HallMode mode : 4;
+    HallLevel level : 1;
+} __attribute__((packed));
+#pragma pack(pop)
 
-#define MAX_HALL_INPUTS 14  // How much Hall-inputs we support. 4 * OM + 6 * Stock-CoverUI + 4 spare
+#define MAX_HALL_INPUTS 10  // How much Hall-inputs we support. 4 * OM + 6 * Stock-CoverUI + 0 spare (because not yet required to make it fixed)
 
-// LL/HL config packet, bi-directional, flexible-length, with defaults for YF-C500
+// LL/HL config packet, encapsulated in wire_msg for transfer, bi-directional, flexible-length, with defaults for YF-C500.
 #pragma pack(push, 1)
 struct ll_high_level_config {
-    uint8_t type;
-    uint16_t crc;
+    // ATTENTION: This is a flexible length struct. It is allowed to grow independently to HL without loosing compatibility,
+    //    but never change or restructure already published member, except you really know their consequences.
+    uint8_t comms_version = 1;                     // Transitional comms_version, can safely renamed as spare for other use in, let's say 2025 ;-)
     uint8_t config_bitmask = 0;                    // See LL_HIGH_LEVEL_CONFIG_BIT_*
     int8_t volume = 80;                            // Volume (0-100%) feedback (if directly changed via CoverUI)
     iso639_1 language = {'e', 'n'};                // ISO 639-1 (2-char) language code (en, de, ...)
@@ -182,7 +185,7 @@ struct ll_high_level_config {
         {HallMode::stop, HallLevel::activeLow},       // [3] OM Hall-4 input
         // [4] Stock-CoverUI-1 ... [9] Stock-CoverUI-6 defaults to off
     };
-    // INFO: Before adding a new member: Do we need to add some hall_config spares?
+    // INFO: Before adding a new member here: Decide if and how much hall_configs spares do we like to have
 } __attribute__((packed));
 #pragma pack(pop)
 
