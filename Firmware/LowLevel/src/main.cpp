@@ -19,9 +19,12 @@
 #include <FastCRC.h>
 #include <PacketSerial.h>
 #include "datatypes.h"
+#include "config.h"
 #include "pins.h"
 #include "ui_board.h"
 #include "imu.h"
+#include "debug.h"
+#include "nv_config.h"
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -32,8 +35,6 @@
 #define UI_GET_VERSION_CYCLETIME 5000 // cycletime for UI Get_Version request (UI available check)
 #define UI_GET_VERSION_TIMEOUT 100    // timeout for UI Get_Version response (UI available check)
 
-#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
-#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button.
 
 // Define to stream debugging messages via USB
@@ -123,9 +124,8 @@ uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
-// Some vars related to PACKET_ID_LL_HIGH_LEVEL_CONFIG_*
-uint8_t comms_version = 0;  // comms packet version (>0 if implemented)
-uint8_t config_bitmask = 0; // See LL_HIGH_LEVEL_CONFIG_BIT_*
+struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
+nv_config::Config *nv_cfg;                // Non-volatile configuration
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -548,12 +548,14 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
 }
 
 void sendConfigMessage(uint8_t pkt_type) {
-    struct ll_high_level_config ll_config;
-    ll_config.type = pkt_type;
-    ll_config.config_bitmask = config_bitmask;
-    ll_config.volume = 80;            // FIXME: Adapt once nv_config or improve-sound got merged
-    strncpy(ll_config.language, "en", 2); // FIXME: Adapt once nv_config or improve-sound got merged
-    sendMessage(&ll_config, sizeof(struct ll_high_level_config));
+    size_t msg_size = sizeof(struct ll_high_level_config) + 3;  // + 1 type + 2 crc
+    uint8_t *msg = (uint8_t *)malloc(msg_size);
+    if (msg == NULL)
+        return;  // malloc() failed
+    *msg = pkt_type;
+    memcpy(msg + 1, &llhl_config, sizeof(struct ll_high_level_config));  // Copy our live config into the message, behind type
+    sendMessage(msg, msg_size);
+    free(msg);
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {
@@ -590,17 +592,27 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_STATE && size == sizeof(struct ll_high_level_state)) {
         // copy the state
         last_high_level_state = *((struct ll_high_level_state *) buffer);
-    }
-    else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) && size == sizeof(struct ll_high_level_config))
-    {
-        // Read and handle received config
-        struct ll_high_level_config *pkt = (struct ll_high_level_config *)buffer;
-        if (pkt->comms_version <= LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION)
-            comms_version = pkt->comms_version;
-        else
-            comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;
-        config_bitmask = pkt->config_bitmask; // Take over as sent. HL is leading (for now)
-        // FIXME: Assign volume & language if not already stored in flash-config
+    } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) {
+        // This is a flexible length package where the size may vary when ll_high_level_config struct got enhanced only on one side.
+        // If payload size is larger than our struct size, ensure that we only copy those we know of = our struct size.
+        // If payload size is smaller than our struct size, copy only the payload we got, but ensure that the unsent member(s) have reasonable defaults.
+        size_t payload_size = min(sizeof(ll_high_level_config), size - 3);  // -1 type -2 crc
+
+        // Use a temporary config for easier sanity adaption and copy our live config, which has at least reasonable defaults.
+        // The live config copy ensures that we've reasonable values for the case that HL config struct is older than ours.
+        ll_high_level_config tmp_config = llhl_config;
+
+        // Copy payload to temporary config (behind type)
+        memcpy(&tmp_config, buffer + 1, payload_size);
+
+        // Sanity
+        tmp_config.v_charge_max = min(tmp_config.v_charge_max, V_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
+        tmp_config.i_charge_max = min(tmp_config.i_charge_max, I_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
+
+        // Make config live
+        llhl_config = tmp_config;
+
+        // PR-80: Assign volume & language if not already stored in flash-config
 
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
             sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);
@@ -609,7 +621,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
 
 // returns true, if it's a good idea to charge the battery (current, voltages, ...)
 bool checkShouldCharge() {
-    return status_message.v_charge < 30.0 && status_message.charging_current < 1.5 && status_message.v_battery < 29.0;
+    return status_message.v_charge < llhl_config.v_charge_max && status_message.charging_current < llhl_config.i_charge_max && status_message.v_battery < llhl_config.v_battery_max;
 }
 
 void updateChargingEnabled() {
