@@ -178,7 +178,7 @@ struct ll_ui_event {
 
 #define LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION 1           // Max. comms packet version supported by this open_mower LL FW
 #define LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V 1 << 0            // Enable full sound via mower_config env var "OM_DFP_IS_5V"
-#define LL_HIGH_LEVEL_CONFIG_BIT_EMERGENCY_INVERSE 1 << 1  // Sample, for possible future usage, i.e. for SA-Type emergency
+#define LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS 1 << 1  // Enable background sounds
 
 typedef char iso639_1[2]; // Two char ISO 639-1 language code
 

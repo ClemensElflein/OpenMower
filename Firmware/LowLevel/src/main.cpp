@@ -114,7 +114,7 @@ uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (
 nv_config::Config *nv_cfg; // Non-volatile configuration
 
 // Some vars related to PACKET_ID_LL_HIGH_LEVEL_CONFIG_*
-uint8_t comms_version = 0;  // comms packet version (>0 if implemented)
+uint8_t config_comms_version = 0;  // comms packet version (>0 if implemented)
 uint8_t config_bitmask = 0; // See LL_HIGH_LEVEL_CONFIG_BIT_*
 
 void sendMessage(void *message, size_t size);
@@ -566,8 +566,8 @@ void sendConfigMessage(uint8_t pkt_type) {
     struct ll_high_level_config ll_config;
     ll_config.type = pkt_type;
     ll_config.config_bitmask = config_bitmask;
-    ll_config.volume = 80;            // FIXME: Adapt once nv_config or improve-sound got merged
-    strncpy(ll_config.language, "en", 2); // FIXME: Adapt once nv_config or improve-sound got merged
+    ll_config.volume = nv_cfg->volume;
+    strncpy(ll_config.language, nv_cfg->language, 2);
     sendMessage(&ll_config, sizeof(struct ll_high_level_config));
 }
 
@@ -608,18 +608,15 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
     } else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) && size == sizeof(struct ll_high_level_config)) {
         // Read and handle received config
         struct ll_high_level_config *pkt = (struct ll_high_level_config *)buffer;
-        // Apply comms_version
-        if (pkt->comms_version <= LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION)
-            comms_version = pkt->comms_version;
-        else
-            comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;
 
-        config_bitmask = pkt->config_bitmask;  // Take over as sent. HL is leading (for now)
+        config_comms_version = min(pkt->comms_version, LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION);  // The lower comms_version is leading
+        config_bitmask = pkt->config_bitmask;                                                    // Take over as sent. HL is leading (for now)
 
         // nv_config.Config specific members ...
         // config_bitmask. Do NOT mistake with global config_bitmask (ll_high_level_config.config_bitmask). Similar, but not mandatory the same in future,
-        // to ensure that a possible instable/flipping future global config_bitmask doesn't wear level our flash, we only add those which are known to be stable.
-        (config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V) ? nv_cfg->config_bitmask |= NV_CONFIG_BIT_DFPIS5V : nv_cfg->config_bitmask &= ~NV_CONFIG_BIT_DFPIS5V;
+        // to ensure that a possible instable/flipping future global config_bitmask bit doesn't wear level our flash, we only add those which are known to be stable
+        // and useful to store.
+        nv_cfg->config_bitmask = config_bitmask & (LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V | LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS);
 #ifdef ENABLE_SOUND_MODULE
         soundSystem::setDFPis5V(nv_cfg->config_bitmask & NV_CONFIG_BIT_DFPIS5V);
 #endif
@@ -628,6 +625,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
             nv_cfg->volume = pkt->volume;
 #ifdef ENABLE_SOUND_MODULE
             soundSystem::setVolume(nv_cfg->volume);
+            // TODO: Set sound background option
 #endif
         }
 
