@@ -24,7 +24,7 @@
 #include "ui_board.h"
 #include "imu.h"
 #include "debug.h"
-#include "nv_config.h"
+#include <LittleFS.h>
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -119,13 +119,15 @@ uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LE
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
 struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
-nv_config::Config *nv_cfg;                // Non-volatile configuration
+const String CONFIG_FILENAME = "/openmower.cfg";
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
 void onUIPacketReceived(const uint8_t *buffer, size_t size);
 void manageUISubscriptions();
+void saveConfigToFlash();
+void readConfigFromFlash();
 
 void setRaspiPower(bool power) {
     // Update status bits in the status message
@@ -418,6 +420,10 @@ void setup() {
     UISerial.setStream(&UI1_SERIAL);
     UISerial.setPacketHandler(&onUIPacketReceived);
 
+    // Initialize flash and try to read config
+    LittleFS.begin();
+    readConfigFromFlash();
+
     /*
      * IMU INITIALIZATION
      */
@@ -612,6 +618,9 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) {
         applyConfig(buffer + 1, size - 1); // Skip type
 
+        // Store in flash
+        saveConfigToFlash();
+
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
             sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);
     }
@@ -799,4 +808,41 @@ void sendUIMessage(void *message, size_t size) {
     data_pointer[size - 2] = crc & 0xFF;
 
     UISerial.send((uint8_t *) message, size);
+}
+
+void saveConfigToFlash() {
+    uint16_t crc = CRC16.ccitt((const uint8_t*) &llhl_config, sizeof(llhl_config));
+    // TODO: Return early if CRC is unchanged to avoid flash wear.
+
+    File f = LittleFS.open(CONFIG_FILENAME, "w");
+    f.write((const uint8_t*) &llhl_config, sizeof(llhl_config));
+    f.write((const uint8_t*) &crc, 2);
+    f.close();
+}
+
+void readConfigFromFlash() {
+    File f = LittleFS.open(CONFIG_FILENAME, "r");
+    if (!f) return;
+
+    // sanity check for CRC to work (1 data, 2 CRC)
+    const size_t size = f.size();
+    if (size < 3) {
+        f.close();
+        return;
+    }
+
+    // read config
+    uint8_t *buffer = (uint8_t *)malloc(f.size());
+    f.read(buffer, size);
+    f.close();
+
+    // check the CRC
+    uint16_t crc = CRC16.ccitt(buffer, size - 2);
+
+    if (buffer[size - 1] != ((crc >> 8) & 0xFF) ||
+        buffer[size - 2] != (crc & 0xFF))
+        return;
+
+    applyConfig(buffer, size);
+    free(buffer);
 }
