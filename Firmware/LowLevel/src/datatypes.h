@@ -28,10 +28,44 @@
 #define PACKET_ID_LL_HEARTBEAT 0x42
 #define PACKET_ID_LL_HIGH_LEVEL_STATE 0x43
 
-enum HighLevelMode {
-    MODE_IDLE = 1, // ROS connected, idle mode
-    MODE_AUTONOMOUS = 2, // ROS connected, Autonomous mode, either mowing or docking or undocking
-    MODE_RECORDING = 3 // ROS connected, Manual mode during recording etc
+#define HL_MODE_MASK 0b11111
+#define HL_SUBMODE_SHIFT 6
+#define HL_SUBMODE_MASK 0b11
+/**
+ * @brief Simple class containing only the static methods,
+ *  for more comfortable as well as more speaking HighLevel-Mode and SubMode handling
+ */
+class HighLevelState {
+   public:
+    enum Mode : uint8_t {
+        Idle = 1,        // ROS connected, idle mode
+        Autonomous = 2,  // ROS connected, Autonomous mode, either mowing or docking or undocking
+        Recording = 3,   // ROS connected, Manual mode during recording etc
+    };
+    enum SubModeIdle : uint8_t {
+        IdleIdle_AutonomousMowing = 0,
+    };
+    enum SubModeAutonomous : uint8_t {
+        Mowing = 0,
+        Docking = 1,
+        Undocking = 2,
+    };
+    enum SubModeRecording : uint8_t {
+        Outline = 1,
+        Obstacle = 2,
+    };
+
+    static Mode getMode(uint8_t t_mode) {
+        return Mode(t_mode & HL_MODE_MASK);
+    }
+
+    static uint8_t getSubMode(uint8_t t_mode) {
+        return (t_mode >> HL_SUBMODE_SHIFT) & HL_SUBMODE_MASK;
+    }
+
+    static SubModeAutonomous getAutonomousSubMode(uint8_t t_mode) {
+        return SubModeAutonomous(getSubMode(t_mode));
+    }
 };
 
 #define LL_EMERGENCY_BIT_LATCH 0b00000001
@@ -50,7 +84,14 @@ enum HighLevelMode {
 #define LIFT1_IS_INVERTED 0
 #define LIFT2_IS_INVERTED 0
 
-#define LL_STATUS_BIT_UI_AVAIL 0b10000000
+#define LL_STATUS_BIT_INITIALIZED 0b00000001
+#define LL_STATUS_BIT_RASPI_POWER 0b00000010
+#define LL_STATUS_BIT_CHARGING    0b00000100
+#define LL_STATUS_BIT_FREE        0b00001000
+#define LL_STATUS_BIT_RAIN        0b00010000
+#define LL_STATUS_BIT_SOUND_AVAIL 0b00100000
+#define LL_STATUS_BIT_SOUND_BUSY  0b01000000
+#define LL_STATUS_BIT_UI_AVAIL    0b10000000
 
 #pragma pack(push, 1)
 struct ll_status {
@@ -137,7 +178,7 @@ struct ll_ui_event {
 
 #define LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION 1           // Max. comms packet version supported by this open_mower LL FW
 #define LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V 1 << 0            // Enable full sound via mower_config env var "OM_DFP_IS_5V"
-#define LL_HIGH_LEVEL_CONFIG_BIT_EMERGENCY_INVERSE 1 << 1  // Sample, for possible future usage, i.e. for SA-Type emergency
+#define LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS 1 << 1  // Enable background sounds
 
 typedef char iso639_1[2]; // Two char ISO 639-1 language code
 
