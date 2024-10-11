@@ -113,10 +113,6 @@ uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (
 
 nv_config::Config *nv_cfg; // Non-volatile configuration
 
-// Some vars related to PACKET_ID_LL_HIGH_LEVEL_CONFIG_*
-uint8_t config_comms_version = 0;  // comms packet version (>0 if implemented)
-uint8_t config_bitmask = 0; // See LL_HIGH_LEVEL_CONFIG_BIT_*
-
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
@@ -419,7 +415,8 @@ void setup() {
     sound_available = soundSystem::begin();
     if (sound_available) {
         p.neoPixelSetValue(0, 0, 0, 255, true);
-        soundSystem::setDFPis5V(nv_cfg->config_bitmask & NV_CONFIG_BIT_DFPIS5V);
+        soundSystem::setDFPis5V(nv_cfg->config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V);
+        soundSystem::setEnableBackground(nv_cfg->config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS);
         soundSystem::setLanguage(nv_cfg->language, true);
         soundSystem::setVolume(nv_cfg->volume);
         // Do NOT play any initial sound now, as we've to handle the special case of
@@ -565,7 +562,7 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
 void sendConfigMessage(uint8_t pkt_type) {
     struct ll_high_level_config ll_config;
     ll_config.type = pkt_type;
-    ll_config.config_bitmask = config_bitmask;
+    ll_config.config_bitmask = nv_cfg->config_bitmask;
     ll_config.volume = nv_cfg->volume;
     strncpy(ll_config.language, nv_cfg->language, 2);
     sendMessage(&ll_config, sizeof(struct ll_high_level_config));
@@ -605,27 +602,20 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_STATE && size == sizeof(struct ll_high_level_state)) {
         // copy the state
         last_high_level_state = *((struct ll_high_level_state *)buffer);
-    } else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) && size == sizeof(struct ll_high_level_config)) {
-        // Read and handle received config
+    } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) {
+        // Transitional flexible length preparation (see PR #110)
+        // FIXME: Check Ptr!
         struct ll_high_level_config *pkt = (struct ll_high_level_config *)buffer;
-
-        config_comms_version = min(pkt->comms_version, LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION);  // The lower comms_version is leading
-        config_bitmask = pkt->config_bitmask;                                                    // Take over as sent. HL is leading (for now)
-
-        // nv_config.Config specific members ...
-        // config_bitmask. Do NOT mistake with global config_bitmask (ll_high_level_config.config_bitmask). Similar, but not mandatory the same in future,
-        // to ensure that a possible instable/flipping future global config_bitmask bit doesn't wear level our flash, we only add those which are known to be stable
-        // and useful to store.
-        nv_cfg->config_bitmask = config_bitmask & (LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V | LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS);
+        nv_cfg->config_bitmask = pkt->config_bitmask;
 #ifdef ENABLE_SOUND_MODULE
-        soundSystem::setDFPis5V(nv_cfg->config_bitmask & NV_CONFIG_BIT_DFPIS5V);
+        soundSystem::setDFPis5V(nv_cfg->config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V);
+        soundSystem::setEnableBackground(nv_cfg->config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS);
 #endif
         // Volume
         if (pkt->volume >= 0) {
             nv_cfg->volume = pkt->volume;
 #ifdef ENABLE_SOUND_MODULE
             soundSystem::setVolume(nv_cfg->volume);
-            // TODO: Set sound background option
 #endif
         }
 

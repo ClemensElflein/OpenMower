@@ -72,6 +72,7 @@ namespace soundSystem
         etl::queue<TrackDef, SOUND_QUEUE_SIZE, etl::memory_model::MEMORY_MODEL_SMALL> active_sounds_;
         bool sound_available_ = false;    // Sound module available as well as SD-Card with some kind of files
         bool dfp_is_5v = false;           // Enable full sound if DFP is set to 5V Vcc
+        bool enable_background_ = false;  // Enable background sounds
         uint8_t volume = VOLUME_DEFAULT;  // Last set volume (%)
         std::string language_str = "en";  // Default ISO639-1 language string
         uint8_t play_folder = 1;          // Default play folder, has to be related to language_str
@@ -181,6 +182,10 @@ namespace soundSystem
         dfp_is_5v = t_dfpis5v;
     }
 
+    void setEnableBackground(const bool t_bool) {
+        enable_background_ = t_bool;
+    }
+
     void setLanguage(const iso639_1 language_p, const bool quiet) {  // Set language to the pointing ISO639-1 (2 char) language code and announce if changed && not quiet
         uint8_t last_play_folder = play_folder;
 
@@ -244,6 +249,8 @@ namespace soundSystem
         switch (t_track_def.type)
         {
         case TrackTypes::background:
+            if(!enable_background_)
+                return;
             myMP3.stop();
             delay(50); // (sometimes) required for "MH2024K-24SS"
             myMP3.playMp3FolderTrack(t_track_def.num);

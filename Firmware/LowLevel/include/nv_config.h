@@ -38,9 +38,6 @@
 
 #define NV_CONFIG_MAX_SAVE_INTERVAL 60000UL  // Don't save more often than once a minute
 
-// config_bitmask. Don't mistake with LL_HIGH_LEVEL_CONFIG_BIT. Similar, but not mandatory equal!
-#define NV_CONFIG_BIT_DFPIS5V 1 << 0  // DFP is set to 5V
-
 #define NV_RECORD_ID 0x4F4D4331                   // Record struct identifier "OMC1" for future flexible length Record.config
 #define NV_RECORD_ALIGNMENT (_Alignof(uint32_t))  // Ptr alignment of Record.id for quick in memory access
 
@@ -51,7 +48,6 @@ namespace nv_config {
 // (a new extension-crc isn't valid with a old Record.config. Thus the new extension values may get set i.e. with default values)
 struct Config {
     // Config bitmask:
-    // Bit 0: DFP is 5V (enable full sound). See NV_CONFIG_BIT_DFPIS5V
     uint8_t config_bitmask = 0;       // Don't mistake with LL_HIGH_LEVEL_CONFIG_BIT. Similar, but not mandatory equal!
     uint8_t volume = VOLUME_DEFAULT;  // Sound volume (0-100%)
     iso639_1 language = {'e', 'n'};   // Default to 'en'

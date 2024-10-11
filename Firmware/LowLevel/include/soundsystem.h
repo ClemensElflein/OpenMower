@@ -129,6 +129,7 @@ namespace soundSystem {
     void playSoundAdHoc(const TrackDef&);  // Play sound track number immediately without waiting until the end of sound
 
     void setDFPis5V(const bool t_dfpis5v);  // Set if DFP is set to 5V Vcc
+    void setEnableBackground(const bool);   // Set if background sounds shall get played (true) or not (false)
 
     void setLanguage(const iso639_1 language_p, const bool quiet = false);  // Set language to the pointing ISO639-1 (2 char) language code and announce if changed and not quiet
 
