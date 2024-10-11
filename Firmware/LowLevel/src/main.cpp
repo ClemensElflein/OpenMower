@@ -552,6 +552,29 @@ void sendConfigMessage(uint8_t pkt_type) {
     free(msg);
 }
 
+void applyConfig(const uint8_t *buffer, size_t size) {
+    // This is a flexible length package where the size may vary when ll_high_level_config struct got enhanced only on one side.
+    // If payload size is larger than our struct size, ensure that we only copy those we know of = our struct size.
+    // If payload size is smaller than our struct size, copy only the payload we got, but ensure that the unsent member(s) have reasonable defaults.
+    size_t payload_size = min(sizeof(ll_high_level_config), size - 2);  // exclude crc
+
+    // Use a temporary config for easier sanity adaption and copy our live config, which has at least reasonable defaults.
+    // The live config copy ensures that we've reasonable values for the case that HL config struct is older (smaller) than ours.
+    auto tmp_config = llhl_config;
+
+    // Copy payload to temporary config
+    memcpy(&tmp_config, buffer, payload_size);
+
+    // Sanity
+    tmp_config.v_charge_cutoff = min(tmp_config.v_charge_cutoff, V_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
+    tmp_config.i_charge_cutoff = min(tmp_config.i_charge_cutoff, I_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
+
+    // Make config live
+    llhl_config = tmp_config;
+
+    // PR-80: Assign volume & language if not already stored in flash-config
+}
+
 void onPacketReceived(const uint8_t *buffer, size_t size) {
     // sanity check for CRC to work (1 type, 1 data, 2 CRC)
     if (size < 4)
@@ -587,26 +610,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
         // copy the state
         last_high_level_state = *((struct ll_high_level_state *) buffer);
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) {
-        // This is a flexible length package where the size may vary when ll_high_level_config struct got enhanced only on one side.
-        // If payload size is larger than our struct size, ensure that we only copy those we know of = our struct size.
-        // If payload size is smaller than our struct size, copy only the payload we got, but ensure that the unsent member(s) have reasonable defaults.
-        size_t payload_size = min(sizeof(ll_high_level_config), size - 3);  // -1 type -2 crc
-
-        // Use a temporary config for easier sanity adaption and copy our live config, which has at least reasonable defaults.
-        // The live config copy ensures that we've reasonable values for the case that HL config struct is older (smaller) than ours.
-        auto tmp_config = llhl_config;
-
-        // Copy payload to temporary config (behind type)
-        memcpy(&tmp_config, buffer + 1, payload_size);
-
-        // Sanity
-        tmp_config.v_charge_cutoff = min(tmp_config.v_charge_cutoff, V_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
-        tmp_config.i_charge_cutoff = min(tmp_config.i_charge_cutoff, I_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
-
-        // Make config live
-        llhl_config = tmp_config;
-
-        // PR-80: Assign volume & language if not already stored in flash-config
+        applyConfig(buffer + 1, size - 1); // Skip type
 
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
             sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);
