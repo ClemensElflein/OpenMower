@@ -144,9 +144,9 @@ typedef char iso639_1[2]; // Two char ISO 639-1 language code
 
 enum class HallMode : uint8_t {
     off = 0,
-    emergency,  // lift & tilt
-    stop,
-    pause
+    emergency,  // Triggers emergency with lift & tilt functionality
+    stop,       // Stop mower
+    pause       // Pause the mower (not yet implemented in ROS)
 };
 
 // FIXME: Decide later which is more comfortable, activeLow = 0 | 1
@@ -176,7 +176,7 @@ struct ll_high_level_config {
     uint16_t rain_threshold = 700;                 // If (stock CoverUI) rain value < rain_threshold then it rains. Expected to differ between C500, SA and SC types
     float v_charge_cutoff = V_CHARGE_MAX;          // Protective max. charging voltage before charging get switched off
     float i_charge_cutoff = I_CHARGE_MAX;          // Protective max. charging current before charging get switched off
-    float v_battery_cutoff = 29.0f;                // Protective max. battery voltage before charging get switched off
+    float v_battery_cutoff = V_BATT_CUTOFF;          // Protective max. battery voltage before charging get switched off
     float v_battery_empty = BATT_EMPTY;            // Empty battery voltage used for % calc of capacity
     float v_battery_full = BATT_FULL;              // Full battery voltage used for % calc of capacity
     uint16_t lift_period = LIFT_EMERGENCY_MILLIS;  // Period (ms) for both wheels to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground

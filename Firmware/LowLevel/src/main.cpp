@@ -367,7 +367,7 @@ void setup() {
     rp2040.idleOtherCore();
 
 #ifdef USB_DEBUG
-    DEBUG_SERIAL.begin(9600);
+    DEBUG_BEGIN(9600);
 #endif
 
     emergency_latch = true;
