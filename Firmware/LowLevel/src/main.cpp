@@ -19,7 +19,7 @@
 #include <FastCRC.h>
 #include <PacketSerial.h>
 #include "datatypes.h"
-#include "config.h"
+#include "config_defaults.h"
 #include "pins.h"
 #include "ui_board.h"
 #include "imu.h"
@@ -366,9 +366,7 @@ void setup() {
     //  Therefore, we pause the other core until setup() was a success
     rp2040.idleOtherCore();
 
-#ifdef USB_DEBUG
     DEBUG_BEGIN(9600);
-#endif
 
     emergency_latch = true;
     ROS_running = false;

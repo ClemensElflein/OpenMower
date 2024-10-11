@@ -18,4 +18,9 @@
 #define V_CHARGE_ABS_MAX 40.0f  // Absolute max. limited by D2/D3 Schottky
 #define I_CHARGE_ABS_MAX 5.0f   // Absolute max. limited by D2/D3 Schottky
 
+#define RAIN_THRESHOLD 700U  // (Yet) Stock-CoverUI exclusive raw ADC value. Is the measured value is lower, it rains
+
+#define SOUND_VOLUME 80    // Volume (0-100%)
+#define LANGUAGE 'e', 'n'  // ISO 639-1 (2-char) language code (en, de, ...)
+
 #endif  // _CONFIG_H
