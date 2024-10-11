@@ -120,6 +120,7 @@ uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (
 
 struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
 const String CONFIG_FILENAME = "/openmower.cfg";
+uint16_t config_crc_in_flash = 0;
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -812,7 +813,7 @@ void sendUIMessage(void *message, size_t size) {
 
 void saveConfigToFlash() {
     uint16_t crc = CRC16.ccitt((const uint8_t*) &llhl_config, sizeof(llhl_config));
-    // TODO: Return early if CRC is unchanged to avoid flash wear.
+    if (crc == config_crc_in_flash) return;
 
     File f = LittleFS.open(CONFIG_FILENAME, "w");
     f.write((const uint8_t*) &llhl_config, sizeof(llhl_config));
@@ -843,6 +844,7 @@ void readConfigFromFlash() {
         buffer[size - 2] != (crc & 0xFF))
         return;
 
+    config_crc_in_flash = crc;
     applyConfig(buffer, size);
     free(buffer);
 }
