@@ -63,12 +63,6 @@ SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 #define R_SHUNT 0.003f
 #define CURRENT_SENSE_GAIN 100.0f
 
-#define BATT_ABS_MAX 28.7f
-#define BATT_ABS_Min 21.7f
-
-#define BATT_FULL BATT_ABS_MAX - 0.3f
-#define BATT_EMPTY BATT_ABS_Min + 0.3f
-
 // Emergency will be engaged, if no heartbeat was received in this time frame.
 #define HEARTBEAT_MILLIS 500
 
@@ -599,15 +593,15 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
         size_t payload_size = min(sizeof(ll_high_level_config), size - 3);  // -1 type -2 crc
 
         // Use a temporary config for easier sanity adaption and copy our live config, which has at least reasonable defaults.
-        // The live config copy ensures that we've reasonable values for the case that HL config struct is older than ours.
-        ll_high_level_config tmp_config = llhl_config;
+        // The live config copy ensures that we've reasonable values for the case that HL config struct is older (smaller) than ours.
+        auto tmp_config = llhl_config;
 
         // Copy payload to temporary config (behind type)
         memcpy(&tmp_config, buffer + 1, payload_size);
 
         // Sanity
-        tmp_config.v_charge_max = min(tmp_config.v_charge_max, V_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
-        tmp_config.i_charge_max = min(tmp_config.i_charge_max, I_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
+        tmp_config.v_charge_cutoff = min(tmp_config.v_charge_cutoff, V_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
+        tmp_config.i_charge_cutoff = min(tmp_config.i_charge_cutoff, I_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
 
         // Make config live
         llhl_config = tmp_config;
@@ -621,7 +615,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
 
 // returns true, if it's a good idea to charge the battery (current, voltages, ...)
 bool checkShouldCharge() {
-    return status_message.v_charge < llhl_config.v_charge_max && status_message.charging_current < llhl_config.i_charge_max && status_message.v_battery < llhl_config.v_battery_max;
+    return status_message.v_charge < llhl_config.v_charge_cutoff && status_message.charging_current < llhl_config.i_charge_cutoff && status_message.v_battery < llhl_config.v_battery_cutoff;
 }
 
 void updateChargingEnabled() {

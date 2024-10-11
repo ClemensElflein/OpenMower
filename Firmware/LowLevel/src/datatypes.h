@@ -164,28 +164,35 @@ struct HallConfig {
 
 #define MAX_HALL_INPUTS 10  // How much Hall-inputs we support. 4 * OM + 6 * Stock-CoverUI + 0 spare (because not yet required to make it fixed)
 
-// LL/HL config packet, encapsulated in wire_msg for transfer, bi-directional, flexible-length, with defaults for YF-C500.
+// LL/HL config packet, bi-directional, flexible-length, with defaults for YF-C500.
 #pragma pack(push, 1)
 struct ll_high_level_config {
     // ATTENTION: This is a flexible length struct. It is allowed to grow independently to HL without loosing compatibility,
     //    but never change or restructure already published member, except you really know their consequences.
-    uint8_t comms_version = 1;                     // Transitional comms_version, can safely renamed as spare for other use in, let's say 2025 ;-)
+
+    // uint8_t type; Just for illustration. Get set in wire buffer with type PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ or PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP
+
     uint8_t config_bitmask = 0;                    // See LL_HIGH_LEVEL_CONFIG_BIT_*
-    int8_t volume = 80;                            // Volume (0-100%) feedback (if directly changed via CoverUI)
-    iso639_1 language = {'e', 'n'};                // ISO 639-1 (2-char) language code (en, de, ...)
-    float v_charge_max = V_CHARGE_MAX;             // Max. charging voltage before charging get switched off
-    float i_charge_max = I_CHARGE_MAX;             // Max. charging current before charging get switched off
-    float v_battery_max = 29.0f;                   // Max. battery voltage before charging get switched off
+    uint16_t rain_threshold = 700;                 // If (stock CoverUI) rain value < rain_threshold then it rains. Expected to differ between C500, SA and SC types
+    float v_charge_cutoff = V_CHARGE_MAX;          // Protective max. charging voltage before charging get switched off
+    float i_charge_cutoff = I_CHARGE_MAX;          // Protective max. charging current before charging get switched off
+    float v_battery_cutoff = 29.0f;                // Protective max. battery voltage before charging get switched off
+    float v_battery_empty = BATT_EMPTY;            // Empty battery voltage used for % calc of capacity
+    float v_battery_full = BATT_FULL;              // Full battery voltage used for % calc of capacity
     uint16_t lift_period = LIFT_EMERGENCY_MILLIS;  // Period (ms) for both wheels to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground
     uint16_t tilt_period = TILT_EMERGENCY_MILLIS;  // Period (ms) for a single wheel to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground
+    iso639_1 language = {'e', 'n'};                // ISO 639-1 (2-char) language code (en, de, ...)
+    int8_t volume = 80;                            // Volume (0-100%) feedback (if directly changed i.e. via CoverUI or WebApp)
     HallConfig hall_configs[MAX_HALL_INPUTS] = {
-        {HallMode::emergency, HallLevel::activeLow},  // [0] OM Hall-1 input
-        {HallMode::emergency, HallLevel::activeLow},  // [1] OM Hall-2 input
-        {HallMode::stop, HallLevel::activeLow},       // [2] OM Hall-3 input
-        {HallMode::stop, HallLevel::activeLow},       // [3] OM Hall-4 input
+        {HallMode::emergency, HallLevel::activeLow},  // [0] OM Hall-1 input (Lift1)
+        {HallMode::emergency, HallLevel::activeLow},  // [1] OM Hall-2 input (Lift2)
+        {HallMode::stop, HallLevel::activeLow},       // [2] OM Hall-3 input (Stop1)
+        {HallMode::stop, HallLevel::activeLow},       // [3] OM Hall-4 input (Stop2)
         // [4] Stock-CoverUI-1 ... [9] Stock-CoverUI-6 defaults to off
     };
     // INFO: Before adding a new member here: Decide if and how much hall_configs spares do we like to have
+
+    // uint16_t crc;  Just for illustration, that it get appended, but only within the wire buffer
 } __attribute__((packed));
 #pragma pack(pop)
 

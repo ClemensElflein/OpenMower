@@ -1,6 +1,12 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
+#define BATT_ABS_MAX 28.7f
+#define BATT_ABS_Min 21.7f
+
+#define BATT_FULL BATT_ABS_MAX - 0.3f
+#define BATT_EMPTY BATT_ABS_Min + 0.3f
+
 #define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
 #define LIFT_EMERGENCY_MILLIS 100   // Time for both wheels to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
 
