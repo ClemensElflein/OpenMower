@@ -15,7 +15,7 @@
     <uavcan_raw_mode>0</uavcan_raw_mode>
     <uavcan_raw_rpm_max>50000</uavcan_raw_rpm_max>
     <servo_out_enable>0</servo_out_enable>
-    <kill_sw_mode>0</kill_sw_mode>
+    <kill_sw_mode>4</kill_sw_mode>
     <app_to_use>3</app_to_use>
     <app_ppm_conf.ctrl_type>0</app_ppm_conf.ctrl_type>
     <app_ppm_conf.pid_max_erpm>15000</app_ppm_conf.pid_max_erpm>

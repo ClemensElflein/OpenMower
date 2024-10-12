@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <MCConfiguration>
-    <ConfigVersion>2</ConfigVersion>
     <pwm_mode>1</pwm_mode>
     <comm_mode>0</comm_mode>
     <motor_type>2</motor_type>
@@ -10,9 +9,9 @@
     <l_in_current_max>2</l_in_current_max>
     <l_in_current_min>-1</l_in_current_min>
     <l_abs_current_max>15</l_abs_current_max>
-    <l_min_erpm>-100000</l_min_erpm>
-    <l_max_erpm>100000</l_max_erpm>
-    <l_erpm_start>0.8</l_erpm_start>
+    <l_min_erpm>-14100</l_min_erpm>
+    <l_max_erpm>14100</l_max_erpm>
+    <l_erpm_start>0.95</l_erpm_start>
     <l_max_erpm_fbrake>300</l_max_erpm_fbrake>
     <l_max_erpm_fbrake_cc>1500</l_max_erpm_fbrake_cc>
     <l_min_vin>8</l_min_vin>
@@ -24,7 +23,7 @@
     <l_temp_fet_end>90</l_temp_fet_end>
     <l_temp_motor_start>85</l_temp_motor_start>
     <l_temp_motor_end>100</l_temp_motor_end>
-    <l_temp_accel_dec>0.15</l_temp_accel_dec>
+    <l_temp_accel_dec>0</l_temp_accel_dec>
     <l_min_duty>0.005</l_min_duty>
     <l_max_duty>0.95</l_max_duty>
     <l_watt_max>1.5e+06</l_watt_max>
@@ -48,8 +47,8 @@
     <hall_table__6>4</hall_table__6>
     <hall_table__7>-1</hall_table__7>
     <hall_sl_erpm>2000</hall_sl_erpm>
-    <foc_current_kp>0.597682</foc_current_kp>
-    <foc_current_ki>574.348</foc_current_ki>
+    <foc_current_kp>0.5977</foc_current_kp>
+    <foc_current_ki>574.35</foc_current_ki>
     <foc_f_zv>25000</foc_f_zv>
     <foc_dt_us>0.12</foc_dt_us>
     <foc_encoder_inverted>0</foc_encoder_inverted>
@@ -63,11 +62,11 @@
     <foc_sensor_mode>2</foc_sensor_mode>
     <foc_pll_kp>2000</foc_pll_kp>
     <foc_pll_ki>30000</foc_pll_ki>
-    <foc_motor_l>0.000597682</foc_motor_l>
-    <foc_motor_ld_lq_diff>2.3181e-05</foc_motor_ld_lq_diff>
-    <foc_motor_r>0.574348</foc_motor_r>
-    <foc_motor_flux_linkage>0.00712734</foc_motor_flux_linkage>
-    <foc_observer_gain>1.96854e+07</foc_observer_gain>
+    <foc_motor_l>0.00059768</foc_motor_l>
+    <foc_motor_ld_lq_diff>2.318e-05</foc_motor_ld_lq_diff>
+    <foc_motor_r>0.5743</foc_motor_r>
+    <foc_motor_flux_linkage>0.007127</foc_motor_flux_linkage>
+    <foc_observer_gain>1.969e+07</foc_observer_gain>
     <foc_observer_gain_slow>0.05</foc_observer_gain_slow>
     <foc_observer_offset>-1</foc_observer_offset>
     <foc_duty_dowmramp_kp>10</foc_duty_dowmramp_kp>
@@ -94,7 +93,7 @@
     <foc_sample_high_current>0</foc_sample_high_current>
     <foc_sat_comp>0</foc_sat_comp>
     <foc_temp_comp>0</foc_temp_comp>
-    <foc_temp_comp_base_temp>22.51</foc_temp_comp_base_temp>
+    <foc_temp_comp_base_temp>22.5</foc_temp_comp_base_temp>
     <foc_current_filter_const>0.1</foc_current_filter_const>
     <foc_cc_decoupling>0</foc_cc_decoupling>
     <foc_observer_type>0</foc_observer_type>
@@ -106,12 +105,12 @@
     <foc_hfi_obs_ovr_sec>0.001</foc_hfi_obs_ovr_sec>
     <foc_hfi_samples>1</foc_hfi_samples>
     <foc_offsets_cal_on_boot>1</foc_offsets_cal_on_boot>
-    <foc_offsets_current__0>2086.73</foc_offsets_current__0>
-    <foc_offsets_current__1>2047.37</foc_offsets_current__1>
-    <foc_offsets_current__2>2114.23</foc_offsets_current__2>
-    <foc_offsets_voltage__0>0.1375</foc_offsets_voltage__0>
-    <foc_offsets_voltage__1>0.1366</foc_offsets_voltage__1>
-    <foc_offsets_voltage__2>-0.2742</foc_offsets_voltage__2>
+    <foc_offsets_current__0>1996.01</foc_offsets_current__0>
+    <foc_offsets_current__1>2023.24</foc_offsets_current__1>
+    <foc_offsets_current__2>2074.1</foc_offsets_current__2>
+    <foc_offsets_voltage__0>0.0011</foc_offsets_voltage__0>
+    <foc_offsets_voltage__1>-0.0005</foc_offsets_voltage__1>
+    <foc_offsets_voltage__2>-0.0005</foc_offsets_voltage__2>
     <foc_offsets_voltage_undriven__0>0</foc_offsets_voltage_undriven__0>
     <foc_offsets_voltage_undriven__1>0</foc_offsets_voltage_undriven__1>
     <foc_offsets_voltage_undriven__2>0</foc_offsets_voltage_undriven__2>
@@ -187,7 +186,7 @@ p, li { white-space: pre-wrap; }
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Roboto'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Some comments about the motor quality. Images can be added as well.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</motor_quality_description>
-    <bms.type>1</bms.type>
+    <bms.type>0</bms.type>
     <bms.t_limit_start>45</bms.t_limit_start>
     <bms.t_limit_end>65</bms.t_limit_end>
     <bms.soc_limit_start>0.05</bms.soc_limit_start>
