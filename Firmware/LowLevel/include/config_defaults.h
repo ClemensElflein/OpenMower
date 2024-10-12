@@ -23,4 +23,6 @@
 #define SOUND_VOLUME 80    // Volume (0-100%)
 #define LANGUAGE 'e', 'n'  // ISO 639-1 (2-char) language code (en, de, ...)
 
+#define CONFIG_FILENAME "/openmower.cfg"  // Where our llhl_config get saved in LittleFS (flash)
+
 #endif  // _CONFIG_H

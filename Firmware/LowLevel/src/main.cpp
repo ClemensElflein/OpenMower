@@ -14,17 +14,18 @@
 // SOFTWARE.
 //
 //
-#include <NeoPixelConnect.h>
 #include <Arduino.h>
 #include <FastCRC.h>
+#include <LittleFS.h>
+#include <NeoPixelConnect.h>
 #include <PacketSerial.h>
-#include "datatypes.h"
+
 #include "config_defaults.h"
+#include "datatypes.h"
+#include "debug.h"
+#include "imu.h"
 #include "pins.h"
 #include "ui_board.h"
-#include "imu.h"
-#include "debug.h"
-#include <LittleFS.h>
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -119,7 +120,6 @@ uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LE
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
 struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
-const String CONFIG_FILENAME = "/openmower.cfg";
 uint16_t config_crc_in_flash = 0;
 
 void sendMessage(void *message, size_t size);
@@ -550,7 +550,7 @@ void sendConfigMessage(uint8_t pkt_type) {
     size_t msg_size = sizeof(struct ll_high_level_config) + 3;  // + 1 type + 2 crc
     uint8_t *msg = (uint8_t *)malloc(msg_size);
     if (msg == NULL)
-        return;  // malloc() failed
+        return;
     *msg = pkt_type;
     memcpy(msg + 1, &llhl_config, sizeof(struct ll_high_level_config));  // Copy our live config into the message, behind type
     sendMessage(msg, msg_size);
@@ -833,6 +833,8 @@ void readConfigFromFlash() {
     // read config
     uint8_t *buffer = (uint8_t *)malloc(f.size());
     f.read(buffer, size);
+    if (buffer == NULL)
+        return;
     f.close();
 
     // check the CRC
