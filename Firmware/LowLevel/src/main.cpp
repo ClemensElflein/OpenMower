@@ -20,9 +20,7 @@
 #include <NeoPixelConnect.h>
 #include <PacketSerial.h>
 
-#include "config_defaults.h"
 #include "datatypes.h"
-#include "debug.h"
 #include "imu.h"
 #include "pins.h"
 #include "ui_board.h"
@@ -119,8 +117,10 @@ uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
-struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
+// LL/HL config 
+#define CONFIG_FILENAME "/openmower.cfg"  // Where our llhl_config get saved in LittleFS (flash)
 uint16_t config_crc_in_flash = 0;
+struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -194,8 +194,8 @@ void updateEmergency() {
         tilt_emergency_started = 0;
     }
 
-    if ((LIFT_EMERGENCY_MILLIS > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) ||
-        (TILT_EMERGENCY_MILLIS > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS)) {
+    if ((llhl_config.lift_period > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= llhl_config.lift_period) ||
+        (llhl_config.tilt_period > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= llhl_config.tilt_period)) {
         emergency_state |= (emergency_read & LL_EMERGENCY_BITS_LIFT);
     }
 
@@ -229,7 +229,7 @@ void manageUILEDS() {
         setLed(leds_message, LED_CHARGING, LED_off);
 
     // Show Info Battery state
-    if (status_message.v_battery >= (BATT_EMPTY + 2.0f))
+    if (status_message.v_battery >= (llhl_config.v_battery_empty + 2.0f))
         setLed(leds_message, LED_BATTERY_LOW, LED_off);
     else
         setLed(leds_message, LED_BATTERY_LOW, LED_on);
@@ -369,7 +369,9 @@ void setup() {
     //  Therefore, we pause the other core until setup() was a success
     rp2040.idleOtherCore();
 
-    DEBUG_BEGIN(9600);
+#ifdef USB_DEBUG
+    DEBUG_SERIAL.begin(9600);
+#endif
 
     emergency_latch = true;
     ROS_running = false;
@@ -546,7 +548,7 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
     }
 }
 
-void sendConfigMessage(uint8_t pkt_type) {
+void sendConfigMessage(const uint8_t pkt_type) {
     size_t msg_size = sizeof(struct ll_high_level_config) + 3;  // + 1 type + 2 crc
     uint8_t *msg = (uint8_t *)malloc(msg_size);
     if (msg == NULL)
@@ -557,27 +559,45 @@ void sendConfigMessage(uint8_t pkt_type) {
     free(msg);
 }
 
-void applyConfig(const uint8_t *buffer, size_t size) {
-    // This is a flexible length package where the size may vary when ll_high_level_config struct got enhanced only on one side.
+void applyConfig(const uint8_t *buffer, const size_t size) {
+    // This is a flexible length packet where the size may vary when ll_high_level_config struct got enhanced only on one side.
     // If payload size is larger than our struct size, ensure that we only copy those we know of = our struct size.
     // If payload size is smaller than our struct size, copy only the payload we got, but ensure that the unsent member(s) have reasonable defaults.
     size_t payload_size = min(sizeof(ll_high_level_config), size - 2);  // exclude crc
 
     // Use a temporary config for easier sanity adaption and copy our live config, which has at least reasonable defaults.
     // The live config copy ensures that we've reasonable values for the case that HL config struct is older (smaller) than ours.
-    auto tmp_config = llhl_config;
+    auto hl_config = llhl_config;
 
     // Copy payload to temporary config
-    memcpy(&tmp_config, buffer, payload_size);
+    memcpy(&hl_config, buffer, payload_size);
 
-    // Sanity
-    tmp_config.v_charge_cutoff = min(tmp_config.v_charge_cutoff, V_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
-    tmp_config.i_charge_cutoff = min(tmp_config.i_charge_cutoff, I_CHARGE_ABS_MAX);  // Fix exceed of hardware limits
+    // Takeover of HL leading config values
+    llhl_config.config_bitmask = (llhl_config.config_bitmask & ~LL_HIGH_LEVEL_CONFIG_BIT_HL_IS_LEADING) | (hl_config.config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_HL_IS_LEADING);
 
-    // Make config live
-    llhl_config = tmp_config;
+    // Set HL leading member if they're not "undefined"
+    // TODO: Not that nice :-/ Is there no more clever way? Even with a templated function, I do see similar 8 lines here
 
-    // PR-80: Assign volume & language if not already stored in flash-config
+    if (hl_config.rain_threshold != 0xffff) llhl_config.rain_threshold = hl_config.rain_threshold;
+    if (!std::isnan(hl_config.v_charge_cutoff)) llhl_config.v_charge_cutoff = min(hl_config.v_charge_cutoff, 40.0f);  // Absolute max. limited by D2/D3 Schottky
+    if (!std::isnan(hl_config.i_charge_cutoff)) llhl_config.i_charge_cutoff = min(hl_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
+    if (!std::isnan(hl_config.v_battery_cutoff)) llhl_config.v_battery_cutoff = hl_config.v_battery_cutoff;
+    if (!std::isnan(hl_config.v_battery_empty)) llhl_config.v_battery_empty = hl_config.v_battery_empty;
+    if (!std::isnan(hl_config.v_battery_full)) llhl_config.v_battery_full = hl_config.v_battery_full;
+    if (hl_config.lift_period != 0xffff) hl_config.lift_period = hl_config.lift_period;
+    if (hl_config.tilt_period != 0xffff) hl_config.tilt_period = hl_config.tilt_period;
+
+    // HL is always leading for language
+    strncpy(llhl_config.language, hl_config.language, 2);
+
+    // HL send 0xff if it doesn't provide a volume
+    if (hl_config.volume != 0xff) llhl_config.volume = llhl_config.volume;
+
+    // Take over those hall inputs which are not undefined
+    for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
+        if (hl_config.hall_configs[i].mode != HallMode::UNDEFINED)
+            llhl_config.hall_configs[i] = hl_config.hall_configs[i];
+    }
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {
@@ -715,8 +735,8 @@ void loop() {
         status_message.status_bitmask = (status_message.status_bitmask & 0b11011111) | ((sound_available & 0b1) << 5);
 
         // calculate percent value accu filling
-        float delta = BATT_FULL - BATT_EMPTY;
-        float vo = status_message.v_battery - BATT_EMPTY;
+        float delta = llhl_config.v_battery_full - llhl_config.v_battery_empty;
+        float vo = status_message.v_battery - llhl_config.v_battery_empty;
         status_message.batt_percentage = vo / delta * 100;
         if (status_message.batt_percentage > 100)
             status_message.batt_percentage = 100;
@@ -791,7 +811,7 @@ void sendMessage(void *message, size_t size) {
     data_pointer[size - 1] = (crc >> 8) & 0xFF;
     data_pointer[size - 2] = crc & 0xFF;
 
-    packetSerial.send((uint8_t *) message, size);
+    packetSerial.send(data_pointer, size);
 }
 
 void sendUIMessage(void *message, size_t size) {
@@ -832,9 +852,9 @@ void readConfigFromFlash() {
 
     // read config
     uint8_t *buffer = (uint8_t *)malloc(f.size());
-    f.read(buffer, size);
     if (buffer == NULL)
         return;
+    f.read(buffer, size);
     f.close();
 
     // check the CRC
