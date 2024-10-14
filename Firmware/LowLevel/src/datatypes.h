@@ -19,7 +19,6 @@
 #define _DATATYPES_H
 
 #include <stdint.h>
-#include "config_defaults.h"
 
 #define PACKET_ID_LL_STATUS 1
 #define PACKET_ID_LL_IMU 2
@@ -137,27 +136,30 @@ struct ll_ui_event {
 } __attribute__((packed));
 #pragma pack(pop)
 
-#define LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V 1 << 0            // Enable full sound via mower_config env var "OM_DFP_IS_5V"
-#define LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS 1 << 1  // Enable background sounds
+#define LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V (1 << 0)            // Enable full sound via mower_config env var "OM_DFP_IS_5V"
+#define LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS (1 << 1)  // Enable background sounds
+
+#define LL_HIGH_LEVEL_CONFIG_BIT_HL_IS_LEADING ((LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V) | (LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS))  // Config bits where HL is leading
 
 typedef char iso639_1[2]; // Two char ISO 639-1 language code
 
-enum class HallMode : uint8_t {
+enum class HallMode : unsigned int {
     OFF = 0,
-    EMERGENCY,  // Triggers emergency with lift & tilt functionality
+    LIFT_TILT,  // Wheel lifted and/or wheels tilted functionality
     STOP,       // Stop mower
-    PAUSE       // Pause the mower (not yet implemented in ROS)
+    PAUSE,      // Pause the mower (not yet implemented in ROS)
+    UNDEFINED   // This is used by foreign side to inform that it doesn't has a configuration for this sensor
 };
 
 // FIXME: Decide later which is more comfortable, activeLow = 0 | 1
-enum class HallLevel : uint8_t {
+enum class HallLevel : unsigned int {
     ACTIVE_LOW = 0,  // If Hall-Sensor (or button) is active/triggered we've this level on our GPIO
     ACTIVE_HIGH
 };
 
 #pragma pack(push, 1)
 struct HallConfig {
-    HallMode mode : 4;
+    HallMode mode : 3;
     HallLevel level : 1;
 } __attribute__((packed));
 #pragma pack(pop)
@@ -172,23 +174,24 @@ struct ll_high_level_config {
 
     // uint8_t type; Just for illustration. Get set in wire buffer with type PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ or PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP
 
-    uint8_t config_bitmask = 0;                    // See LL_HIGH_LEVEL_CONFIG_BIT_*
-    uint16_t rain_threshold = RAIN_THRESHOLD;      // If (stock CoverUI) rain value < rain_threshold then it rains. Expected to differ between C500, SA and SC types
-    float v_charge_cutoff = V_CHARGE_MAX;          // Protective max. charging voltage before charging get switched off
-    float i_charge_cutoff = I_CHARGE_MAX;          // Protective max. charging current before charging get switched off
-    float v_battery_cutoff = V_BATT_CUTOFF;          // Protective max. battery voltage before charging get switched off
-    float v_battery_empty = BATT_EMPTY;            // Empty battery voltage used for % calc of capacity
-    float v_battery_full = BATT_FULL;              // Full battery voltage used for % calc of capacity
-    uint16_t lift_period = LIFT_EMERGENCY_MILLIS;  // Period (ms) for both wheels to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground
-    uint16_t tilt_period = TILT_EMERGENCY_MILLIS;  // Period (ms) for a single wheel to be lifted in order to count as emergency (0 disable, 0xFFFF do not change). This is to filter uneven ground
-    iso639_1 language = {LANGUAGE};                // ISO 639-1 (2-char) language code (en, de, ...)
-    int8_t volume = SOUND_VOLUME;                  // Volume (0-100%) feedback (if directly changed i.e. via CoverUI or WebApp)
+    uint8_t config_bitmask = 0;            // See LL_HIGH_LEVEL_CONFIG_BIT_*
+    uint16_t rain_threshold = 700;         // If (stock CoverUI) rain value < rain_threshold then it rains. Expected to differ between C500, SA and SC types (0xFFFF = unknown)
+    float v_charge_cutoff = 30.0f;         // Protective max. charging voltage before charging get switched off (NAN = unknown)
+    float i_charge_cutoff = 1.5f;          // Protective max. charging current before charging get switched off (NAN = unknown)
+    float v_battery_cutoff = 29.0f;        // Protective max. battery voltage before charging get switched off (NAN = unknown)
+    float v_battery_empty = 21.7f + 0.3f;  // Empty battery voltage used for % calc of capacity (NAN = unknown)
+    float v_battery_full = 28.7f - 0.3f;   // Full battery voltage used for % calc of capacity (NAN = unknown)
+    uint16_t lift_period = 100;            // Period (ms) for both wheels to be lifted in order to count as emergency (0 = disable, 0xFFFF = unknown). This is to filter uneven ground
+    uint16_t tilt_period = 2500;           // Period (ms) for a single wheel to be lifted in order to count as emergency (0 = disable, 0xFFFF = unknown). This is to filter uneven ground
+    float shutdown_esc_max_pitch = 15.0f;  // Do not shutdown ESCs if absolute pitch angle is greater than this (to be implemented)
+    iso639_1 language = {'e', 'n'};  // ISO 639-1 (2-char) language code (en, de, ...)
+    uint8_t volume = 80;                   // Volume (0-100%) feedback (if directly changed i.e. via CoverUI or WebApp) (0xff = do not change)
     HallConfig hall_configs[MAX_HALL_INPUTS] = {
-        {HallMode::EMERGENCY, HallLevel::ACTIVE_LOW},  // [0] OM Hall-1 input (Lift1)
-        {HallMode::EMERGENCY, HallLevel::ACTIVE_LOW},  // [1] OM Hall-2 input (Lift2)
+        {HallMode::LIFT_TILT, HallLevel::ACTIVE_LOW},  // [0] OM Hall-1 input (Lift1)
+        {HallMode::LIFT_TILT, HallLevel::ACTIVE_LOW},  // [1] OM Hall-2 input (Lift2)
         {HallMode::STOP, HallLevel::ACTIVE_LOW},       // [2] OM Hall-3 input (Stop1)
         {HallMode::STOP, HallLevel::ACTIVE_LOW},       // [3] OM Hall-4 input (Stop2)
-        // [4] Stock-CoverUI-1 ... [9] Stock-CoverUI-6 defaults to off
+        // [4] Stock-CoverUI-1 ... [9] Stock-CoverUI-6 default to off
     };
     // INFO: Before adding a new member here: Decide if and how much hall_configs spares do we like to have
 
