@@ -578,7 +578,7 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
 
     // Take over HL members if they're not "undefined"
     if (hl_config.rain_threshold != 0xffff) llhl_config.rain_threshold = hl_config.rain_threshold;
-    if (hl_config.v_charge_cutoff >= 0) llhl_config.v_charge_cutoff = min(hl_config.v_charge_cutoff, 40.0f);  // Absolute max. limited by D2/D3 Schottky
+    if (hl_config.v_charge_cutoff >= 0) llhl_config.v_charge_cutoff = min(hl_config.v_charge_cutoff, 36.0f);  // Rated max. limited by MAX20405
     if (hl_config.i_charge_cutoff >= 0) llhl_config.i_charge_cutoff = min(hl_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
     if (hl_config.v_battery_cutoff >= 0) llhl_config.v_battery_cutoff = hl_config.v_battery_cutoff;
     if (hl_config.v_battery_empty >= 0) llhl_config.v_battery_empty = hl_config.v_battery_empty;
