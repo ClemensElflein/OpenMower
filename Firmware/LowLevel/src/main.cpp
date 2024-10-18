@@ -572,32 +572,29 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
     // Copy payload to temporary config
     memcpy(&hl_config, buffer, payload_size);
 
-    // Takeover of HL leading config values
+    // Takeover HL leading config_bitmask values. This is only to illustrate that we may mix HL as well as LL leading bits here (if required some when).
+    // FIXME: Check if bitfields would look better
     llhl_config.config_bitmask = (llhl_config.config_bitmask & ~LL_HIGH_LEVEL_CONFIG_BIT_HL_IS_LEADING) | (hl_config.config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_HL_IS_LEADING);
 
-    // Set HL leading member if they're not "undefined"
-    // TODO: Not that nice :-/ Is there no more clever way? Even with a templated function, I do see similar 8 lines here
-
+    // Take over HL members if they're not "undefined"
     if (hl_config.rain_threshold != 0xffff) llhl_config.rain_threshold = hl_config.rain_threshold;
-    if (!std::isnan(hl_config.v_charge_cutoff)) llhl_config.v_charge_cutoff = min(hl_config.v_charge_cutoff, 40.0f);  // Absolute max. limited by D2/D3 Schottky
-    if (!std::isnan(hl_config.i_charge_cutoff)) llhl_config.i_charge_cutoff = min(hl_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
-    if (!std::isnan(hl_config.v_battery_cutoff)) llhl_config.v_battery_cutoff = hl_config.v_battery_cutoff;
-    if (!std::isnan(hl_config.v_battery_empty)) llhl_config.v_battery_empty = hl_config.v_battery_empty;
-    if (!std::isnan(hl_config.v_battery_full)) llhl_config.v_battery_full = hl_config.v_battery_full;
-    if (hl_config.lift_period != 0xffff) hl_config.lift_period = hl_config.lift_period;
-    if (hl_config.tilt_period != 0xffff) hl_config.tilt_period = hl_config.tilt_period;
+    if (hl_config.v_charge_cutoff >= 0) llhl_config.v_charge_cutoff = min(hl_config.v_charge_cutoff, 40.0f);  // Absolute max. limited by D2/D3 Schottky
+    if (hl_config.i_charge_cutoff >= 0) llhl_config.i_charge_cutoff = min(hl_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
+    if (hl_config.v_battery_cutoff >= 0) llhl_config.v_battery_cutoff = hl_config.v_battery_cutoff;
+    if (hl_config.v_battery_empty >= 0) llhl_config.v_battery_empty = hl_config.v_battery_empty;
+    if (hl_config.v_battery_full >= 0) llhl_config.v_battery_full = hl_config.v_battery_full;
+    if (hl_config.lift_period != 0xffff) llhl_config.lift_period = hl_config.lift_period;
+    if (hl_config.tilt_period != 0xffff) llhl_config.tilt_period = hl_config.tilt_period;
+    if (hl_config.volume != 0xff) llhl_config.volume = hl_config.volume;
 
-    // HL is always leading for language
-    strncpy(llhl_config.language, hl_config.language, 2);
-
-    // HL send 0xff if it doesn't provide a volume
-    if (hl_config.volume != 0xff) llhl_config.volume = llhl_config.volume;
+    strncpy(llhl_config.language, hl_config.language, 2);  // HL always force the language
 
     // Take over those hall inputs which are not undefined
     for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
         if (hl_config.hall_configs[i].mode != HallMode::UNDEFINED)
             llhl_config.hall_configs[i] = hl_config.hall_configs[i];
     }
+    // FIXME: TODO: Hall/emergency implementation
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {
@@ -627,21 +624,18 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
         if (!ROS_running) {
             // ROS is running (again (i.e. due to restart after reconfiguration))
             ROS_running = true;
-
-            // Send current LL config (and request HL config response)
-            sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ);
         }
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_STATE && size == sizeof(struct ll_high_level_state)) {
         // copy the state
         last_high_level_state = *((struct ll_high_level_state *) buffer);
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) {
-        applyConfig(buffer + 1, size - 1); // Skip type
+        applyConfig(buffer + 1, size - 1);  // Skip type
 
         // Store in flash
         saveConfigToFlash();
 
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
-            sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);
+            sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);  // Other side requested a config response
     }
 }
 
