@@ -423,10 +423,6 @@ void setup() {
     UISerial.setStream(&UI1_SERIAL);
     UISerial.setPacketHandler(&onUIPacketReceived);
 
-    // Initialize flash and try to read config
-    LittleFS.begin();
-    readConfigFromFlash();
-
     /*
      * IMU INITIALIZATION
      */
@@ -470,6 +466,13 @@ void setup() {
 
     status_message.status_bitmask |= 1;
 
+    rp2040.resumeOtherCore();
+
+    // Initialize flash and try to read config.
+    // ATTENTION: LittleFS needs other core (at least for initial format)!
+    LittleFS.begin();
+    readConfigFromFlash();
+
 #ifdef ENABLE_SOUND_MODULE
     p.neoPixelSetValue(0, 0, 255, 255, true);
 
@@ -488,8 +491,6 @@ void setup() {
         }
     }
 #endif
-
-    rp2040.resumeOtherCore();
 
     // Cover UI board clear all LEDs
     leds_message.type = Set_LEDs;
@@ -818,12 +819,14 @@ void sendUIMessage(void *message, size_t size) {
 }
 
 void saveConfigToFlash() {
-    uint16_t crc = CRC16.ccitt((const uint8_t*) &llhl_config, sizeof(llhl_config));
+    uint16_t crc = CRC16.ccitt((const uint8_t *)&llhl_config, sizeof(llhl_config));
     if (crc == config_crc_in_flash) return;
 
     File f = LittleFS.open(CONFIG_FILENAME, "w");
-    f.write((const uint8_t*) &llhl_config, sizeof(llhl_config));
-    f.write((const uint8_t*) &crc, 2);
+    if (!f) return;
+
+    f.write((const uint8_t *)&llhl_config, sizeof(llhl_config));
+    f.write((const uint8_t *)&crc, 2);
     f.close();
 }
 
@@ -839,9 +842,9 @@ void readConfigFromFlash() {
     }
 
     // read config
-    uint8_t *buffer = (uint8_t *)malloc(f.size());
-    if (buffer == NULL)
-        return;
+    uint8_t *buffer = (uint8_t *)malloc(size);
+    if (buffer == NULL) return;
+
     f.read(buffer, size);
     f.close();
 
