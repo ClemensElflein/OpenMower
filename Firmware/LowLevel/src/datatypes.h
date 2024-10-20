@@ -136,11 +136,13 @@ struct ll_ui_event {
 } __attribute__((packed));
 #pragma pack(pop)
 
-#define LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V (1 << 0)                  // Enable full sound via mower_config env var "OM_DFP_IS_5V"
-#define LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS (1 << 1)        // Enable background sounds
-#define LL_HIGH_LEVEL_CONFIG_BIT_IGNORE_CHARGING_CURRENT (1 << 2)  // Ignore charging current
-
-#define LL_HIGH_LEVEL_CONFIG_BIT_HL_IS_LEADING (LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V | LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS | LL_HIGH_LEVEL_CONFIG_BIT_IGNORE_CHARGING_CURRENT)
+#pragma pack(push, 1)
+struct ConfigOptions {
+    bool dfp_is_5v : 1;
+    bool background_sounds : 1;
+    bool ignore_charging_current : 1;
+} __attribute__((packed));
+#pragma pack(pop)
 
 typedef char iso639_1[2]; // Two char ISO 639-1 language code
 
@@ -152,7 +154,6 @@ enum class HallMode : unsigned int {
     UNDEFINED   // This is used by foreign side to inform that it doesn't has a configuration for this sensor
 };
 
-// FIXME: Decide later which is more comfortable, activeLow = 0 | 1
 enum class HallLevel : unsigned int {
     ACTIVE_LOW = 0,  // If Hall-Sensor (or button) is active/triggered we've this level on our GPIO
     ACTIVE_HIGH
@@ -175,7 +176,7 @@ struct ll_high_level_config {
 
     // uint8_t type; Just for illustration. Get set in wire buffer with type PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ or PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP
 
-    uint8_t config_bitmask = 0;            // See LL_HIGH_LEVEL_CONFIG_BIT_*
+    ConfigOptions options = {0, 0, 0};
     uint16_t rain_threshold = 700;         // If (stock CoverUI) rain value < rain_threshold then it rains. Expected to differ between C500, SA and SC types (0xFFFF = unknown)
     float v_charge_cutoff = 30.0f;         // Protective max. charging voltage before charging get switched off (-1 = unknown)
     float i_charge_cutoff = 1.5f;          // Protective max. charging current before charging get switched off (-1 = unknown)

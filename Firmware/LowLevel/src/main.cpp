@@ -117,10 +117,11 @@ uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
-// LL/HL config 
+// LL/HL config
 #define CONFIG_FILENAME "/openmower.cfg"  // Where our llhl_config get saved in LittleFS (flash)
 uint16_t config_crc_in_flash = 0;
 struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
+static_assert(sizeof(ConfigOptions) == 1, "Enlarging struct ConfigOption to a sizeof > 1 will break packet compatibilty");
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -137,6 +138,7 @@ void setRaspiPower(bool power) {
 }
 
 void updateEmergency() {
+    // FIXME: Implement new hall_configs
 
     if (millis() - last_heartbeat_millis > HEARTBEAT_MILLIS) {
         emergency_latch = true;
@@ -474,7 +476,7 @@ void setup() {
     sound_available = my_sound.begin();
     if (sound_available) {
         p.neoPixelSetValue(0, 0, 0, 255, true);
-        my_sound.setvolume(100);
+        my_sound.setvolume(llhl_config.volume);
         my_sound.playSoundAdHoc(1);
         p.neoPixelSetValue(0, 255, 255, 0, true);
     } else {
@@ -572,11 +574,11 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
     // Copy payload to temporary config
     memcpy(&hl_config, buffer, payload_size);
 
-    // Takeover HL leading config_bitmask values. This is only to illustrate that we may mix HL as well as LL leading bits here (if required some when).
-    // FIXME: Check if bitfields would look better
-    llhl_config.config_bitmask = (llhl_config.config_bitmask & ~LL_HIGH_LEVEL_CONFIG_BIT_HL_IS_LEADING) | (hl_config.config_bitmask & LL_HIGH_LEVEL_CONFIG_BIT_HL_IS_LEADING);
+    // HL always force these
+    llhl_config.options = hl_config.options;
+    strncpy(llhl_config.language, hl_config.language, 2);
 
-    // Take over HL members if they're not "undefined"
+    // Take over only those HL members who are not "undefined/unknown"
     if (hl_config.rain_threshold != 0xffff) llhl_config.rain_threshold = hl_config.rain_threshold;
     if (hl_config.v_charge_cutoff >= 0) llhl_config.v_charge_cutoff = min(hl_config.v_charge_cutoff, 36.0f);  // Rated max. limited by MAX20405
     if (hl_config.i_charge_cutoff >= 0) llhl_config.i_charge_cutoff = min(hl_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
@@ -587,14 +589,10 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
     if (hl_config.tilt_period != 0xffff) llhl_config.tilt_period = hl_config.tilt_period;
     if (hl_config.volume != 0xff) llhl_config.volume = hl_config.volume;
 
-    strncpy(llhl_config.language, hl_config.language, 2);  // HL always force the language
-
     // Take over those hall inputs which are not undefined
-    for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
+    for (size_t i = 0; i < MAX_HALL_INPUTS; i++)
         if (hl_config.hall_configs[i].mode != HallMode::UNDEFINED)
             llhl_config.hall_configs[i] = hl_config.hall_configs[i];
-    }
-    // FIXME: TODO: Hall/emergency implementation
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {
