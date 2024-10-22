@@ -19,6 +19,7 @@
 #include <LittleFS.h>
 #include <NeoPixelConnect.h>
 #include <PacketSerial.h>
+#include <functional>
 
 #include "datatypes.h"
 #include "imu.h"
@@ -123,6 +124,23 @@ uint16_t config_crc_in_flash = 0;
 struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
 static_assert(sizeof(ConfigOptions) == 1, "Enlarging struct ConfigOption to a sizeof > 1 will break packet compatibilty");
 
+// Hall input sources, same order as in ll_high_level_config.hall_configs
+std::function<bool()> halls[MAX_HALL_INPUTS] = {
+    []() { return gpio_get(PIN_EMERGENCY_1); },                             // OM-Hall-1 (default Lift1)
+    []() { return gpio_get(PIN_EMERGENCY_2); },                             // OM-Hall-2 (default Lift2)
+    []() { return gpio_get(PIN_EMERGENCY_3); },                             // OM-Hall-3 (default Stop1)
+    []() { return gpio_get(PIN_EMERGENCY_4); },                             // OM-Hall-4 (default Stop2)
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_LIFT; },   // CoverUI-LIFT | LIFTX (up to CoverUI FW 2.0x)
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_LIFTX; },  // CoverUI-LIFTX (as of CoverUI FW 2.1x)
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_BUMP; },   // CoverUI-LBUMP | RBUMP (up to CoverUI FW 2.0x)
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_RBUMP; },  // CoverUI-RBUMP (as of CoverUI FW 2.1x)
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_STOP1; },  // CoverUI-Stop1
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_STOP2; },  // CoverUI-Stop2
+};
+// Instead of iterating constantly over all halls, we use these compacted ones, whose contain the halls index of the used ones
+uint8_t stop_halls[MAX_HALL_INPUTS] = {};
+uint8_t lift_halls[MAX_HALL_INPUTS] = {};
+
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
@@ -138,67 +156,59 @@ void setRaspiPower(bool power) {
 }
 
 void updateEmergency() {
-    // FIXME: Implement new hall_configs
-
     if (millis() - last_heartbeat_millis > HEARTBEAT_MILLIS) {
         emergency_latch = true;
         ROS_running = false;
     }
     uint8_t last_emergency = status_message.emergency_bitmask & LL_EMERGENCY_BIT_LATCH;
-
-    // Read & assign emergencies in the same manner as in ll_status.emergency_bitmask
-    uint8_t emergency_read = !gpio_get(PIN_EMERGENCY_3) << 1 | // Stop1
-                             !gpio_get(PIN_EMERGENCY_4) << 2 | // Stop2
-                             !gpio_get(PIN_EMERGENCY_1) << 3 | // Lift1
-                             !gpio_get(PIN_EMERGENCY_2) << 4 | // Lift2
-                             stock_ui_emergency_state; // OR with StockUI emergency
     uint8_t emergency_state = 0;
 
-    // Some mowers have the logic level inverted, fix this...
-    emergency_read = emergency_read ^ (LL_EMERGENCY_BIT_LIFT1 * LIFT1_IS_INVERTED);
-    emergency_read = emergency_read ^ (LL_EMERGENCY_BIT_LIFT2 * LIFT2_IS_INVERTED);
+    // Check all "stop" mode emergency inputs (halls)
+    bool stop_pressed = false;
+    size_t i;
+    for (i = 0; i < MAX_HALL_INPUTS; i++) {
+        if (stop_halls[i] == 0xff) break;                                                            // End marker reached
+        stop_pressed = halls[stop_halls[i]]() ^ llhl_config.hall_configs[stop_halls[i]].active_low;  // Get hall value and apply active_low level (invert)
+        if (stop_pressed) break;                                                                     // Break at first detected stop
+    }
 
     // Handle emergency "Stop" buttons
-    if (emergency_read & LL_EMERGENCY_BITS_STOP) {
-        // If we just pressed, store the timestamp
-        if (button_emergency_started == 0) {
-            button_emergency_started = millis();
-        }
+    if (stop_pressed) {
+        if (button_emergency_started == 0) button_emergency_started = millis();  // If we just pressed, store the timestamp
     } else {
-        // Not pressed, reset the time
-        button_emergency_started = 0;
+        button_emergency_started = 0;  // Not pressed, reset the time
+    }
+    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS) {
+        emergency_state |= LL_EMERGENCY_BIT_STOP;
     }
 
-    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
-    {
-        emergency_state |= (emergency_read & LL_EMERGENCY_BITS_STOP);
+    // Check all "lifted" mode emergency inputs (halls)
+    int num_lifted = 0;
+    for (i = 0; i < MAX_HALL_INPUTS; i++) {
+        if (lift_halls[i] == 0xff) break;                                                 // End marker reached
+        if (halls[lift_halls[i]]() ^ llhl_config.hall_configs[lift_halls[i]].active_low)  // Get hall value and apply active_low level (invert)
+            num_lifted++;
+        if (num_lifted >= 2) break;  // Break once two wheels are lifted
     }
 
-    // Handle lifted (both wheels are lifted)
-    if ((emergency_read & LL_EMERGENCY_BITS_LIFT) == LL_EMERGENCY_BITS_LIFT) {
-        // If we just lifted, store the timestamp
-        if (lift_emergency_started == 0) {
-            lift_emergency_started = millis();
-        }
+    // Handle lifted (>=2 wheels are lifted)
+    if (num_lifted >= 2) {
+        if (lift_emergency_started == 0) lift_emergency_started = millis();  // If we just lifted, store the timestamp
     } else {
-        // Not lifted, reset the time
-        lift_emergency_started = 0;
+        lift_emergency_started = 0;  // Not lifted, reset the time
     }
 
-    // Handle tilted (one wheel is lifted)
-    if (emergency_read & LL_EMERGENCY_BITS_LIFT) {
-        // If we just tilted, store the timestamp
-        if (tilt_emergency_started == 0) {
-            tilt_emergency_started = millis();
-        }
+    // Handle tilted (at least one wheel is lifted)
+    if (num_lifted >= 1) {
+        if (tilt_emergency_started == 0) tilt_emergency_started = millis();  // If we just tilted, store the timestamp
     } else {
-        // Not tilted, reset the time
-        tilt_emergency_started = 0;
+        tilt_emergency_started = 0;  // Not tilted, reset the time
     }
 
+    // Evaluate lift & tilt periods
     if ((llhl_config.lift_period > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= llhl_config.lift_period) ||
         (llhl_config.tilt_period > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= llhl_config.tilt_period)) {
-        emergency_state |= (emergency_read & LL_EMERGENCY_BITS_LIFT);
+        emergency_state |= LL_EMERGENCY_BIT_LIFT;
     }
 
     if (emergency_state || emergency_latch) {
@@ -293,9 +303,9 @@ void manageUILEDS() {
     }
 
     // Show Info mower lifted or stop button pressed
-    if (status_message.emergency_bitmask & LL_EMERGENCY_BITS_STOP) {
+    if (status_message.emergency_bitmask & LL_EMERGENCY_BIT_STOP) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_blink_fast);
-    } else if (status_message.emergency_bitmask & LL_EMERGENCY_BITS_LIFT) {
+    } else if (status_message.emergency_bitmask & LL_EMERGENCY_BIT_LIFT) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_blink_slow);
     } else if (status_message.emergency_bitmask & LL_EMERGENCY_BIT_LATCH) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_on);
@@ -562,38 +572,62 @@ void sendConfigMessage(const uint8_t pkt_type) {
     free(msg);
 }
 
+/**
+ * @brief applyConfig applies those members who are not undefined/unknown.
+ * This function get called either when receiving a ll_high_level_config packet from HL, or during boot after read from LittleFS
+ * @param buffer
+ * @param size
+ */
 void applyConfig(const uint8_t *buffer, const size_t size) {
-    // This is a flexible length packet where the size may vary when ll_high_level_config struct got enhanced only on one side.
+    // This is a flexible length packet where the size may vary when ll_high_level_config struct get enhanced only on one side.
     // If payload size is larger than our struct size, ensure that we only copy those we know of = our struct size.
     // If payload size is smaller than our struct size, copy only the payload we got, but ensure that the unsent member(s) have reasonable defaults.
     size_t payload_size = min(sizeof(ll_high_level_config), size - 2);  // exclude crc
 
-    // Use a temporary config for easier sanity adaption and copy our live config, which has at least reasonable defaults.
-    // The live config copy ensures that we've reasonable values for the case that HL config struct is older (smaller) than ours.
-    auto hl_config = llhl_config;
+    // Use a temporary config for easier sanity adaption and copy to our live config, which has reasonable defaults.
+    // The initializing live config copy ensures that we've reasonable values for the case that HL config struct is older (smaller) than ours.
+    auto rcv_config = llhl_config;
 
     // Copy payload to temporary config
-    memcpy(&hl_config, buffer, payload_size);
+    memcpy(&rcv_config, buffer, payload_size);
 
     // HL always force these
-    llhl_config.options = hl_config.options;
-    strncpy(llhl_config.language, hl_config.language, 2);
+    llhl_config.options = rcv_config.options;
+    strncpy(llhl_config.language, rcv_config.language, 2);
 
     // Take over only those HL members who are not "undefined/unknown"
-    if (hl_config.rain_threshold != 0xffff) llhl_config.rain_threshold = hl_config.rain_threshold;
-    if (hl_config.v_charge_cutoff >= 0) llhl_config.v_charge_cutoff = min(hl_config.v_charge_cutoff, 36.0f);  // Rated max. limited by MAX20405
-    if (hl_config.i_charge_cutoff >= 0) llhl_config.i_charge_cutoff = min(hl_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
-    if (hl_config.v_battery_cutoff >= 0) llhl_config.v_battery_cutoff = hl_config.v_battery_cutoff;
-    if (hl_config.v_battery_empty >= 0) llhl_config.v_battery_empty = hl_config.v_battery_empty;
-    if (hl_config.v_battery_full >= 0) llhl_config.v_battery_full = hl_config.v_battery_full;
-    if (hl_config.lift_period != 0xffff) llhl_config.lift_period = hl_config.lift_period;
-    if (hl_config.tilt_period != 0xffff) llhl_config.tilt_period = hl_config.tilt_period;
-    if (hl_config.volume != 0xff) llhl_config.volume = hl_config.volume;
+    if (rcv_config.rain_threshold != 0xffff) llhl_config.rain_threshold = rcv_config.rain_threshold;
+    if (rcv_config.v_charge_cutoff >= 0) llhl_config.v_charge_cutoff = min(rcv_config.v_charge_cutoff, 36.0f);  // Rated max. limited by MAX20405
+    if (rcv_config.i_charge_cutoff >= 0) llhl_config.i_charge_cutoff = min(rcv_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
+    if (rcv_config.v_battery_cutoff >= 0) llhl_config.v_battery_cutoff = rcv_config.v_battery_cutoff;
+    if (rcv_config.v_battery_empty >= 0) llhl_config.v_battery_empty = rcv_config.v_battery_empty;
+    if (rcv_config.v_battery_full >= 0) llhl_config.v_battery_full = rcv_config.v_battery_full;
+    if (rcv_config.lift_period != 0xffff) llhl_config.lift_period = rcv_config.lift_period;
+    if (rcv_config.tilt_period != 0xffff) llhl_config.tilt_period = rcv_config.tilt_period;
+    if (rcv_config.volume != 0xff) llhl_config.volume = rcv_config.volume;
 
     // Take over those hall inputs which are not undefined
-    for (size_t i = 0; i < MAX_HALL_INPUTS; i++)
-        if (hl_config.hall_configs[i].mode != HallMode::UNDEFINED)
-            llhl_config.hall_configs[i] = hl_config.hall_configs[i];
+    for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
+        if (rcv_config.hall_configs[i].mode != HallMode::UNDEFINED)
+            llhl_config.hall_configs[i] = rcv_config.hall_configs[i];
+    }
+
+    // Apply active Emergency/Hall configurations to our compacted stop/lift-hall arrays which get used by updateEmergency()
+    uint8_t stop_hall_idx = 0, lift_hall_idx = 0;
+    for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
+        switch (llhl_config.hall_configs[i].mode) {
+            case HallMode::LIFT_TILT:
+                lift_halls[lift_hall_idx] = i;
+                lift_hall_idx++;
+                break;
+            case HallMode::STOP:
+                stop_halls[stop_hall_idx] = i;
+                stop_hall_idx++;
+                break;
+        }
+    }
+    lift_halls[lift_hall_idx] = 0xff;  // End of lift halls marker
+    stop_halls[stop_hall_idx] = 0xff;  // End of stop halls marker
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {

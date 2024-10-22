@@ -34,21 +34,17 @@ enum HighLevelMode {
     MODE_RECORDING = 3 // ROS connected, Manual mode during recording etc
 };
 
-#define LL_EMERGENCY_BIT_LATCH 0b00000001
-#define LL_EMERGENCY_BIT_HALL1 0b00001000 // Lift1
-#define LL_EMERGENCY_BIT_HALL2 0b00010000 // Lift2
-#define LL_EMERGENCY_BIT_HALL3 0b00000010 // Stop1
-#define LL_EMERGENCY_BIT_HALL4 0b00000100 // Stop2
+#define LL_EMERGENCY_BIT_LATCH (1 << 0)
+#define LL_EMERGENCY_BIT_LIFT (1 << 1)  // Lift (or tilt)
+#define LL_EMERGENCY_BIT_STOP (1 << 2)  // Stop
 
-#define LL_EMERGENCY_BIT_LIFT1 LL_EMERGENCY_BIT_HALL1
-#define LL_EMERGENCY_BIT_LIFT2 LL_EMERGENCY_BIT_HALL2
-#define LL_EMERGENCY_BITS_LIFT (LL_EMERGENCY_BIT_LIFT1 | LL_EMERGENCY_BIT_LIFT2)
-#define LL_EMERGENCY_BIT_STOP1 LL_EMERGENCY_BIT_HALL3
-#define LL_EMERGENCY_BIT_STOP2 LL_EMERGENCY_BIT_HALL4
-#define LL_EMERGENCY_BITS_STOP (LL_EMERGENCY_BIT_STOP1 | LL_EMERGENCY_BIT_STOP2)
-
-#define LIFT1_IS_INVERTED 0
-#define LIFT2_IS_INVERTED 0
+// Need the old emergency_bitmask definition because CoverUI send it
+#define LL_EMERGENCY_BIT_CU_LIFT  0b00001000  // LIFT | LIFTX (up to CoverUI FW 2.0x)
+#define LL_EMERGENCY_BIT_CU_BUMP  0b00010000  // LBUMP | RBUMP (up to CoverUI FW 2.0x)
+#define LL_EMERGENCY_BIT_CU_STOP1 0b00000010  // Stop1
+#define LL_EMERGENCY_BIT_CU_STOP2 0b00000100  // Stop2
+#define LL_EMERGENCY_BIT_CU_LIFTX 0b00100000  // CoverUI-LIFTX (as of CoverUI FW 2.1x)
+#define LL_EMERGENCY_BIT_CU_RBUMP 0b01000000  // CoverUI-RBUMP (as of CoverUI FW 2.1x)
 
 #define LL_STATUS_BIT_UI_AVAIL 0b10000000
 
@@ -70,11 +66,8 @@ struct ll_status {
     float uss_ranges_m[5];
     // Emergency bitmask:
     // Bit 0: Emergency latch
-    // Bit 1: Emergency/Hall 3 (Stop1) active
-    // Bit 2: Emergency/Hall 4 (Stop2) active
-    // Bit 3: Emergency/Hall 1 (Lift1) active
-    // Bit 4: Emergency/Hall 2 (Lift2) active
-    // Bit 5: Not an emergency but probably usable for pause via SA Handle?
+    // Bit 1: Emergency/Lift (or tilt)
+    // Bit 2: Emergency/Stop
     uint8_t emergency_bitmask;
     // Charge voltage
     float v_charge;
@@ -150,19 +143,13 @@ enum class HallMode : unsigned int {
     OFF = 0,
     LIFT_TILT,  // Wheel lifted and/or wheels tilted functionality
     STOP,       // Stop mower
-    PAUSE,      // Pause the mower (not yet implemented in ROS)
     UNDEFINED   // This is used by foreign side to inform that it doesn't has a configuration for this sensor
-};
-
-enum class HallLevel : unsigned int {
-    ACTIVE_LOW = 0,  // If Hall-Sensor (or button) is active/triggered we've this level on our GPIO
-    ACTIVE_HIGH
 };
 
 #pragma pack(push, 1)
 struct HallConfig {
-    HallMode mode : 3;
-    HallLevel level : 1;
+    HallMode mode : 3;  // 1 bit reserved
+    bool active_low : 1;
 } __attribute__((packed));
 #pragma pack(pop)
 
@@ -189,11 +176,16 @@ struct ll_high_level_config {
     iso639_1 language = {'e', 'n'};        // ISO 639-1 (2-char) language code (en, de, ...)
     uint8_t volume = 80;                   // Volume (0-100%) feedback (if directly changed i.e. via CoverUI or WebApp) (0xff = do not change)
     HallConfig hall_configs[MAX_HALL_INPUTS] = {
-        {HallMode::LIFT_TILT, HallLevel::ACTIVE_LOW},  // [0] OM Hall-1 input (Lift1)
-        {HallMode::LIFT_TILT, HallLevel::ACTIVE_LOW},  // [1] OM Hall-2 input (Lift2)
-        {HallMode::STOP, HallLevel::ACTIVE_LOW},       // [2] OM Hall-3 input (Stop1)
-        {HallMode::STOP, HallLevel::ACTIVE_LOW},       // [3] OM Hall-4 input (Stop2)
-        // [4] Stock-CoverUI-1 ... [9] Stock-CoverUI-6 default to off
+        {HallMode::LIFT_TILT, true},  // [0] OM Hall-1 input (Lift1) = YF-C500 default
+        {HallMode::LIFT_TILT, true},  // [1] OM Hall-2 input (Lift2) = YF-C500 default
+        {HallMode::STOP, true},       // [2] OM Hall-3 input (Stop1) = YF-C500 default
+        {HallMode::STOP, true},       // [3] OM Hall-4 input (Stop2) = YF-C500 default
+        //{HallMode::LIFT_TILT, false},  // [4] CoverUI-LIFT | LIFTX (up to CoverUI FW 2.0x)
+        //{HallMode::LIFT_TILT, false},  // [5] CoverUI-LIFTX (as of CoverUI FW 2.1x)
+        //{HallMode::LIFT_TILT, false},  // [6] CoverUI-LBUMP | RBUMP (up to CoverUI FW 2.0x)
+        //{HallMode::LIFT_TILT, false},  // [7] CoverUI-RBUMP (as of CoverUI FW 2.1x)
+        //{HallMode::STOP, false},       // [8] CoverUI-Stop1
+        //{HallMode::STOP, false},       // [9] CoverUI-Stop2
     };
     // INFO: Before adding a new member here: Decide if and how much hall_configs spares do we like to have
 
