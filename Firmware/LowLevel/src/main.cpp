@@ -125,7 +125,7 @@ struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized
 static_assert(sizeof(ConfigOptions) == 1, "Enlarging struct ConfigOption to a sizeof > 1 will break packet compatibilty");
 
 // Hall input sources, same order as in ll_high_level_config.hall_configs
-std::function<bool()> halls[MAX_HALL_INPUTS] = {
+const std::function<bool()> halls[MAX_HALL_INPUTS] = {
     []() { return gpio_get(PIN_EMERGENCY_1); },                             // OM-Hall-1 (default Lift1)
     []() { return gpio_get(PIN_EMERGENCY_2); },                             // OM-Hall-2 (default Lift2)
     []() { return gpio_get(PIN_EMERGENCY_3); },                             // OM-Hall-3 (default Stop1)
