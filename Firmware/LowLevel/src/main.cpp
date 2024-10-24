@@ -551,7 +551,7 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
     else if (buffer[0] == Get_Rain && size == sizeof(struct msg_event_rain))
     {
         struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
-        stock_ui_rain = (msg->value < msg->threshold);
+        stock_ui_rain = (msg->value < llhl_config.rain_threshold);
     }
     else if (buffer[0] == Get_Subscribe && size == sizeof(struct msg_event_subscribe))
     {
