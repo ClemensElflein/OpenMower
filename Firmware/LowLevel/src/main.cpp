@@ -584,38 +584,44 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
     // If payload size is smaller than our struct size, copy only the payload we got, but ensure that the unsent member(s) have reasonable defaults.
     size_t payload_size = min(sizeof(ll_high_level_config), size - 2);  // exclude crc
 
-    // Use a temporary config for easier sanity adaption and copy to our live config, which has reasonable defaults.
-    // The initializing live config copy ensures that we've reasonable values for the case that HL config struct is older (smaller) than ours.
-    auto rcv_config = llhl_config;
+    // Use a temporary rcv_config for easier member access.
+    // If payload is smaller (older), struct already contains reasonable defaults.
+    ll_high_level_config rcv_config;
+    memcpy(&rcv_config, buffer, payload_size);  // Copy payload to temporary config
 
-    // Copy payload to temporary config
-    memcpy(&rcv_config, buffer, payload_size);
+    // Use a temporary new_config for save sanity adaption before copy to our live config.
+    // It's important to use a clean one with LL-default values, and not the current live llhl_config one,
+    // because we need to ensure that re-commented mower_config parameter get the LL-default value and not the last saved one!
+    ll_high_level_config new_config;
 
-    // HL always force these
-    llhl_config.options = rcv_config.options;
-    strncpy(llhl_config.language, rcv_config.language, 2);
+    // Take over of payload values. This could also be made the other way around, which would save the copy of the "leading"
+    // values, but I felt it's more secure to do it this way (in special for further packet enlargements)
 
-    // Take over only those HL members who are not "undefined/unknown"
-    if (rcv_config.rain_threshold != 0xffff) llhl_config.rain_threshold = rcv_config.rain_threshold;
-    if (rcv_config.v_charge_cutoff >= 0) llhl_config.v_charge_cutoff = min(rcv_config.v_charge_cutoff, 36.0f);  // Rated max. limited by MAX20405
-    if (rcv_config.i_charge_cutoff >= 0) llhl_config.i_charge_cutoff = min(rcv_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
-    if (rcv_config.v_battery_cutoff >= 0) llhl_config.v_battery_cutoff = rcv_config.v_battery_cutoff;
-    if (rcv_config.v_battery_empty >= 0) llhl_config.v_battery_empty = rcv_config.v_battery_empty;
-    if (rcv_config.v_battery_full >= 0) llhl_config.v_battery_full = rcv_config.v_battery_full;
-    if (rcv_config.lift_period != 0xffff) llhl_config.lift_period = rcv_config.lift_period;
-    if (rcv_config.tilt_period != 0xffff) llhl_config.tilt_period = rcv_config.tilt_period;
-    if (rcv_config.volume != 0xff) llhl_config.volume = rcv_config.volume;
+    // HL always force these member
+    new_config.options = rcv_config.options;
+    strncpy(new_config.language, rcv_config.language, 2);
+
+    // Take over only those (HL) values which are not "undefined/unknown"
+    if (rcv_config.rain_threshold != 0xffff) new_config.rain_threshold = rcv_config.rain_threshold;
+    if (rcv_config.v_charge_cutoff >= 0) new_config.v_charge_cutoff = min(rcv_config.v_charge_cutoff, 36.0f);  // Rated max. limited by MAX20405
+    if (rcv_config.i_charge_cutoff >= 0) new_config.i_charge_cutoff = min(rcv_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
+    if (rcv_config.v_battery_cutoff >= 0) new_config.v_battery_cutoff = rcv_config.v_battery_cutoff;
+    if (rcv_config.v_battery_empty >= 0) new_config.v_battery_empty = rcv_config.v_battery_empty;
+    if (rcv_config.v_battery_full >= 0) new_config.v_battery_full = rcv_config.v_battery_full;
+    if (rcv_config.lift_period != 0xffff) new_config.lift_period = rcv_config.lift_period;
+    if (rcv_config.tilt_period != 0xffff) new_config.tilt_period = rcv_config.tilt_period;
+    if (rcv_config.volume != 0xff) new_config.volume = rcv_config.volume;
 
     // Take over those hall inputs which are not undefined
     for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
         if (rcv_config.hall_configs[i].mode != HallMode::UNDEFINED)
-            llhl_config.hall_configs[i] = rcv_config.hall_configs[i];
+            new_config.hall_configs[i] = rcv_config.hall_configs[i];
     }
 
     // Apply active Emergency/Hall configurations to our compacted stop/lift-hall arrays which get used by updateEmergency()
     uint8_t stop_hall_idx = 0, lift_hall_idx = 0;
     for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
-        switch (llhl_config.hall_configs[i].mode) {
+        switch (new_config.hall_configs[i].mode) {
             case HallMode::LIFT_TILT:
                 lift_halls[lift_hall_idx] = i;
                 lift_hall_idx++;
@@ -628,6 +634,8 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
     }
     lift_halls[lift_hall_idx] = 0xff;  // End of lift halls marker
     stop_halls[stop_hall_idx] = 0xff;  // End of stop halls marker
+
+    llhl_config = new_config;  // Make new config live
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {

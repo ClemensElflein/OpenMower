@@ -170,7 +170,7 @@ struct ll_high_level_config {
     float v_battery_cutoff = 29.0f;        // Protective max. battery voltage before charging get switched off (-1 = unknown)
     float v_battery_empty = 21.7f + 0.3f;  // Empty battery voltage used for % calc of capacity (-1 = unknown)
     float v_battery_full = 28.7f - 0.3f;   // Full battery voltage used for % calc of capacity (-1 = unknown)
-    uint16_t lift_period = 100;            // Period (ms) for both wheels to be lifted in order to count as emergency (0 = disable, 0xFFFF = unknown). This is to filter uneven ground
+    uint16_t lift_period = 100;            // Period (ms) for >=2 wheels to be lifted in order to count as emergency (0 = disable, 0xFFFF = unknown). This is to filter uneven ground
     uint16_t tilt_period = 2500;           // Period (ms) for a single wheel to be lifted in order to count as emergency (0 = disable, 0xFFFF = unknown). This is to filter uneven ground
     float shutdown_esc_max_pitch = 0.0f;   // Do not shutdown ESCs if absolute pitch angle is greater than this (0 = disable, 0xffff = unknown) (to be implemented)
     iso639_1 language = {'e', 'n'};        // ISO 639-1 (2-char) language code (en, de, ...)
