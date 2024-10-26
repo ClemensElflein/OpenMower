@@ -23,8 +23,8 @@
 #define PACKET_ID_LL_STATUS 1
 #define PACKET_ID_LL_IMU 2
 #define PACKET_ID_LL_UI_EVENT 3
-#define PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ 0x21 // ll_high_level_config and request config from receiver
-#define PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP 0x22 // ll_high_level_config response
+#define PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ 0x11 // ll_high_level_config and request config from receiver
+#define PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP 0x12 // ll_high_level_config response
 #define PACKET_ID_LL_HEARTBEAT 0x42
 #define PACKET_ID_LL_HIGH_LEVEL_STATE 0x43
 
