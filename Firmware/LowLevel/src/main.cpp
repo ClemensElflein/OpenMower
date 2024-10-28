@@ -145,7 +145,6 @@ void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
 void onUIPacketReceived(const uint8_t *buffer, size_t size);
 void manageUISubscriptions();
-void saveConfigToFlash();
 void readConfigFromFlash();
 
 void setRaspiPower(bool power) {
@@ -671,11 +670,18 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) {
         applyConfig(buffer + 1, size - 3);  // Skip packet- type and CRC
 
-        // Store in flash
-        saveConfigToFlash();
-
+        // Response if requested (before save, to ensure REQ/RSP timing)
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
             sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);  // Other side requested a config response
+
+        // Store the whole received packet in flash and not the live (applied) config. This has the following benefits:
+        // - We're free to change ll_high_level_config defaults in future without fiddling with already stored ones
+        // - Reuse the already calculated and validated CRC
+        if (crc == config_crc_in_flash) return;  // Protect wear leveling
+        File f = LittleFS.open(CONFIG_FILENAME, "w");
+        if (!f) return;
+        if (f.write(buffer, size) == size) config_crc_in_flash = crc;
+        f.close();
     }
 }
 
@@ -859,25 +865,13 @@ void sendUIMessage(void *message, size_t size) {
     UISerial.send((uint8_t *) message, size);
 }
 
-void saveConfigToFlash() {
-    uint16_t crc = CRC16.ccitt((const uint8_t *)&llhl_config, sizeof(llhl_config));
-    if (crc == config_crc_in_flash) return;
-
-    File f = LittleFS.open(CONFIG_FILENAME, "w");
-    if (!f) return;
-
-    f.write((const uint8_t *)&llhl_config, sizeof(llhl_config));
-    f.write((const uint8_t *)&crc, 2);
-    f.close();
-}
-
 void readConfigFromFlash() {
     File f = LittleFS.open(CONFIG_FILENAME, "r");
     if (!f) return;
 
-    // sanity check for CRC to work (1 data, 2 CRC)
+    // sanity check for CRC to work (1 type, 1 data, 2 CRC)
     const size_t size = f.size();
-    if (size < 3) {
+    if (size < 4) {
         f.close();
         return;
     }
@@ -897,6 +891,6 @@ void readConfigFromFlash() {
         return;
 
     config_crc_in_flash = crc;
-    applyConfig(buffer, size - 2);  // Skip CRC
+    applyConfig(buffer + 1, size - 3);  // Skip Type & CRC
     free(buffer);
 }
