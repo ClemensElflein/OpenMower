@@ -122,7 +122,6 @@ uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (
 #define CONFIG_FILENAME "/openmower.cfg"  // Where our llhl_config get saved in LittleFS (flash)
 uint16_t config_crc_in_flash = 0;
 struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
-static_assert(sizeof(ConfigOptions) == 1, "Enlarging struct ConfigOption to a sizeof > 1 will break packet compatibilty");
 
 // Hall input sources, same order as in ll_high_level_config.hall_configs
 const std::function<bool()> halls[MAX_HALL_INPUTS] = {
@@ -566,9 +565,9 @@ void sendConfigMessage(const uint8_t pkt_type) {
     uint8_t *msg = (uint8_t *)malloc(msg_size);
     if (msg == NULL)
         return;
-    *msg = pkt_type;
+    msg[0] = pkt_type;
     memcpy(msg + 1, &llhl_config, sizeof(struct ll_high_level_config));  // Copy our live config into the message, behind type
-    sendMessage(msg, msg_size);
+    sendMessage(msg, msg_size);                                          // sendMessage() also calculate the packet CRC
     free(msg);
 }
 
@@ -576,13 +575,13 @@ void sendConfigMessage(const uint8_t pkt_type) {
  * @brief applyConfig applies those members who are not undefined/unknown.
  * This function get called either when receiving a ll_high_level_config packet from HL, or during boot after read from LittleFS
  * @param buffer
- * @param size
+ * @param size of buffer (without packet type nor CRC)
  */
 void applyConfig(const uint8_t *buffer, const size_t size) {
     // This is a flexible length packet where the size may vary when ll_high_level_config struct get enhanced only on one side.
-    // If payload size is larger than our struct size, ensure that we only copy those we know of = our struct size.
+    // If payload size is larger than our struct size, ensure that we only copy those we know of (which is our struct size).
     // If payload size is smaller than our struct size, copy only the payload we got, but ensure that the unsent member(s) have reasonable defaults.
-    size_t payload_size = min(sizeof(ll_high_level_config), size - 2);  // exclude crc
+    size_t payload_size = min(sizeof(ll_high_level_config), size);
 
     // Use a temporary rcv_config for easier member access.
     // If payload is smaller (older), struct already contains reasonable defaults.
@@ -670,7 +669,7 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
         // copy the state
         last_high_level_state = *((struct ll_high_level_state *) buffer);
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) {
-        applyConfig(buffer + 1, size - 1);  // Skip type
+        applyConfig(buffer + 1, size - 3);  // Skip packet- type and CRC
 
         // Store in flash
         saveConfigToFlash();
@@ -898,6 +897,6 @@ void readConfigFromFlash() {
         return;
 
     config_crc_in_flash = crc;
-    applyConfig(buffer, size);
+    applyConfig(buffer, size - 2);  // Skip CRC
     free(buffer);
 }

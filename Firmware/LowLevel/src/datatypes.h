@@ -34,19 +34,22 @@ enum HighLevelMode {
     MODE_RECORDING = 3 // ROS connected, Manual mode during recording etc
 };
 
-#define LL_EMERGENCY_BIT_LATCH (1 << 0)
-#define LL_EMERGENCY_BIT_LIFT (1 << 1)  // Lift (or tilt)
-#define LL_EMERGENCY_BIT_STOP (1 << 2)  // Stop
+// clang-format off
+#define LL_EMERGENCY_BIT_LATCH (1 << 0)  // Any emergency latch
+#define LL_EMERGENCY_BIT_STOP  (1 << 1)  // Stop
+#define LL_EMERGENCY_BIT_LIFT  (1 << 2)  // Lift (or tilt)
 
-// Need the old emergency_bitmask definition because CoverUI send it
-#define LL_EMERGENCY_BIT_CU_LIFT  0b00001000  // LIFT | LIFTX (up to CoverUI FW 2.0x)
-#define LL_EMERGENCY_BIT_CU_BUMP  0b00010000  // LBUMP | RBUMP (up to CoverUI FW 2.0x)
-#define LL_EMERGENCY_BIT_CU_STOP1 0b00000010  // Stop1
-#define LL_EMERGENCY_BIT_CU_STOP2 0b00000100  // Stop2
-#define LL_EMERGENCY_BIT_CU_LIFTX 0b00100000  // CoverUI-LIFTX (as of CoverUI FW 2.1x)
-#define LL_EMERGENCY_BIT_CU_RBUMP 0b01000000  // CoverUI-RBUMP (as of CoverUI FW 2.1x)
+// CoverUI will stay with the old emergency_bitmask definition
+#define LL_EMERGENCY_BIT_CU_LATCH (1 << 0)  // Any emergency latch
+#define LL_EMERGENCY_BIT_CU_STOP1 (1 << 1)  // Stop1
+#define LL_EMERGENCY_BIT_CU_STOP2 (1 << 2)  // Stop2
+#define LL_EMERGENCY_BIT_CU_LIFT  (1 << 3)  // LIFT | LIFTX (up to CoverUI FW 2.0x)
+#define LL_EMERGENCY_BIT_CU_BUMP  (1 << 4)  // LBUMP | RBUMP (up to CoverUI FW 2.0x)
+#define LL_EMERGENCY_BIT_CU_LIFTX (1 << 5)  // CoverUI-LIFTX (as of CoverUI FW 2.1x)
+#define LL_EMERGENCY_BIT_CU_RBUMP (1 << 6)  // CoverUI-RBUMP (as of CoverUI FW 2.1x)
 
-#define LL_STATUS_BIT_UI_AVAIL 0b10000000
+#define LL_STATUS_BIT_UI_AVAIL (1 << 7)
+// clang-format on
 
 #pragma pack(push, 1)
 struct ll_status {
@@ -136,6 +139,7 @@ struct ConfigOptions {
     bool ignore_charging_current : 1;
 } __attribute__((packed));
 #pragma pack(pop)
+static_assert(sizeof(ConfigOptions) == 1, "Enlarging struct ConfigOption to a sizeof > 1 will break packet compatibilty");
 
 typedef char iso639_1[2]; // Two char ISO 639-1 language code
 
