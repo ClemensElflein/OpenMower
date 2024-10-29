@@ -594,11 +594,13 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
     // Take over of payload values. This could also be made the other way around, which would save the copy of the "leading"
     // values, but I felt it's more secure to do it this way (in special for further packet enlargements)
 
-    // HL always force these member
-    new_config.options = rcv_config.options;
+    // HL always force language
     strncpy(new_config.language, rcv_config.language, 2);
 
     // Take over only those (HL) values which are not "undefined/unknown"
+    if (rcv_config.options.dfp_is_5v != OptionState::UNDEFINED) new_config.options.dfp_is_5v = rcv_config.options.dfp_is_5v;
+    if (rcv_config.options.background_sounds != OptionState::UNDEFINED) new_config.options.background_sounds = rcv_config.options.background_sounds;
+    if (rcv_config.options.ignore_charging_current != OptionState::UNDEFINED) new_config.options.ignore_charging_current = rcv_config.options.ignore_charging_current;
     if (rcv_config.rain_threshold != 0xffff) new_config.rain_threshold = rcv_config.rain_threshold;
     if (rcv_config.v_charge_cutoff >= 0) new_config.v_charge_cutoff = min(rcv_config.v_charge_cutoff, 36.0f);  // Rated max. limited by MAX20405
     if (rcv_config.i_charge_cutoff >= 0) new_config.i_charge_cutoff = min(rcv_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
@@ -607,6 +609,7 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
     if (rcv_config.v_battery_full >= 0) new_config.v_battery_full = rcv_config.v_battery_full;
     if (rcv_config.lift_period != 0xffff) new_config.lift_period = rcv_config.lift_period;
     if (rcv_config.tilt_period != 0xffff) new_config.tilt_period = rcv_config.tilt_period;
+    if (rcv_config.shutdown_esc_max_pitch != 0xff) new_config.shutdown_esc_max_pitch = rcv_config.shutdown_esc_max_pitch;
     if (rcv_config.volume != 0xff) new_config.volume = rcv_config.volume;
 
     // Take over those hall inputs which are not undefined
