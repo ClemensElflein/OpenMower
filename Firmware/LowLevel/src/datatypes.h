@@ -157,6 +157,12 @@ struct HallConfig {
 } __attribute__((packed));
 #pragma pack(pop)
 
+// For each active hall, we've a handle of it for quick and direct access
+struct HallHandle {
+    HallConfig config;
+    std::function<bool()> get_value;
+};
+
 #define MAX_HALL_INPUTS 10  // How much Hall-inputs we support. 4 * OM + 6 * Stock-CoverUI + 0 spare (because not yet required to make it fixed)
 
 // LL/HL config packet, bi-directional, flexible-length, with defaults for YF-C500.

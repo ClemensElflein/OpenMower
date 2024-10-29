@@ -20,6 +20,7 @@
 #include <NeoPixelConnect.h>
 #include <PacketSerial.h>
 #include <functional>
+#include <etl/vector.h>
 
 #include "datatypes.h"
 #include "imu.h"
@@ -123,8 +124,8 @@ uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (
 uint16_t config_crc_in_flash = 0;
 struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
 
-// Hall input sources, same order as in ll_high_level_config.hall_configs
-const std::function<bool()> halls[MAX_HALL_INPUTS] = {
+// Available hall input sources, same order as in ll_high_level_config.hall_configs
+const std::function<bool()> available_halls[MAX_HALL_INPUTS] = {
     []() { return gpio_get(PIN_EMERGENCY_1); },                             // OM-Hall-1 (default Lift1)
     []() { return gpio_get(PIN_EMERGENCY_2); },                             // OM-Hall-2 (default Lift2)
     []() { return gpio_get(PIN_EMERGENCY_3); },                             // OM-Hall-3 (default Stop1)
@@ -136,9 +137,8 @@ const std::function<bool()> halls[MAX_HALL_INPUTS] = {
     []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_STOP1; },  // CoverUI-Stop1
     []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_STOP2; },  // CoverUI-Stop2
 };
-// Instead of iterating constantly over all halls, we use these compacted ones, whose contain the halls index of the used ones
-uint8_t stop_halls[MAX_HALL_INPUTS] = {};
-uint8_t lift_halls[MAX_HALL_INPUTS] = {};
+// Instead of iterating constantly over all available_halls, we use this compacted vector (which only contain the used halls)
+etl::vector<HallHandle, MAX_HALL_INPUTS> halls;
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
@@ -161,32 +161,31 @@ void updateEmergency() {
     uint8_t last_emergency = status_message.emergency_bitmask & LL_EMERGENCY_BIT_LATCH;
     uint8_t emergency_state = 0;
 
-    // Check all "stop" mode emergency inputs (halls)
+    // Check all emergency inputs (halls)
     bool stop_pressed = false;
-    size_t i;
-    for (i = 0; i < MAX_HALL_INPUTS; i++) {
-        if (stop_halls[i] == 0xff) break;                                                            // End marker reached
-        stop_pressed = halls[stop_halls[i]]() ^ llhl_config.hall_configs[stop_halls[i]].active_low;  // Get hall value and apply active_low level (invert)
-        if (stop_pressed) break;                                                                     // Break at first detected stop
+    int num_lifted = 0;
+    for (const auto &hall : halls) {
+        if (!(hall.get_value() ^ hall.config.active_low)) continue;  // Hall isn't triggered
+        if (hall.config.mode == HallMode::STOP) {
+            stop_pressed = true;
+        } else if (hall.config.mode == HallMode::LIFT_TILT) {
+            num_lifted++;
+        }
+        // From logic point of view, it save to escape here if stop_pressed == true AND num_lifted >= 2, but this is very unlikely to happen ever!
+        // Instead of, we should exit iterating over the remaining halls, if an important emergency case happen, which is STOP got pressed OR >=2 wheels got lifted.
+        if (stop_pressed || num_lifted >= 2)
+            break;
     }
 
     // Handle emergency "Stop" buttons
     if (stop_pressed) {
-        if (button_emergency_started == 0) button_emergency_started = millis();  // If we just pressed, store the timestamp
+        if (button_emergency_started == 0) {
+            button_emergency_started = millis();  // Just pressed, store the timestamp for debouncing
+        } else if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS) {
+            emergency_state |= LL_EMERGENCY_BIT_STOP;  // Debounced
+        }
     } else {
         button_emergency_started = 0;  // Not pressed, reset the time
-    }
-    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS) {
-        emergency_state |= LL_EMERGENCY_BIT_STOP;
-    }
-
-    // Check all "lifted" mode emergency inputs (halls)
-    int num_lifted = 0;
-    for (i = 0; i < MAX_HALL_INPUTS; i++) {
-        if (lift_halls[i] == 0xff) break;                                                 // End marker reached
-        if (halls[lift_halls[i]]() ^ llhl_config.hall_configs[lift_halls[i]].active_low)  // Get hall value and apply active_low level (invert)
-            num_lifted++;
-        if (num_lifted >= 2) break;  // Break once two wheels are lifted
     }
 
     // Handle lifted (>=2 wheels are lifted)
@@ -616,22 +615,10 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
             new_config.hall_configs[i] = rcv_config.hall_configs[i];
     }
 
-    // Apply active Emergency/Hall configurations to our compacted stop/lift-hall arrays which get used by updateEmergency()
-    uint8_t stop_hall_idx = 0, lift_hall_idx = 0;
+    // Apply the new emergency/hall configuration to our compacted stop/lift-hall vector which get used by updateEmergency()
     for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
-        switch (new_config.hall_configs[i].mode) {
-            case HallMode::LIFT_TILT:
-                lift_halls[lift_hall_idx] = i;
-                lift_hall_idx++;
-                break;
-            case HallMode::STOP:
-                stop_halls[stop_hall_idx] = i;
-                stop_hall_idx++;
-                break;
-        }
+        halls.push_back({new_config.hall_configs[i], available_halls[i]});
     }
-    lift_halls[lift_hall_idx] = 0xff;  // End of lift halls marker
-    stop_halls[stop_hall_idx] = 0xff;  // End of stop halls marker
 
     llhl_config = new_config;  // Make new config live
 }
