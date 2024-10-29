@@ -132,14 +132,26 @@ struct ll_ui_event {
 } __attribute__((packed));
 #pragma pack(pop)
 
+enum class OptionState : unsigned int {
+    OFF = 0,
+    ON,
+    UNDEFINED
+};
+
 #pragma pack(push, 1)
 struct ConfigOptions {
-    bool dfp_is_5v : 1;
-    bool background_sounds : 1;
-    bool ignore_charging_current : 1;
+    OptionState dfp_is_5v : 2;
+    OptionState background_sounds : 2;
+    OptionState ignore_charging_current : 2;
+    // Need to block/waster the bits now, to be prepared for future enhancements
+    OptionState reserved_for_future_use1 : 2;
+    OptionState reserved_for_future_use2 : 2;
+    OptionState reserved_for_future_use3 : 2;
+    OptionState reserved_for_future_use4 : 2;
+    OptionState reserved_for_future_use5 : 2;
 } __attribute__((packed));
 #pragma pack(pop)
-static_assert(sizeof(ConfigOptions) == 1, "Enlarging struct ConfigOption to a sizeof > 1 will break packet compatibilty");
+static_assert(sizeof(ConfigOptions) == 2, "Changing size of ConfigOption != 2 will break packet compatibilty");
 
 typedef char iso639_1[2]; // Two char ISO 639-1 language code
 
@@ -173,7 +185,7 @@ struct ll_high_level_config {
 
     // uint8_t type; Just for illustration. Get set in wire buffer with type PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ or PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP
 
-    ConfigOptions options = {0, 0, 0};
+    ConfigOptions options = {.dfp_is_5v = OptionState::OFF, .background_sounds = OptionState::OFF, .ignore_charging_current = OptionState::OFF};
     uint16_t rain_threshold = 700;         // If (stock CoverUI) rain value < rain_threshold then it rains. Expected to differ between C500, SA and SC types (0xFFFF = unknown)
     float v_charge_cutoff = 30.0f;         // Protective max. charging voltage before charging get switched off (-1 = unknown)
     float i_charge_cutoff = 1.5f;          // Protective max. charging current before charging get switched off (-1 = unknown)
