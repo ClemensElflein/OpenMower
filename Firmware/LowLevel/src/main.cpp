@@ -165,16 +165,16 @@ void updateEmergency() {
     bool stop_pressed = false;
     int num_lifted = 0;
     for (const auto &hall : halls) {
-        if (!(hall.get_value() ^ hall.config.active_low)) continue;  // Hall isn't triggered
-        if (hall.config.mode == HallMode::STOP) {
-            stop_pressed = true;
-        } else if (hall.config.mode == HallMode::LIFT_TILT) {
-            num_lifted++;
+        if (hall.get_value() ^ hall.config.active_low) {  // Get emergency input value and invert if low-active
+            if (hall.config.mode == HallMode::STOP) {
+                stop_pressed = true;
+            } else if (hall.config.mode == HallMode::LIFT_TILT) {
+                num_lifted++;
+            }
+            // Unlikely to happen, but there's no more emergency than stop and multiple-wheels lifted
+            if (stop_pressed && num_lifted >= 2)
+                break;
         }
-        // From logic point of view, it save to escape here if stop_pressed == true AND num_lifted >= 2, but this is very unlikely to happen ever!
-        // Instead of, we should exit iterating over the remaining halls, if an important emergency case happen, which is STOP got pressed OR >=2 wheels got lifted.
-        if (stop_pressed || num_lifted >= 2)
-            break;
     }
 
     // Handle emergency "Stop" buttons
@@ -591,9 +591,6 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
     // because we need to ensure that re-commented mower_config parameter get the LL-default value and not the last saved one!
     ll_high_level_config new_config;
 
-    // Take over of payload values. This could also be made the other way around, which would save the copy of the "leading"
-    // values, but I felt it's more secure to do it this way (in special for further packet enlargements)
-
     // HL always force language
     strncpy(new_config.language, rcv_config.language, 2);
 
@@ -612,17 +609,19 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
     if (rcv_config.shutdown_esc_max_pitch != 0xff) new_config.shutdown_esc_max_pitch = rcv_config.shutdown_esc_max_pitch;
     if (rcv_config.volume != 0xff) new_config.volume = rcv_config.volume;
 
-    // Take over those hall inputs which are not undefined
+    // Handle all emergency/halls
+    halls.clear();
     for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
+        // Take over those halls which are not "undefined"
         if (rcv_config.hall_configs[i].mode != HallMode::UNDEFINED)
             new_config.hall_configs[i] = rcv_config.hall_configs[i];
-    }
 
-    // Apply the new emergency/hall configuration to our compacted stop/lift-hall vector which get used by updateEmergency()
-    for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
+        if (new_config.hall_configs[i].mode == HallMode::OFF)
+            continue;
+
+        // Apply used hall to our compacted stop/lift-hall vector which get used by updateEmergency()
         halls.push_back({new_config.hall_configs[i], available_halls[i]});
     }
-
     llhl_config = new_config;  // Make new config live
 }
 
