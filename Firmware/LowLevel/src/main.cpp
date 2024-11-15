@@ -14,14 +14,18 @@
 // SOFTWARE.
 //
 //
-#include <NeoPixelConnect.h>
 #include <Arduino.h>
 #include <FastCRC.h>
+#include <LittleFS.h>
+#include <NeoPixelConnect.h>
 #include <PacketSerial.h>
+#include <functional>
+#include <etl/vector.h>
+
 #include "datatypes.h"
+#include "imu.h"
 #include "pins.h"
 #include "ui_board.h"
-#include "imu.h"
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
@@ -32,8 +36,6 @@
 #define UI_GET_VERSION_CYCLETIME 5000 // cycletime for UI Get_Version request (UI available check)
 #define UI_GET_VERSION_TIMEOUT 100    // timeout for UI Get_Version response (UI available check)
 
-#define TILT_EMERGENCY_MILLIS 2500  // Time for a single wheel to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
-#define LIFT_EMERGENCY_MILLIS 100  // Time for both wheels to be lifted in order to count as emergency (0 disable). This is to filter uneven ground.
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button.
 
 // Define to stream debugging messages via USB
@@ -61,12 +63,6 @@ SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 #define VIN_R2 1000.0f
 #define R_SHUNT 0.003f
 #define CURRENT_SENSE_GAIN 100.0f
-
-#define BATT_ABS_MAX 28.7f
-#define BATT_ABS_Min 21.7f
-
-#define BATT_FULL BATT_ABS_MAX - 0.3f
-#define BATT_EMPTY BATT_ABS_Min + 0.3f
 
 // Emergency will be engaged, if no heartbeat was received in this time frame.
 #define HEARTBEAT_MILLIS 500
@@ -123,15 +119,33 @@ uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
 uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (ms)
 
-// Some vars related to PACKET_ID_LL_HIGH_LEVEL_CONFIG_*
-uint8_t comms_version = 0;  // comms packet version (>0 if implemented)
-uint8_t config_bitmask = 0; // See LL_HIGH_LEVEL_CONFIG_BIT_*
+// LL/HL config
+#define CONFIG_FILENAME "/openmower.cfg"  // Where our llhl_config get saved in LittleFS (flash)
+uint16_t config_crc_in_flash = 0;
+struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
+
+// Available hall input sources, same order as in ll_high_level_config.hall_configs
+const std::function<bool()> available_halls[MAX_HALL_INPUTS] = {
+    []() { return gpio_get(PIN_EMERGENCY_1); },                             // OM-Hall-1 (default Lift1)
+    []() { return gpio_get(PIN_EMERGENCY_2); },                             // OM-Hall-2 (default Lift2)
+    []() { return gpio_get(PIN_EMERGENCY_3); },                             // OM-Hall-3 (default Stop1)
+    []() { return gpio_get(PIN_EMERGENCY_4); },                             // OM-Hall-4 (default Stop2)
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_LIFT; },   // CoverUI-LIFT | LIFTX (up to CoverUI FW 2.0x)
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_LIFTX; },  // CoverUI-LIFTX (as of CoverUI FW 2.1x)
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_BUMP; },   // CoverUI-LBUMP | RBUMP (up to CoverUI FW 2.0x)
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_RBUMP; },  // CoverUI-RBUMP (as of CoverUI FW 2.1x)
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_STOP1; },  // CoverUI-Stop1
+    []() { return stock_ui_emergency_state & LL_EMERGENCY_BIT_CU_STOP2; },  // CoverUI-Stop2
+};
+// Instead of iterating constantly over all available_halls, we use this compacted vector (which only contain the used halls)
+etl::vector<HallHandle, MAX_HALL_INPUTS> halls;
 
 void sendMessage(void *message, size_t size);
 void sendUIMessage(void *message, size_t size);
 void onPacketReceived(const uint8_t *buffer, size_t size);
 void onUIPacketReceived(const uint8_t *buffer, size_t size);
 void manageUISubscriptions();
+void readConfigFromFlash();
 
 void setRaspiPower(bool power) {
     // Update status bits in the status message
@@ -140,66 +154,58 @@ void setRaspiPower(bool power) {
 }
 
 void updateEmergency() {
-
     if (millis() - last_heartbeat_millis > HEARTBEAT_MILLIS) {
         emergency_latch = true;
         ROS_running = false;
     }
     uint8_t last_emergency = status_message.emergency_bitmask & LL_EMERGENCY_BIT_LATCH;
-
-    // Read & assign emergencies in the same manner as in ll_status.emergency_bitmask
-    uint8_t emergency_read = !gpio_get(PIN_EMERGENCY_3) << 1 | // Stop1
-                             !gpio_get(PIN_EMERGENCY_4) << 2 | // Stop2
-                             !gpio_get(PIN_EMERGENCY_1) << 3 | // Lift1
-                             !gpio_get(PIN_EMERGENCY_2) << 4 | // Lift2
-                             stock_ui_emergency_state; // OR with StockUI emergency
     uint8_t emergency_state = 0;
 
-    // Some mowers have the logic level inverted, fix this...
-    emergency_read = emergency_read ^ (LL_EMERGENCY_BIT_LIFT1 * LIFT1_IS_INVERTED);
-    emergency_read = emergency_read ^ (LL_EMERGENCY_BIT_LIFT2 * LIFT2_IS_INVERTED);
+    // Check all emergency inputs (halls)
+    bool stop_pressed = false;
+    int num_lifted = 0;
+    for (const auto &hall : halls) {
+        if (hall.get_value() ^ hall.config.active_low) {  // Get emergency input value and invert if low-active
+            if (hall.config.mode == HallMode::STOP) {
+                stop_pressed = true;
+            } else if (hall.config.mode == HallMode::LIFT_TILT) {
+                num_lifted++;
+            }
+            // Unlikely to happen, but there's no more emergency than stop and multiple-wheels lifted
+            if (stop_pressed && num_lifted >= 2)
+                break;
+        }
+    }
 
     // Handle emergency "Stop" buttons
-    if (emergency_read & LL_EMERGENCY_BITS_STOP) {
-        // If we just pressed, store the timestamp
+    if (stop_pressed) {
         if (button_emergency_started == 0) {
-            button_emergency_started = millis();
+            button_emergency_started = millis();  // Just pressed, store the timestamp for debouncing
+        } else if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS) {
+            emergency_state |= LL_EMERGENCY_BIT_STOP;  // Debounced
         }
     } else {
-        // Not pressed, reset the time
-        button_emergency_started = 0;
+        button_emergency_started = 0;  // Not pressed, reset the time
     }
 
-    if (button_emergency_started > 0 && (millis() - button_emergency_started) >= BUTTON_EMERGENCY_MILLIS)
-    {
-        emergency_state |= (emergency_read & LL_EMERGENCY_BITS_STOP);
-    }
-
-    // Handle lifted (both wheels are lifted)
-    if ((emergency_read & LL_EMERGENCY_BITS_LIFT) == LL_EMERGENCY_BITS_LIFT) {
-        // If we just lifted, store the timestamp
-        if (lift_emergency_started == 0) {
-            lift_emergency_started = millis();
-        }
+    // Handle lifted (>=2 wheels are lifted)
+    if (num_lifted >= 2) {
+        if (lift_emergency_started == 0) lift_emergency_started = millis();  // If we just lifted, store the timestamp
     } else {
-        // Not lifted, reset the time
-        lift_emergency_started = 0;
+        lift_emergency_started = 0;  // Not lifted, reset the time
     }
 
-    // Handle tilted (one wheel is lifted)
-    if (emergency_read & LL_EMERGENCY_BITS_LIFT) {
-        // If we just tilted, store the timestamp
-        if (tilt_emergency_started == 0) {
-            tilt_emergency_started = millis();
-        }
+    // Handle tilted (at least one wheel is lifted)
+    if (num_lifted >= 1) {
+        if (tilt_emergency_started == 0) tilt_emergency_started = millis();  // If we just tilted, store the timestamp
     } else {
-        // Not tilted, reset the time
-        tilt_emergency_started = 0;
+        tilt_emergency_started = 0;  // Not tilted, reset the time
     }
 
-    if ((LIFT_EMERGENCY_MILLIS > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= LIFT_EMERGENCY_MILLIS) ||
-        (TILT_EMERGENCY_MILLIS > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= TILT_EMERGENCY_MILLIS)) {
-        emergency_state |= (emergency_read & LL_EMERGENCY_BITS_LIFT);
+    // Evaluate lift & tilt periods
+    if ((llhl_config.lift_period > 0 && lift_emergency_started > 0 && (millis() - lift_emergency_started) >= llhl_config.lift_period) ||
+        (llhl_config.tilt_period > 0 && tilt_emergency_started > 0 && (millis() - tilt_emergency_started) >= llhl_config.tilt_period)) {
+        emergency_state |= LL_EMERGENCY_BIT_LIFT;
     }
 
     if (emergency_state || emergency_latch) {
@@ -232,7 +238,7 @@ void manageUILEDS() {
         setLed(leds_message, LED_CHARGING, LED_off);
 
     // Show Info Battery state
-    if (status_message.v_battery >= (BATT_EMPTY + 2.0f))
+    if (status_message.v_battery >= (llhl_config.v_battery_empty + 2.0f))
         setLed(leds_message, LED_BATTERY_LOW, LED_off);
     else
         setLed(leds_message, LED_BATTERY_LOW, LED_on);
@@ -294,9 +300,9 @@ void manageUILEDS() {
     }
 
     // Show Info mower lifted or stop button pressed
-    if (status_message.emergency_bitmask & LL_EMERGENCY_BITS_STOP) {
+    if (status_message.emergency_bitmask & LL_EMERGENCY_BIT_STOP) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_blink_fast);
-    } else if (status_message.emergency_bitmask & LL_EMERGENCY_BITS_LIFT) {
+    } else if (status_message.emergency_bitmask & LL_EMERGENCY_BIT_LIFT) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_blink_slow);
     } else if (status_message.emergency_bitmask & LL_EMERGENCY_BIT_LATCH) {
         setLed(leds_message, LED_MOWER_LIFTED, LED_on);
@@ -467,13 +473,20 @@ void setup() {
 
     status_message.status_bitmask |= 1;
 
+    rp2040.resumeOtherCore();
+
+    // Initialize flash and try to read config.
+    // ATTENTION: LittleFS needs other core (at least for initial format)!
+    LittleFS.begin();
+    readConfigFromFlash();
+
 #ifdef ENABLE_SOUND_MODULE
     p.neoPixelSetValue(0, 0, 255, 255, true);
 
     sound_available = my_sound.begin();
     if (sound_available) {
         p.neoPixelSetValue(0, 0, 0, 255, true);
-        my_sound.setvolume(100);
+        my_sound.setvolume(llhl_config.volume);
         my_sound.playSoundAdHoc(1);
         p.neoPixelSetValue(0, 255, 255, 0, true);
     } else {
@@ -485,8 +498,6 @@ void setup() {
         }
     }
 #endif
-
-    rp2040.resumeOtherCore();
 
     // Cover UI board clear all LEDs
     leds_message.type = Set_LEDs;
@@ -537,7 +548,7 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
     else if (buffer[0] == Get_Rain && size == sizeof(struct msg_event_rain))
     {
         struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
-        stock_ui_rain = (msg->value < msg->threshold);
+        stock_ui_rain = (msg->value < llhl_config.rain_threshold);
     }
     else if (buffer[0] == Get_Subscribe && size == sizeof(struct msg_event_subscribe))
     {
@@ -547,13 +558,71 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
     }
 }
 
-void sendConfigMessage(uint8_t pkt_type) {
-    struct ll_high_level_config ll_config;
-    ll_config.type = pkt_type;
-    ll_config.config_bitmask = config_bitmask;
-    ll_config.volume = 80;            // FIXME: Adapt once nv_config or improve-sound got merged
-    strncpy(ll_config.language, "en", 2); // FIXME: Adapt once nv_config or improve-sound got merged
-    sendMessage(&ll_config, sizeof(struct ll_high_level_config));
+void sendConfigMessage(const uint8_t pkt_type) {
+    size_t msg_size = sizeof(struct ll_high_level_config) + 3;  // + 1 type + 2 crc
+    uint8_t *msg = (uint8_t *)malloc(msg_size);
+    if (msg == NULL)
+        return;
+    msg[0] = pkt_type;
+    memcpy(msg + 1, &llhl_config, sizeof(struct ll_high_level_config));  // Copy our live config into the message, behind type
+    sendMessage(msg, msg_size);                                          // sendMessage() also calculate the packet CRC
+    free(msg);
+}
+
+/**
+ * @brief applyConfig applies those members who are not undefined/unknown.
+ * This function get called either when receiving a ll_high_level_config packet from HL, or during boot after read from LittleFS
+ * @param buffer
+ * @param size of buffer (without packet type nor CRC)
+ */
+void applyConfig(const uint8_t *buffer, const size_t size) {
+    // This is a flexible length packet where the size may vary when ll_high_level_config struct get enhanced only on one side.
+    // If payload size is larger than our struct size, ensure that we only copy those we know of (which is our struct size).
+    // If payload size is smaller than our struct size, copy only the payload we got, but ensure that the unsent member(s) have reasonable defaults.
+    size_t payload_size = min(sizeof(ll_high_level_config), size);
+
+    // Use a temporary rcv_config for easier member access.
+    // If payload is smaller (older), struct already contains reasonable defaults.
+    ll_high_level_config rcv_config;
+    memcpy(&rcv_config, buffer, payload_size);  // Copy payload to temporary config
+
+    // Use a temporary new_config for save sanity adaption before copy to our live config.
+    // It's important to use a clean one with LL-default values, and not the current live llhl_config one,
+    // because we need to ensure that re-commented mower_config parameter get the LL-default value and not the last saved one!
+    ll_high_level_config new_config;
+
+    // HL always force language
+    strncpy(new_config.language, rcv_config.language, 2);
+
+    // Take over only those (HL) values which are not "undefined/unknown"
+    if (rcv_config.options.dfp_is_5v != OptionState::UNDEFINED) new_config.options.dfp_is_5v = rcv_config.options.dfp_is_5v;
+    if (rcv_config.options.background_sounds != OptionState::UNDEFINED) new_config.options.background_sounds = rcv_config.options.background_sounds;
+    if (rcv_config.options.ignore_charging_current != OptionState::UNDEFINED) new_config.options.ignore_charging_current = rcv_config.options.ignore_charging_current;
+    if (rcv_config.rain_threshold != 0xffff) new_config.rain_threshold = rcv_config.rain_threshold;
+    if (rcv_config.v_charge_cutoff >= 0) new_config.v_charge_cutoff = min(rcv_config.v_charge_cutoff, 36.0f);  // Rated max. limited by MAX20405
+    if (rcv_config.i_charge_cutoff >= 0) new_config.i_charge_cutoff = min(rcv_config.i_charge_cutoff, 5.0f);   // Absolute max. limited by D2/D3 Schottky
+    if (rcv_config.v_battery_cutoff >= 0) new_config.v_battery_cutoff = rcv_config.v_battery_cutoff;
+    if (rcv_config.v_battery_empty >= 0) new_config.v_battery_empty = rcv_config.v_battery_empty;
+    if (rcv_config.v_battery_full >= 0) new_config.v_battery_full = rcv_config.v_battery_full;
+    if (rcv_config.lift_period != 0xffff) new_config.lift_period = rcv_config.lift_period;
+    if (rcv_config.tilt_period != 0xffff) new_config.tilt_period = rcv_config.tilt_period;
+    if (rcv_config.shutdown_esc_max_pitch != 0xff) new_config.shutdown_esc_max_pitch = rcv_config.shutdown_esc_max_pitch;
+    if (rcv_config.volume != 0xff) new_config.volume = rcv_config.volume;
+
+    // Handle all emergency/halls
+    halls.clear();
+    for (size_t i = 0; i < MAX_HALL_INPUTS; i++) {
+        // Take over those halls which are not "undefined"
+        if (rcv_config.hall_configs[i].mode != HallMode::UNDEFINED)
+            new_config.hall_configs[i] = rcv_config.hall_configs[i];
+
+        if (new_config.hall_configs[i].mode == HallMode::OFF)
+            continue;
+
+        // Apply used hall to our compacted stop/lift-hall vector which get used by updateEmergency()
+        halls.push_back({new_config.hall_configs[i], available_halls[i]});
+    }
+    llhl_config = new_config;  // Make new config live
 }
 
 void onPacketReceived(const uint8_t *buffer, size_t size) {
@@ -583,33 +652,31 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
         if (!ROS_running) {
             // ROS is running (again (i.e. due to restart after reconfiguration))
             ROS_running = true;
-
-            // Send current LL config (and request HL config response)
-            sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ);
         }
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_STATE && size == sizeof(struct ll_high_level_state)) {
         // copy the state
         last_high_level_state = *((struct ll_high_level_state *) buffer);
-    }
-    else if ((buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) && size == sizeof(struct ll_high_level_config))
-    {
-        // Read and handle received config
-        struct ll_high_level_config *pkt = (struct ll_high_level_config *)buffer;
-        if (pkt->comms_version <= LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION)
-            comms_version = pkt->comms_version;
-        else
-            comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;
-        config_bitmask = pkt->config_bitmask; // Take over as sent. HL is leading (for now)
-        // FIXME: Assign volume & language if not already stored in flash-config
+    } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) {
+        applyConfig(buffer + 1, size - 3);  // Skip packet- type and CRC
 
+        // Response if requested (before save, to ensure REQ/RSP timing)
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
-            sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);
+            sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);  // Other side requested a config response
+
+        // Store the whole received packet in flash and not the live (applied) config. This has the following benefits:
+        // - We're free to change ll_high_level_config defaults in future without fiddling with already stored ones
+        // - Reuse the already calculated and validated CRC
+        if (crc == config_crc_in_flash) return;  // Protect wear leveling
+        File f = LittleFS.open(CONFIG_FILENAME, "w");
+        if (!f) return;
+        if (f.write(buffer, size) == size) config_crc_in_flash = crc;
+        f.close();
     }
 }
 
 // returns true, if it's a good idea to charge the battery (current, voltages, ...)
 bool checkShouldCharge() {
-    return status_message.v_charge < 30.0 && status_message.charging_current < 1.5 && status_message.v_battery < 29.0;
+    return status_message.v_charge < llhl_config.v_charge_cutoff && status_message.charging_current < llhl_config.i_charge_cutoff && status_message.v_battery < llhl_config.v_battery_cutoff;
 }
 
 void updateChargingEnabled() {
@@ -687,18 +754,14 @@ void loop() {
                 (float) analogRead(PIN_ANALOG_BATTERY_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
         status_message.v_charge =
                 (float) analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
-#ifndef IGNORE_CHARGING_CURRENT
-        status_message.charging_current =
-                (float) analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
-#else
-        status_message.charging_current = -1.0f;
-#endif
+        status_message.charging_current = llhl_config.options.ignore_charging_current == OptionState::ON ? -1.0f : (float)analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
+
         status_message.status_bitmask = (status_message.status_bitmask & 0b11111011) | ((charging_allowed & 0b1) << 2);
         status_message.status_bitmask = (status_message.status_bitmask & 0b11011111) | ((sound_available & 0b1) << 5);
 
         // calculate percent value accu filling
-        float delta = BATT_FULL - BATT_EMPTY;
-        float vo = status_message.v_battery - BATT_EMPTY;
+        float delta = llhl_config.v_battery_full - llhl_config.v_battery_empty;
+        float vo = status_message.v_battery - llhl_config.v_battery_empty;
         status_message.batt_percentage = vo / delta * 100;
         if (status_message.batt_percentage > 100)
             status_message.batt_percentage = 100;
@@ -773,7 +836,7 @@ void sendMessage(void *message, size_t size) {
     data_pointer[size - 1] = (crc >> 8) & 0xFF;
     data_pointer[size - 2] = crc & 0xFF;
 
-    packetSerial.send((uint8_t *) message, size);
+    packetSerial.send(data_pointer, size);
 }
 
 void sendUIMessage(void *message, size_t size) {
@@ -789,4 +852,34 @@ void sendUIMessage(void *message, size_t size) {
     data_pointer[size - 2] = crc & 0xFF;
 
     UISerial.send((uint8_t *) message, size);
+}
+
+void readConfigFromFlash() {
+    File f = LittleFS.open(CONFIG_FILENAME, "r");
+    if (!f) return;
+
+    // sanity check for CRC to work (1 type, 1 data, 2 CRC)
+    const size_t size = f.size();
+    if (size < 4) {
+        f.close();
+        return;
+    }
+
+    // read config
+    uint8_t *buffer = (uint8_t *)malloc(size);
+    if (buffer == NULL) return;
+
+    f.read(buffer, size);
+    f.close();
+
+    // check the CRC
+    uint16_t crc = CRC16.ccitt(buffer, size - 2);
+
+    if (buffer[size - 1] != ((crc >> 8) & 0xFF) ||
+        buffer[size - 2] != (crc & 0xFF))
+        return;
+
+    config_crc_in_flash = crc;
+    applyConfig(buffer + 1, size - 3);  // Skip Type & CRC
+    free(buffer);
 }
