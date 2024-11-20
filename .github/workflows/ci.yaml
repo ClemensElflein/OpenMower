@@ -116,27 +116,6 @@ jobs:
           cp Firmware/LowLevel/.pio/build/0_9_X_WT901_INSTEAD_OF_SOUND/firmware.elf ./artifacts/0_9_X_WT901_INSTEAD_OF_SOUND
           cp Firmware/LowLevel/.pio/build/0_9_X_WT901_INSTEAD_OF_SOUND/firmware.uf2 ./artifacts/0_9_X_WT901_INSTEAD_OF_SOUND
           
-          mkdir ./artifacts/0_13_X_IGNORE_CHARGING_CURRENT
-          cp Firmware/LowLevel/.pio/build/0_13_X_IGNORE_CHARGING_CURRENT/firmware.elf ./artifacts/0_13_X_IGNORE_CHARGING_CURRENT
-          cp Firmware/LowLevel/.pio/build/0_13_X_IGNORE_CHARGING_CURRENT/firmware.uf2 ./artifacts/0_13_X_IGNORE_CHARGING_CURRENT
-          
-          mkdir ./artifacts/0_12_X_IGNORE_CHARGING_CURRENT
-          cp Firmware/LowLevel/.pio/build/0_12_X_IGNORE_CHARGING_CURRENT/firmware.elf ./artifacts/0_12_X_IGNORE_CHARGING_CURRENT
-          cp Firmware/LowLevel/.pio/build/0_12_X_IGNORE_CHARGING_CURRENT/firmware.uf2 ./artifacts/0_12_X_IGNORE_CHARGING_CURRENT
-          
-          mkdir ./artifacts/0_11_X_WT901_IGNORE_CHARGING_CURRENT
-          cp Firmware/LowLevel/.pio/build/0_11_X_WT901_IGNORE_CHARGING_CURRENT/firmware.elf ./artifacts/0_11_X_WT901_IGNORE_CHARGING_CURRENT
-          cp Firmware/LowLevel/.pio/build/0_11_X_WT901_IGNORE_CHARGING_CURRENT/firmware.uf2 ./artifacts/0_11_X_WT901_IGNORE_CHARGING_CURRENT
-          
-          mkdir ./artifacts/0_10_X_WT901_IGNORE_CHARGING_CURRENT
-          cp Firmware/LowLevel/.pio/build/0_10_X_WT901_IGNORE_CHARGING_CURRENT/firmware.elf ./artifacts/0_10_X_WT901_IGNORE_CHARGING_CURRENT
-          cp Firmware/LowLevel/.pio/build/0_10_X_WT901_IGNORE_CHARGING_CURRENT/firmware.uf2 ./artifacts/0_10_X_WT901_IGNORE_CHARGING_CURRENT
-          
-          mkdir ./artifacts/0_9_X_WT901_IGNORE_CHARGING_CURRENT
-          cp Firmware/LowLevel/.pio/build/0_9_X_WT901_IGNORE_CHARGING_CURRENT/firmware.elf ./artifacts/0_9_X_WT901_IGNORE_CHARGING_CURRENT
-          cp Firmware/LowLevel/.pio/build/0_9_X_WT901_IGNORE_CHARGING_CURRENT/firmware.uf2 ./artifacts/0_9_X_WT901_IGNORE_CHARGING_CURRENT
-          
-          
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:

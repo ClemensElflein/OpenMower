@@ -17,7 +17,7 @@
 #define _DEBUG_H_
 
 // Define to stream debugging messages via USB
-//#define USB_DEBUG
+#define USB_DEBUG
 #define DEBUG_PREFIX "" // You may define a debug prefix string
 
 #ifdef USB_DEBUG
@@ -29,6 +29,7 @@
     DEBUG_SERIAL.begin(b); \
     while (!DEBUG_SERIAL)  \
         ;
+#define DEBUG_PRINTLN(str) DEBUG_SERIAL.println(str)
 #define DEBUG_PRINTF(fmt, ...)                                \
     do                                                        \
     {                                                         \
@@ -36,6 +37,7 @@
     } while (0)
 #else
 #define DEBUG_BEGIN(b)
+#define DEBUG_PRINTLN(str)
 #define DEBUG_PRINTF(fmt, ...)
 #endif
 

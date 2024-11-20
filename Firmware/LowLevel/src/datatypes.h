@@ -19,12 +19,13 @@
 #define _DATATYPES_H
 
 #include <stdint.h>
+#include <functional>
 
 #define PACKET_ID_LL_STATUS 1
 #define PACKET_ID_LL_IMU 2
 #define PACKET_ID_LL_UI_EVENT 3
-#define PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ 0x21 // ll_high_level_config and request config from receiver
-#define PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP 0x22 // ll_high_level_config response
+#define PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ 0x11 // ll_high_level_config and request config from receiver
+#define PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP 0x12 // ll_high_level_config response
 #define PACKET_ID_LL_HEARTBEAT 0x42
 #define PACKET_ID_LL_HIGH_LEVEL_STATE 0x43
 
@@ -68,30 +69,29 @@ class HighLevelState {
     }
 };
 
-#define LL_EMERGENCY_BIT_LATCH 0b00000001
-#define LL_EMERGENCY_BIT_HALL1 0b00001000 // Lift1
-#define LL_EMERGENCY_BIT_HALL2 0b00010000 // Lift2
-#define LL_EMERGENCY_BIT_HALL3 0b00000010 // Stop1
-#define LL_EMERGENCY_BIT_HALL4 0b00000100 // Stop2
+// clang-format off
+#define LL_EMERGENCY_BIT_LATCH (1 << 0)  // Any emergency latch
+#define LL_EMERGENCY_BIT_STOP  (1 << 1)  // Stop
+#define LL_EMERGENCY_BIT_LIFT  (1 << 2)  // Lift (or tilt)
 
-#define LL_EMERGENCY_BIT_LIFT1 LL_EMERGENCY_BIT_HALL1
-#define LL_EMERGENCY_BIT_LIFT2 LL_EMERGENCY_BIT_HALL2
-#define LL_EMERGENCY_BITS_LIFT (LL_EMERGENCY_BIT_LIFT1 | LL_EMERGENCY_BIT_LIFT2)
-#define LL_EMERGENCY_BIT_STOP1 LL_EMERGENCY_BIT_HALL3
-#define LL_EMERGENCY_BIT_STOP2 LL_EMERGENCY_BIT_HALL4
-#define LL_EMERGENCY_BITS_STOP (LL_EMERGENCY_BIT_STOP1 | LL_EMERGENCY_BIT_STOP2)
+// CoverUI will stay with the old emergency_bitmask definition
+#define LL_EMERGENCY_BIT_CU_LATCH (1 << 0)  // Any emergency latch
+#define LL_EMERGENCY_BIT_CU_STOP1 (1 << 1)  // Stop1
+#define LL_EMERGENCY_BIT_CU_STOP2 (1 << 2)  // Stop2
+#define LL_EMERGENCY_BIT_CU_LIFT  (1 << 3)  // LIFT | LIFTX (up to CoverUI FW 2.0x)
+#define LL_EMERGENCY_BIT_CU_BUMP  (1 << 4)  // LBUMP | RBUMP (up to CoverUI FW 2.0x)
+#define LL_EMERGENCY_BIT_CU_LIFTX (1 << 5)  // CoverUI-LIFTX (as of CoverUI FW 2.1x)
+#define LL_EMERGENCY_BIT_CU_RBUMP (1 << 6)  // CoverUI-RBUMP (as of CoverUI FW 2.1x)
 
-#define LIFT1_IS_INVERTED 0
-#define LIFT2_IS_INVERTED 0
-
-#define LL_STATUS_BIT_INITIALIZED 0b00000001
-#define LL_STATUS_BIT_RASPI_POWER 0b00000010
-#define LL_STATUS_BIT_CHARGING    0b00000100
-#define LL_STATUS_BIT_FREE        0b00001000
-#define LL_STATUS_BIT_RAIN        0b00010000
-#define LL_STATUS_BIT_SOUND_AVAIL 0b00100000
-#define LL_STATUS_BIT_SOUND_BUSY  0b01000000
-#define LL_STATUS_BIT_UI_AVAIL    0b10000000
+#define LL_STATUS_BIT_INITIALIZED (1 << 0)
+#define LL_STATUS_BIT_RASPI_POWER (1 << 1)
+#define LL_STATUS_BIT_CHARGING    (1 << 2)
+#define LL_STATUS_BIT_FREE        (1 << 3)
+#define LL_STATUS_BIT_RAIN        (1 << 4)
+#define LL_STATUS_BIT_SOUND_AVAIL (1 << 5)
+#define LL_STATUS_BIT_SOUND_BUSY  (1 << 6)
+#define LL_STATUS_BIT_UI_AVAIL    (1 << 7)
+// clang-format on
 
 #pragma pack(push, 1)
 struct ll_status {
@@ -101,7 +101,7 @@ struct ll_status {
     // Bit 0: Initialized (i.e. setup() was a success). If this is 0, all other bits are meaningless.
     // Bit 1: Raspberry Power
     // Bit 2: Charging enabled
-    // Bit 3: don't care
+    // Bit 3: don't care (reserved for ESC shutdown PR)
     // Bit 4: Rain detected
     // Bit 5: Sound available
     // Bit 6: Sound busy
@@ -111,10 +111,8 @@ struct ll_status {
     float uss_ranges_m[5];
     // Emergency bitmask:
     // Bit 0: Emergency latch
-    // Bit 1: Emergency/Hall 3 (Stop1) active
-    // Bit 2: Emergency/Hall 4 (Stop2) active
-    // Bit 3: Emergency/Hall 1 (Lift1) active
-    // Bit 4: Emergency/Hall 2 (Lift2) active
+    // Bit 1: Emergency/Lift (or tilt)
+    // Bit 2: Emergency/Stop
     uint8_t emergency_bitmask;
     // Charge voltage
     float v_charge;
@@ -176,22 +174,86 @@ struct ll_ui_event {
 } __attribute__((packed));
 #pragma pack(pop)
 
-#define LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION 1           // Max. comms packet version supported by this open_mower LL FW
-#define LL_HIGH_LEVEL_CONFIG_BIT_DFPIS5V 1 << 0            // Enable full sound via mower_config env var "OM_DFP_IS_5V"
-#define LL_HIGH_LEVEL_CONFIG_BIT_BACKGROUND_SOUNDS 1 << 1  // Enable background sounds
+enum class OptionState : unsigned int {
+    OFF = 0,
+    ON,
+    UNDEFINED
+};
+
+#pragma pack(push, 1)
+struct ConfigOptions {
+    OptionState dfp_is_5v : 2;
+    OptionState background_sounds : 2;
+    OptionState ignore_charging_current : 2;
+    // Need to block/waster the bits now, to be prepared for future enhancements
+    OptionState reserved_for_future_use1 : 2;
+    OptionState reserved_for_future_use2 : 2;
+    OptionState reserved_for_future_use3 : 2;
+    OptionState reserved_for_future_use4 : 2;
+    OptionState reserved_for_future_use5 : 2;
+} __attribute__((packed));
+#pragma pack(pop)
+static_assert(sizeof(ConfigOptions) == 2, "Changing size of ConfigOption != 2 will break packet compatibilty");
 
 typedef char iso639_1[2]; // Two char ISO 639-1 language code
 
+enum class HallMode : unsigned int {
+    OFF = 0,
+    LIFT_TILT,  // Wheel lifted and/or wheels tilted functionality
+    STOP,       // Stop mower
+    UNDEFINED   // This is used by foreign side to inform that it doesn't has a configuration for this sensor
+};
+
+#pragma pack(push, 1)
+struct HallConfig {
+    HallMode mode : 3;  // 1 bit reserved
+    bool active_low : 1;
+} __attribute__((packed));
+#pragma pack(pop)
+
+// For each active hall, we've a handle of it for quick and direct access
+struct HallHandle {
+    HallConfig config;
+    std::function<bool()> get_value;
+};
+
+#define MAX_HALL_INPUTS 10  // How much Hall-inputs we support. 4 * OM + 6 * Stock-CoverUI + 0 spare (because not yet required to make it fixed)
+
+// LL/HL config packet, bi-directional, flexible-length, with defaults for YF-C500.
 #pragma pack(push, 1)
 struct ll_high_level_config {
-    uint8_t type;
-    uint8_t comms_version = LL_HIGH_LEVEL_CONFIG_MAX_COMMS_VERSION;  // Increasing comms packet-version number for packet compatibility (n > 0)
-    uint8_t config_bitmask = 0;                                      // See LL_HIGH_LEVEL_CONFIG_BIT_*
-    int8_t volume;                                                   // Volume (0-100%) feedback (if directly changed via CoverUI)
-    iso639_1 language;                                               // ISO 639-1 (2-char) language code (en, de, ...)
-    uint16_t spare1 = 0;                                             // Spare for future use
-    uint16_t spare2 = 0;                                             // Spare for future use
-    uint16_t crc;
+    // ATTENTION: This is a flexible length struct. It is allowed to grow independently to HL without loosing compatibility,
+    //    but never change or restructure already published member, except you really know their consequences.
+
+    // uint8_t type; Just for illustration. Get set in wire buffer with type PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ or PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP
+
+    ConfigOptions options = {.dfp_is_5v = OptionState::OFF, .background_sounds = OptionState::OFF, .ignore_charging_current = OptionState::OFF};
+    uint16_t rain_threshold = 700;         // If (stock CoverUI) rain value < rain_threshold then it rains. Expected to differ between C500, SA and SC types (0xFFFF = unknown)
+    float v_charge_cutoff = 30.0f;         // Protective max. charging voltage before charging get switched off (-1 = unknown)
+    float i_charge_cutoff = 1.5f;          // Protective max. charging current before charging get switched off (-1 = unknown)
+    float v_battery_cutoff = 29.0f;        // Protective max. battery voltage before charging get switched off (-1 = unknown)
+    float v_battery_empty = 21.7f + 0.3f;  // Empty battery voltage used for % calc of capacity (-1 = unknown)
+    float v_battery_full = 28.7f - 0.3f;   // Full battery voltage used for % calc of capacity (-1 = unknown)
+    uint16_t lift_period = 100;            // Period (ms) for >=2 wheels to be lifted in order to count as emergency (0 = disable, 0xFFFF = unknown). This is to filter uneven ground
+    uint16_t tilt_period = 2500;           // Period (ms) for a single wheel to be lifted in order to count as emergency (0 = disable, 0xFFFF = unknown). This is to filter uneven ground
+    uint8_t shutdown_esc_max_pitch = 0;    // Do not shutdown ESCs if absolute pitch angle is greater than this (0 = disable, 0xffff = unknown) (to be implemented, see PR #97)
+    iso639_1 language = {'e', 'n'};        // ISO 639-1 (2-char) language code (en, de, ...)
+    uint8_t volume = 80;                   // Volume (0-100%) feedback (if directly changed i.e. via CoverUI or WebApp) (0xff = do not change)
+    HallConfig hall_configs[MAX_HALL_INPUTS] = {
+        {HallMode::LIFT_TILT, true},  // [0] OM Hall-1 input (Lift1) = YF-C500 default
+        {HallMode::LIFT_TILT, true},  // [1] OM Hall-2 input (Lift2) = YF-C500 default
+        {HallMode::STOP, true},       // [2] OM Hall-3 input (Stop1) = YF-C500 default
+        {HallMode::STOP, true},       // [3] OM Hall-4 input (Stop2) = YF-C500 default
+        //{HallMode::LIFT_TILT, false},  // [4] CoverUI-LIFT | LIFTX (up to CoverUI FW 2.0x)
+        //{HallMode::LIFT_TILT, false},  // [5] CoverUI-LIFTX (as of CoverUI FW 2.1x)
+        //{HallMode::LIFT_TILT, false},  // [6] CoverUI-LBUMP | RBUMP (up to CoverUI FW 2.0x)
+        //{HallMode::LIFT_TILT, false},  // [7] CoverUI-RBUMP (as of CoverUI FW 2.1x)
+        //{HallMode::STOP, false},       // [8] CoverUI-Stop1
+        //{HallMode::STOP, false},       // [9] CoverUI-Stop2
+    };
+    // INFO: Before adding a new member here: Decide if and how much hall_configs spares do we like to have
+
+    // uint16_t crc;  Just for illustration, that it get appended, but only within the wire buffer
 } __attribute__((packed));
 #pragma pack(pop)
 
