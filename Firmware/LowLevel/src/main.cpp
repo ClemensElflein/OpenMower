@@ -83,7 +83,7 @@ bool stock_ui_rain = false;           // Get set by received Get_Rain packet
 
 // Predefined message buffers, so that we don't need to allocate new ones later.
 struct ll_imu imu_message = {0};
-struct ll_status status_message = {0};
+struct ll_status status_message = {};
 // current high level state
 struct ll_high_level_state last_high_level_state = {0};
 
@@ -362,6 +362,10 @@ void loop1() {
         }
     }
 
+#ifdef ENABLE_SOUND_MODULE
+    soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
+#endif
+
     delay(100);
 }
 
@@ -429,10 +433,7 @@ void setup() {
     sound_available = soundSystem::begin();
     if (sound_available) {
         p.neoPixelSetValue(0, 0, 0, 255, true);
-        soundSystem::setDFPis5V(llhl_config.options.dfp_is_5v == OptionState::ON);
-        soundSystem::setVolume(llhl_config.volume);
-        soundSystem::setLanguage(llhl_config.language, true);
-        soundSystem::setEnableBackground(llhl_config.options.background_sounds == OptionState::ON);
+        soundSystem::applyConfig(llhl_config, true);
         // Do NOT play any initial sound now, because we've to handle the special case of
         // old DFPlayer SD-Card format @ DFROBOT LISP3 with wrong IO2 level. See soundSystem::processSounds()
         p.neoPixelSetValue(0, 255, 255, 0, true);
@@ -450,13 +451,13 @@ void setup() {
      * IMU INITIALIZATION
      */
     bool init_imu_success = false;
-    int init_imu_tries = 1000;
+    int init_imu_tries = 10;
     while(init_imu_tries --> 0) {
         if(init_imu()) {
             init_imu_success = true;
             break;
         }
-        DEBUG_PRINTLN("IMU initialization unsuccessful, retrying in 1 sec");
+        DEBUG_PRINTF("IMU initialization unsuccessful, retrying in 1 sec (%d tries left)\n", init_imu_tries + 1);
 
         p.neoPixelSetValue(0, 0, 0, 0, true);
         delay(800);
@@ -467,19 +468,22 @@ void setup() {
     }
 
     if (!init_imu_success) {
-        DEBUG_PRINTLN("IMU initialization unsuccessful");
+        unsigned long next_ann = millis();
+        DEBUG_PRINTLN("IMU initialization failed");
         DEBUG_PRINTLN("Check IMU wiring or try cycling power");
 
         status_message.status_bitmask = 0;
-        while (1) {  // Blink RED for IMU failure
+        while (1) {  // Infinite blink RED for IMU failure
             p.neoPixelSetValue(0, 255, 0, 0, true);
             delay(500);
             p.neoPixelSetValue(0, 0, 0, 0, true);
             delay(500);
 #ifdef ENABLE_SOUND_MODULE
-            soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
-            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_ADV_IMU_INIT_FAILED]);
-            soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_OM_ALARM]);
+            if (millis() >= next_ann) {
+                soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_ADV_IMU_INIT_FAILED]);
+                soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_OM_ALARM]);
+                next_ann = millis() + 8000;
+            }
 #endif
         }
     }
@@ -664,10 +668,7 @@ void onPacketReceived(const uint8_t *buffer, const size_t size) {
 #ifdef ENABLE_SOUND_MODULE
         // We can't move the sound stuff to applyConfig because applyConfig get also called by readConfigFromFlash()
         // which is before (and also needs to be before) soundSystem::begin()
-        soundSystem::setDFPis5V(llhl_config.options.dfp_is_5v == OptionState::ON);
-        soundSystem::setVolume(llhl_config.volume);
-        soundSystem::setLanguage(llhl_config.language, true);
-        soundSystem::setEnableBackground(llhl_config.options.background_sounds == OptionState::ON);
+        soundSystem::applyConfig(llhl_config, true);
 #endif
 
         // Response if requested (before save, to ensure REQ/RSP timing)
@@ -800,9 +801,6 @@ void loop() {
         next_ui_msg_millis = now + ui_interval;
         manageUISubscriptions();
     }
-#ifdef ENABLE_SOUND_MODULE
-    soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
-#endif
 
     // Check UI version/available
     if (ui_get_version_respond_timeout && now > ui_get_version_respond_timeout)

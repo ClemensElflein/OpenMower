@@ -55,17 +55,20 @@
 #include "pins.h"
 
 // Some quirky defines for old- sound-card-format detection
-#define DFP_DETECTION_BIT_END (1 << 0)                 // Detection phase ended
-#define DFP_DETECTION_BIT_HAS_AUTOPLAY (1 << 1)        // DFPlayer has played a track after reset
+// clang-format off
+#define DFP_DETECTION_BIT_END                (1 << 0)  // All detection phases ended
+#define DFP_DETECTION_BIT_HAS_AUTOPLAY       (1 << 1)  // DFPlayer has played a track after reset
 #define DFP_DETECTION_BIT_OLD_CARD_STRUCTURE (1 << 2)  // Detected old SD-Card structure
-#define DFP_DETECTION_BIT_HANDLED (1 << 3)             // Autoplay existence handled
+// clang-format on
+
+#define DFP_HAS_AUTOPLAY_TIMEOUT 600                    // Timeout how long to test if DFPlayer is (wrongly) configured doing "autoplay" (IO2=GND)
 #define DFP_AUTOPLAY_TIMEOUT 6000                      // Autoplayed track detection timeout. "Hi I'm Steve ..." is about 4.x seconds
 
 namespace soundSystem {
 namespace  // anonymous (private) namespace
 {
-class Mp3Notify;                                // forward declaration
-typedef DFMiniMp3<SerialPIO, Mp3Notify> DfMp3;  // ... for a more readable/shorter DfMp3 typedef
+class Mp3Notify_;                                // forward declaration
+typedef DFMiniMp3<SerialPIO, Mp3Notify_> DfMp3;  // ... for a more readable/shorter DfMp3 typedef
                                                 // typedef DFMiniMp3<SerialPIO, Mp3Notify, Mp3ChipMH2024K16SS> DfMp3; // Need to be tested if really required
 SerialPIO soundSerial(PIN_SOUND_TX, PIN_SOUND_RX, 250);
 DfMp3 myMP3(soundSerial);
@@ -80,13 +83,13 @@ uint8_t play_folder = 1;          // Default play folder, has to be related to l
 
 uint16_t last_error_code_ = 0;  // Last DFPlayer error code. See DfMp3_Error for code meaning
 
-ll_status last_ll_state = {0};             // Last processed low-level state
-ll_high_level_state last_hl_state_ = {0};  // Last processed high-level state
+ll_status last_ll_state = {};             // Last processed low-level state
+ll_high_level_state last_hl_state_ = {};  // Last processed high-level state
 unsigned long hl_mode_has_fix_ms_;         // Millis when the current high-level mode got his initial GPS fix. 0 if idle.
 uint8_t hl_mode_flags_;                    // High level mode flags (assumptions), like initial GPS "fix", rain, docking...
 
-TrackDef background_track_def_ = {0};    // Current/last background track
-TrackDef advert_track_def_ = {0};        // Current/last playing advert track
+TrackDef background_track_def_ = {};    // Current/last background track
+TrackDef advert_track_def_ = {};        // Current/last playing advert track
 bool current_playing_is_background_;     // Current/last playing sound is a background sound
 unsigned long current_playing_started_;  // Millis when current/last playing sound got started
 
@@ -103,12 +106,11 @@ enum ModeFlags : uint8_t {
 };
 
 uint8_t dfp_detection_status = 0;              // Sound-card detection status bits i.e. for old- sound-card-format detection
-unsigned long autoplay_detection_start = 0;    // start ms of auto-played track
-unsigned long autoplay_detection_timeout = 0;  // When auto-play detection timeout (ms)
+unsigned long online_ms_ = 0;                   // millis() when module got detected as "online". Required for detection if module is configured (IO2) with autoplay
 
 // Forward declarations
-void playMowSound();
-bool handleAutoplay(ll_status t_ll_state);
+void playMowSound_();
+bool handleAutoplay_(ll_status t_ll_state);
 }  // namespace
 
 bool begin() {
@@ -134,24 +136,7 @@ bool begin() {
         }
     }
     DEBUG_PRINTF("Online after %dms\n", millis() - start_ms);
-
-    // Check max. 600ms if sound-busy get set, which would identify a "DFROBOT LISP3" chip, because only this chip auto-play if IO2 is pinned to GND
-    start_ms = millis();
-    while (millis() < start_ms + 600) {
-        // Directly check if Sound-Busy bit is set.
-        // We can't use the normal status_message.status_bitmask flag here, because DFPlayer::reset() occur in setup(), so loop1() isn't handled, as well
-        // as IMU init follows DFPlayer init, which might take some more seconds, which we don't have to reliable detect a new or old SD-Card
-        gpio_put_masked(0b111 << 13, 6 << 13);
-        delay(1);
-        if (!gpio_get(PIN_MUX_IN))  // DFPlayer is busy
-        {
-            dfp_detection_status |= DFP_DETECTION_BIT_HAS_AUTOPLAY;
-            autoplay_detection_start = millis();
-            autoplay_detection_timeout = autoplay_detection_start + DFP_AUTOPLAY_TIMEOUT;
-            break;
-        }
-        delay(20);
-    }
+    online_ms_ = millis();
 
     uint16_t total_tracks = myMP3.getTotalTrackCount(DfMp3_PlaySource_Sd);
     DEBUG_PRINTF("getTotalTrackCount() = %d\n", total_tracks);
@@ -169,9 +154,6 @@ bool begin() {
     }
     sound_available_ = true;
 
-    // myMP3.setRepeatPlayAllInRoot(false); // FIXME: This would abort auto-playing title @ DFROBOT LISP3. Lib Error?
-    myMP3.setRepeatPlayCurrentTrack(false);  // FIXME: This will stop auto-play of all root files @ DFROBOT LISP3. Lib Error?
-    delay(50);                               // (sometimes) required for "DFR LISP3"
     return sound_available_;
 }
 
@@ -234,10 +216,17 @@ uint8_t setVolumeDown() {
     return volume;
 }
 
+void applyConfig(const ll_high_level_config t_config, const bool quiet) {
+    setDFPis5V(t_config.options.dfp_is_5v == OptionState::ON);
+    setVolume(t_config.volume);
+    setLanguage(t_config.language, quiet);
+    setEnableBackground(t_config.options.background_sounds == OptionState::ON || true);
+}
+
 void playSoundAdHoc(const TrackDef &t_track_def) {
     DEBUG_PRINTF("playSoundAdHoc(num %d, type %d, flags " PRINTF_BINARY_PATTERN_INT8 ")\n", t_track_def.num, t_track_def.type, PRINTF_BYTE_TO_BINARY_INT8(t_track_def.flags));
 
-    if (!sound_available_ || !(dfp_detection_status & DFP_DETECTION_BIT_HANDLED))
+    if (!sound_available_ || !(dfp_detection_status & DFP_DETECTION_BIT_END))
         return;
 
     switch (t_track_def.type) {
@@ -253,9 +242,8 @@ void playSoundAdHoc(const TrackDef &t_track_def) {
             break;
         case TrackTypes::advert:
             myMP3.stop();
-            delay(50);                                                        // (sometimes) required for "MH2024K-24SS"
-            if (dfp_detection_status & DFP_DETECTION_BIT_OLD_CARD_STRUCTURE)  // Old SD-Card detected (or assumed)
-            {
+            delay(50);                                                          // (sometimes) required for "MH2024K-24SS"
+            if (dfp_detection_status & DFP_DETECTION_BIT_OLD_CARD_STRUCTURE) {  // Old SD-Card detected (or assumed)
                 // Simple support for old SD-Card format
                 myMP3.playGlobalTrack(t_track_def.num);
             } else {
@@ -278,7 +266,7 @@ void playSoundAdHoc(const TrackDef &t_track_def) {
     }
 
     if (t_track_def.flags & TrackFlags::stopBackground) {
-        background_track_def_ = {0};
+        background_track_def_ = {};
     }
 }
 
@@ -383,24 +371,30 @@ void processSounds(const ll_status t_ll_state, const bool t_ros_running, const l
 
     myMP3.loop();
 
-    if (!handleAutoplay(t_ll_state))  // Sound-card-format (old/new) detection
+    if (!handleAutoplay_(t_ll_state))  // Still in Autoplay detection and Sound-card-format (old/new) detection
         return;
 
-    static unsigned long next_cycle;  // Next cycle for sound processing
+    // Next cycle for sound processing reached?
+    static unsigned long next_cycle;
     if (!(millis() > next_cycle)) {
         return;
     }
     next_cycle = millis() + PROCESS_CYCLETIME;
 
-    if (dfp_is_5v) {  // Full sound support if DFP is set to 5V Vcc
-        // Docked ?
-        if (t_ll_state.v_charge > 20.0f && last_ll_state.v_charge < 10.0f) {
-            myMP3.stop();
-            background_track_def_ = {0};
-            active_sounds_.clear();
-        }
-        last_ll_state.v_charge = t_ll_state.v_charge;
+    // If get docked, shut up
+    if (t_ll_state.v_charge > 20.0f && last_ll_state.v_charge < 10.0f) {
+        myMP3.stop();
+        background_track_def_ = {};
+        active_sounds_.clear();
+    }
+    last_ll_state.v_charge = t_ll_state.v_charge;
 
+    // Full sound support if DFP is set to 5V Vcc, but not before Pico is initialized.
+    // The latter is required to ensure the right (user logical) order of sounds, because i.e. Raspi get powered before Pico reach initialized state,
+    // but should be announced in a logic 
+    // Also IMU failure should be 
+    //if (dfp_is_5v && t_ll_state.status_bitmask & LL_STATUS_BIT_INITIALIZED) {
+    if (dfp_is_5v && false) {
         handleEmergencies(t_ll_state, t_ros_running);
 
         // Handle LL status_bitmask changes
@@ -480,7 +474,7 @@ void processSounds(const ll_status t_ll_state, const bool t_ros_running, const l
 
         // Generic, state-change-independent sounds
         if (last_ros_running_)
-            playMowSound();
+            playMowSound_();
     }  // dfp_is_5v
 
     // Process sound queue
@@ -489,9 +483,9 @@ void processSounds(const ll_status t_ll_state, const bool t_ros_running, const l
 
     DfMp3_Status status = myMP3.getStatus();
     uint16_t current_track = myMP3.getCurrentTrack();
-    DEBUG_PRINTF("Status %#04x, track %d\n", status.state, current_track);
+    DEBUG_PRINTF("DFP-Status %#04x, playing track %d\n", status.state, current_track);
 
-    // Do not interrupt advert sound if it's still playing (don't use busy signal from status_bitmask as it's not reliable set my DFPlayer clones)
+    // Do not interrupt advert sound if it's still playing (don't use busy signal from status_bitmask as it's not reliable set by DFPlayer clones)
     if (!current_playing_is_background_ && (status.state == DfMp3_StatusState_Playing || status.state == DfMp3_StatusState_Shuffling))
         return;
 
@@ -509,36 +503,55 @@ void processSounds(const ll_status t_ll_state, const bool t_ros_running, const l
 namespace  // anonymous (private) namespace
 {
 /**
- * @brief Handles the case of a possibly already played track (Hi I'm Steve)
+ * @brief Handles all "autoplay" related stuff like if the module has autoplay,
+ * which type of SD-Card is inserted as well as the case of a possibly already played track (Hi I'm Steve)
  *
  * @return true if it already got handled
  * @return false if not yet handled (because still in detection phase)
  */
-bool handleAutoplay(const ll_status t_ll_state) {
-    if (dfp_detection_status & DFP_DETECTION_BIT_HANDLED)
+bool handleAutoplay_(const ll_status t_ll_state) {
+    static unsigned long autoplay_start = 0;  // start ms of auto-played track
+
+    if (dfp_detection_status & DFP_DETECTION_BIT_END)
         return true;
 
-    if (!(dfp_detection_status & DFP_DETECTION_BIT_END))  // Still in detection phase
-    {
-        if ((t_ll_state.status_bitmask & LL_STATUS_BIT_SOUND_BUSY) &&  // DFPlayer (still) busy, and ...
-            (millis() < autoplay_detection_timeout))                   // not timed out yet
+    // Has "autoplay" detection for 600ms
+    if (!(dfp_detection_status & DFP_DETECTION_BIT_HAS_AUTOPLAY) && millis() < online_ms_ + DFP_HAS_AUTOPLAY_TIMEOUT) {
+        if (t_ll_state.status_bitmask & LL_STATUS_BIT_SOUND_BUSY) {
+            dfp_detection_status |= DFP_DETECTION_BIT_HAS_AUTOPLAY;
+            autoplay_start = millis();
+        } else {
             return false;
-        else {
-            dfp_detection_status |= DFP_DETECTION_BIT_END;
-            // The old SD-Card has "Hi I'm Steve" as track 1, which is approx. 4600ms,
-            // whereas the new one has the long sequence of "Pings", which is approx. 29000ms
-            if (millis() - autoplay_detection_start < DFP_AUTOPLAY_TIMEOUT)
-                dfp_detection_status |= DFP_DETECTION_BIT_OLD_CARD_STRUCTURE;
         }
     }
-    dfp_detection_status |= DFP_DETECTION_BIT_HANDLED;
+
+    // If there's a snd got auto-started, measure the time for old/new-SD-Card detection
+    if (autoplay_start) {
+        if ((t_ll_state.status_bitmask & LL_STATUS_BIT_SOUND_BUSY) && (millis() < autoplay_start + DFP_AUTOPLAY_TIMEOUT)) {
+            return false;
+        } else {  // Auto-played snd stopped, or snd detection time timed out
+            dfp_detection_status |= DFP_DETECTION_BIT_END;
+
+            // The old SD-Card has "Hi I'm Steve" as track 1, which is approx. 4600ms,
+            // whereas the new one has the long sequence of "Pings", which is approx. 29000ms
+            if (millis() - autoplay_start < DFP_AUTOPLAY_TIMEOUT)
+                dfp_detection_status |= DFP_DETECTION_BIT_OLD_CARD_STRUCTURE;
+
+            myMP3.setRepeatPlayAllInRoot(false);     // FIXME: This would abort auto-playing title @ DFROBOT LISP3. Lib Error?
+            myMP3.setRepeatPlayCurrentTrack(false);  // FIXME: This will stop auto-play of all root files @ DFROBOT LISP3. Lib Error?
+            delay(50);                               // (sometimes) required for "DFR LISP3"
+        }
+    }
+
+    dfp_detection_status |= DFP_DETECTION_BIT_END;
+    DEBUG_PRINTF("dfp_detection_status 0b" PRINTF_BINARY_PATTERN_INT8 "\n", PRINTF_BYTE_TO_BINARY_INT8(dfp_detection_status));
 
     // Play "Hi I'm Steve ..." if ...
-    if (!(dfp_detection_status & DFP_DETECTION_BIT_HAS_AUTOPLAY) ||      // DFPlayer didn't auto-played, or ...
-        !(dfp_detection_status & DFP_DETECTION_BIT_OLD_CARD_STRUCTURE))  // new SD-Card detected (or assumed)
-    {
-        playSoundAdHoc(tracks[SOUND_TRACK_ADV_HI_IM_STEVE]);
-        if (dfp_is_5v)  // Full sound support if DFP is set to 5V Vcc
+    if (!(dfp_detection_status & DFP_DETECTION_BIT_HAS_AUTOPLAY) || !(dfp_detection_status & DFP_DETECTION_BIT_OLD_CARD_STRUCTURE)) {
+        playSound(tracks[SOUND_TRACK_ADV_HI_IM_STEVE]);  // Queue it instead of Adhoc, which save us another hacky delay
+
+        // Full sound support if DFP is set to 5V Vcc
+        if (dfp_is_5v)
             playSound(tracks[SOUND_TRACK_BGD_OM_BOOT]);
     }
 
@@ -548,7 +561,7 @@ bool handleAutoplay(const ll_status t_ll_state) {
 /**
  * @brief Play a randomized mow- background sound at randomized times
  */
-void playMowSound() {
+void playMowSound_() {
     static unsigned long last_mow_sound_started_ms = 0;
 
     if (HighLevelState::getMode(last_hl_state_.current_mode) != HighLevelState::Mode::Autonomous || last_hl_state_.gps_quality < 50)
@@ -575,7 +588,7 @@ void playMowSound() {
  * @brief Notification class required by DFMiniMP3's lib (see https://github.com/Makuna/DFMiniMp3/wiki/Notification-Method)
  *        Also handles background sound repeat.
  */
-class Mp3Notify {
+class Mp3Notify_ {
    public:
     static void OnError([[maybe_unused]] DfMp3 &mp3, uint16_t errorCode) {
         DEBUG_PRINTF("Error: %#06x\n", errorCode);
@@ -611,7 +624,7 @@ class Mp3Notify {
             } else {
                 delay(50);  // (sometimes) required for "DFR LISP3"
                 myMP3.stop();
-                background_track_def_ = {0};
+                background_track_def_ = {};
             }
         }
     }

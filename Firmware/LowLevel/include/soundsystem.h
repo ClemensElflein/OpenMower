@@ -137,6 +137,8 @@ namespace soundSystem {
     uint8_t setVolumeUp();                // Scale volume up by VOLUME_STEPS and return new volume (%)
     uint8_t setVolumeDown();              // Scale volume down by VOLUME_STEPS and return new volume (%)
 
+    void applyConfig(const ll_high_level_config t_config, const bool quiet);  // Apply the volume specific config options
+
     void processSounds(const ll_status t_ll_state, const bool t_ros_running, const ll_high_level_state t_hl_state);  // This method has to be called cyclic, e.g. every second.
     }  // namespace soundSystem
 #endif // _SOUND_SYSTEM_H_  HEADER_FILE
