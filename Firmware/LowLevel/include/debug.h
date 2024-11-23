@@ -18,32 +18,33 @@
 
 // Define to stream debugging messages via USB
 #define USB_DEBUG
-#define DEBUG_PREFIX "" // You may define a debug prefix string
 
 #ifdef USB_DEBUG
+
 #define DEBUG_SERIAL Serial
 // #define DfMiniMp3Debug DEBUG_SERIAL // Also output DFPlayer IN/OUT cmd data
 
 // Some bloody simple debug macros which superfluous '#ifdef USB_DEBUG' ...
 #define DEBUG_BEGIN(b)     \
     DEBUG_SERIAL.begin(b); \
-    while (!DEBUG_SERIAL)  \
-        ;
+    while (!DEBUG_SERIAL);
 #define DEBUG_PRINTLN(str) DEBUG_SERIAL.println(str)
-#define DEBUG_PRINTF(fmt, ...)                                \
-    do                                                        \
-    {                                                         \
-        DEBUG_SERIAL.printf(DEBUG_PREFIX fmt, ##__VA_ARGS__); \
+#define DEBUG_PRINTF(fmt, ...)                   \
+    do {                                         \
+        DEBUG_SERIAL.printf(fmt, ##__VA_ARGS__); \
     } while (0)
+#define PRINTF_BINARY_PATTERN_INT8 "%c%c%c%c%c%c%c%c"
+#define PRINTF_BYTE_TO_BINARY_INT8(i)                                                                                       \
+    (((i) & 0x80ll) ? '1' : '0'), (((i) & 0x40ll) ? '1' : '0'), (((i) & 0x20ll) ? '1' : '0'), (((i) & 0x10ll) ? '1' : '0'), \
+        (((i) & 0x08ll) ? '1' : '0'), (((i) & 0x04ll) ? '1' : '0'), (((i) & 0x02ll) ? '1' : '0'), (((i) & 0x01ll) ? '1' : '0')
+
 #else
+
 #define DEBUG_BEGIN(b)
 #define DEBUG_PRINTLN(str)
 #define DEBUG_PRINTF(fmt, ...)
+#define PRINTF_BINARY_PATTERN_INT8
+#define PRINTF_BYTE_TO_BINARY_INT8(i)
 #endif
 
-#define PRINTF_BINARY_PATTERN_INT8 "%c%c%c%c%c%c%c%c"
-#define PRINTF_BYTE_TO_BINARY_INT8(i)                                                                               \
-    (((i)&0x80ll) ? '1' : '0'), (((i)&0x40ll) ? '1' : '0'), (((i)&0x20ll) ? '1' : '0'), (((i)&0x10ll) ? '1' : '0'), \
-        (((i)&0x08ll) ? '1' : '0'), (((i)&0x04ll) ? '1' : '0'), (((i)&0x02ll) ? '1' : '0'), (((i)&0x01ll) ? '1' : '0')
-
-#endif // _DEBUG_H_
+#endif  // _DEBUG_H_

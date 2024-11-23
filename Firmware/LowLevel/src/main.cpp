@@ -19,7 +19,7 @@
 #include <LittleFS.h>
 #include <NeoPixelConnect.h>
 #include <PacketSerial.h>
-#include <functional>
+
 #include <etl/vector.h>
 
 #include "datatypes.h"
@@ -30,6 +30,7 @@
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
+using namespace soundSystem;
 #endif
 
 #define IMU_CYCLETIME 20              // cycletime for refresh IMU data
@@ -387,6 +388,9 @@ void setup() {
     imu_message.type = PACKET_ID_LL_IMU;
     status_message.type = PACKET_ID_LL_STATUS;
 
+    // Save to start other core now, as well as required i.e. for LittleFS
+    rp2040.resumeOtherCore();
+
     // Setup pins
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(PIN_ENABLE_CHARGE, OUTPUT);
@@ -420,9 +424,6 @@ void setup() {
     UISerial.setStream(&UI1_SERIAL);
     UISerial.setPacketHandler(&onUIPacketReceived);
 
-    // Save to start other core now, as well as required i.e. for LittleFS
-    rp2040.resumeOtherCore();
-
     // Initialize flash and try to read config.
     // ATTENTION: LittleFS needs other core (at least for initial format)!
     LittleFS.begin();
@@ -432,7 +433,7 @@ void setup() {
     p.neoPixelSetValue(0, 0, 255, 255, true);
     sound_available = soundSystem::begin();
     if (sound_available) {
-        p.neoPixelSetValue(0, 0, 0, 255, true);
+        p.neoPixelSetValue(0, 0, 0, 255, true);  // Blue
         soundSystem::applyConfig(llhl_config, true);
         // Do NOT play any initial sound now, because we've to handle the special case of
         // old DFPlayer SD-Card format @ DFROBOT LISP3 with wrong IO2 level. See soundSystem::processSounds()
@@ -480,8 +481,8 @@ void setup() {
             delay(500);
 #ifdef ENABLE_SOUND_MODULE
             if (millis() >= next_ann) {
-                soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_ADV_IMU_INIT_FAILED]);
-                soundSystem::playSound(soundSystem::tracks[SOUND_TRACK_BGD_OM_ALARM]);
+                soundSystem::playSound(SOUND_TRACK_ADV_IMU_INIT_FAILED);
+                soundSystem::playSound(SOUND_TRACK_BGD_OM_ALARM);
                 next_ann = millis() + 8000;
             }
 #endif
