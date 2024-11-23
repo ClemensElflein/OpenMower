@@ -29,31 +29,31 @@
 #define PACKET_ID_LL_HEARTBEAT 0x42
 #define PACKET_ID_LL_HIGH_LEVEL_STATE 0x43
 
+/**
+ * @brief Simple class containing only the static methods,
+ * for more comfortable as well as more speaking HighLevel-Mode and SubMode handling
+ */
 #define HL_MODE_MASK 0b11111
 #define HL_SUBMODE_SHIFT 6
 #define HL_SUBMODE_MASK 0b11
-/**
- * @brief Simple class containing only the static methods,
- *  for more comfortable as well as more speaking HighLevel-Mode and SubMode handling
- */
 class HighLevelState {
    public:
-    enum Mode : uint8_t {
-        Idle = 1,        // ROS connected, idle mode
-        Autonomous = 2,  // ROS connected, Autonomous mode, either mowing or docking or undocking
-        Recording = 3,   // ROS connected, Manual mode during recording etc
+    enum class Mode : uint8_t {
+        IDLE = 1,        // ROS connected, idle mode
+        AUTONOMOUS = 2,  // ROS connected, Autonomous mode, either mowing or docking or undocking
+        RECORDING = 3,   // ROS connected, Manual mode during recording etc
     };
     enum SubModeIdle : uint8_t {
-        IdleIdle_AutonomousMowing = 0,
+        AUTONOMOUS_MOWING = 0,  // ?!
     };
     enum SubModeAutonomous : uint8_t {
-        Mowing = 0,
-        Docking = 1,
-        Undocking = 2,
+        MOWING = 0,
+        DOCKING = 1,
+        UNDOCKING = 2,
     };
     enum SubModeRecording : uint8_t {
-        Outline = 1,
-        Obstacle = 2,
+        OUTLINE = 1,
+        OBSTACLE = 2,
     };
 
     static Mode getMode(uint8_t t_mode) {

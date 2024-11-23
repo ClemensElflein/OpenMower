@@ -312,6 +312,7 @@ void playSound(const TrackDef &t_track_def) {
  * @brief Handle all kind of emergency sounds
  *
  * @param t_ll_state
+ * @param t_ros_running
  */
 void handleEmergencies(const ll_status t_ll_state, const bool t_ros_running) {
     if ((last_ll_state_.emergency_bitmask & LL_EMERGENCY_BIT_LATCH) == (t_ll_state.emergency_bitmask & LL_EMERGENCY_BIT_LATCH))
@@ -345,6 +346,87 @@ void handleEmergencies(const ll_status t_ll_state, const bool t_ros_running) {
 }
 
 /**
+ * @brief Handle sound output related to Low-Level changes
+ *
+ * @param t_ll_state
+ * @param t_ros_running
+ * @param t_hl_state
+ */
+void handleLowLevelChanges(const ll_status t_ll_state, const bool t_ros_running, const ll_high_level_state t_hl_state) {
+    const uint8_t changed_status = t_ll_state.status_bitmask ^ last_ll_state_.status_bitmask;  // Get changed bits
+
+    if (!changed_status)  // Nothing changed = nothing to do
+        return;
+
+    DEBUG_PRINTF("Changed status_bitmask " PRINTF_BINARY_PATTERN_INT8 " (new status " PRINTF_BINARY_PATTERN_INT8 " XOR last status " PRINTF_BINARY_PATTERN_INT8 ")\n",
+                 PRINTF_BYTE_TO_BINARY_INT8(changed_status),
+                 PRINTF_BYTE_TO_BINARY_INT8(t_ll_state.status_bitmask),
+                 PRINTF_BYTE_TO_BINARY_INT8(last_ll_state_.status_bitmask));
+
+    // if (!(last_ll_state_.status_bitmask & LL_STATUS_BIT_INITIALIZED) && (t_ll_state.status_bitmask & LL_STATUS_BIT_INITIALIZED)) {
+    if ((changed_status & LL_STATUS_BIT_INITIALIZED) && (t_ll_state.status_bitmask & LL_STATUS_BIT_INITIALIZED)) {
+        playSound(SOUND_TRACK_ADV_OM_STARTUP_SUCCESS);  // OM startup successful
+    }
+    if (!t_ros_running && (changed_status & LL_STATUS_BIT_RASPI_POWER) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RASPI_POWER)) {
+        playSound(SOUND_TRACK_ADV_ROS_INIT);  // Initializing ROS
+        // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
+        playSound(SOUND_TRACK_BGD_ROS_BOOT);
+    }
+    if ((changed_status & LL_STATUS_BIT_RAIN) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RAIN)) {
+        if (HighLevelState::getMode(t_hl_state.current_mode) == HighLevelState::Mode::AUTONOMOUS &&
+            !((hl_mode_flags_ & ModeFlags::rainDetected) || (hl_mode_flags_ & ModeFlags::docking))) {
+            playSoundAdHoc(SOUND_TRACK_ADV_RAIN);                                                       // Rain detected, heading back to base
+            playSound(TrackDef{.num = (uint16_t)(100 + (rand() % 3)), .type = TrackType::BACKGROUND});  // Play background track 100-102 by random
+            hl_mode_flags_ |= ModeFlags::docking;
+        }
+        hl_mode_flags_ |= ModeFlags::rainDetected;
+    }
+
+    last_ll_state_.status_bitmask = t_ll_state.status_bitmask;
+}
+
+/**
+ * @brief Handle sound output related to High-Level changes
+ *
+ * @param t_hl_state
+ */
+void handleHighLevelChanges(const ll_high_level_state t_hl_state) {
+    if (t_hl_state.current_mode == last_hl_state_.current_mode)
+        return;
+
+    auto mode = HighLevelState::getMode(t_hl_state.current_mode);
+    auto last_mode = HighLevelState::getMode(last_hl_state_.current_mode);
+    auto sub_mode = HighLevelState::getSubMode(t_hl_state.current_mode);
+    auto last_sub_mode = HighLevelState::getSubMode(last_hl_state_.current_mode);
+
+    switch (HighLevelState::getMode(t_hl_state.current_mode)) {
+        case HighLevelState::Mode::RECORDING:
+            hl_mode_flags_ |= ModeFlags::started;
+            playSound(SOUND_TRACK_ADV_MAP_RECORD_START);  // Starting map area recording
+            if (t_hl_state.gps_quality < 75)
+                playSound(SOUND_TRACK_ADV_RTKGPS_WAIT);  // Waiting for RTK GPS signal
+            break;
+        case HighLevelState::Mode::AUTONOMOUS:
+            hl_mode_flags_ |= ModeFlags::started;
+            if (last_mode == HighLevelState::Mode::IDLE && sub_mode == HighLevelState::SubModeAutonomous::UNDOCKING) {  // IDLE => Autonomous-Undocking
+                playSound(SOUND_TRACK_ADV_AUTONOMOUS_START);                                                            // Stay back, autonomous robot mower in use
+                if (t_hl_state.gps_quality < 75)
+                    playSound(SOUND_TRACK_ADV_RTKGPS_WAIT);                                                                                      // Waiting for RTK GPS signal
+            } else if (last_sub_mode != HighLevelState::SubModeAutonomous::DOCKING && sub_mode == HighLevelState::SubModeAutonomous::DOCKING) {  // !Docking => Docking
+                playSound(SOUND_TRACK_ADV_MOW_DONE_DOCK);                                                                                        // OM has completed mowing the lawn, heading back to docking station
+                playSound(TrackDef{.num = (uint16_t)(300 + (rand() % 4)), .type = TrackType::BACKGROUND});                                       // Play background track 300 to 203 by random
+            }
+            break;
+        default:
+            hl_mode_has_fix_ms_ = 0;
+            hl_mode_flags_ = 0;
+            break;
+    }
+
+    last_hl_state_.current_mode = t_hl_state.current_mode;
+}
+
+/**
  * @brief Handle GPS quality related sounds
  *
  * @param t_ll_state
@@ -358,7 +440,7 @@ void handleGpsQuality(const ll_status t_ll_state, const bool t_ros_running, cons
     next_gps_sound_cycle = millis() + GPS_SOUND_CYCLETIME;
 
     switch (HighLevelState::getMode(t_hl_state.current_mode)) {
-        case HighLevelState::Mode::Recording:
+        case HighLevelState::Mode::RECORDING:
             // Ping only rated GPS quality changes
             if (t_hl_state.gps_quality < 50) {
                 if (last_hl_state_.gps_quality >= 50)
@@ -376,9 +458,9 @@ void handleGpsQuality(const ll_status t_ll_state, const bool t_ros_running, cons
             }
             break;
 
-        case HighLevelState::Mode::Autonomous:
+        case HighLevelState::Mode::AUTONOMOUS:
             // Stalking "Pink Panther" sound only once when starting to mow
-            if (HighLevelState::getAutonomousSubMode(t_hl_state.current_mode) != HighLevelState::SubModeAutonomous::Mowing ||
+            if (HighLevelState::getAutonomousSubMode(t_hl_state.current_mode) != HighLevelState::SubModeAutonomous::MOWING ||
                 (hl_mode_flags_ & ModeFlags::primalGpsFix) ||
                 (t_hl_state.gps_quality < 75))
                 break;
@@ -421,32 +503,7 @@ void processSounds(const ll_status t_ll_state, const bool t_ros_running, const l
     // Full sound support if DFP is set to 5V Vcc, but not before Pico is initialized.
     if (dfp_is_5v_) {
         handleEmergencies(t_ll_state, t_ros_running);
-
-        // Handle LL status_bitmask changes
-        const uint8_t changed_status = t_ll_state.status_bitmask ^ last_ll_state_.status_bitmask;
-        DEBUG_PRINTF("Changed status_bitmask " PRINTF_BINARY_PATTERN_INT8 " (new status " PRINTF_BINARY_PATTERN_INT8 " XOR last status " PRINTF_BINARY_PATTERN_INT8 "), HL mode %d\n",
-                     PRINTF_BYTE_TO_BINARY_INT8(changed_status),
-                     PRINTF_BYTE_TO_BINARY_INT8(t_ll_state.status_bitmask),
-                     PRINTF_BYTE_TO_BINARY_INT8(last_ll_state_.status_bitmask),
-                     t_hl_state.current_mode);
-
-        if (!(last_ll_state_.status_bitmask & LL_STATUS_BIT_INITIALIZED) && (t_ll_state.status_bitmask & LL_STATUS_BIT_INITIALIZED)) {
-            playSound(SOUND_TRACK_ADV_OM_STARTUP_SUCCESS);  // OM startup successful
-        }
-        if (!t_ros_running && !(last_ll_state_.status_bitmask & LL_STATUS_BIT_RASPI_POWER) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RASPI_POWER)) {
-            playSound(SOUND_TRACK_ADV_ROS_INIT);  // Initializing ROS
-            // We're in a new "Raspi/ROS" bootup phase, which might take longer. Change background sound for better identification
-            playSound(SOUND_TRACK_BGD_ROS_BOOT);
-        }
-        if (!(last_ll_state_.status_bitmask & LL_STATUS_BIT_RAIN) && (t_ll_state.status_bitmask & LL_STATUS_BIT_RAIN)) {
-            if (HighLevelState::getMode(t_hl_state.current_mode) == HighLevelState::Mode::Autonomous && !((hl_mode_flags_ & ModeFlags::rainDetected) || (hl_mode_flags_ & ModeFlags::docking))) {
-                playSoundAdHoc(SOUND_TRACK_ADV_RAIN);                                                       // Rain detected, heading back to base
-                playSound(TrackDef{.num = (uint16_t)(100 + (rand() % 3)), .type = TrackType::BACKGROUND});  // Play background track 100-102 by random
-                hl_mode_flags_ |= ModeFlags::docking;
-            }
-            hl_mode_flags_ |= ModeFlags::rainDetected;
-        }
-        last_ll_state_.status_bitmask = t_ll_state.status_bitmask;
+        handleLowLevelChanges(t_ll_state, t_ros_running, t_hl_state);
 
         // ROS running changed
         if (!last_ros_running_ && t_ros_running && !ros_running_since_) {
@@ -458,43 +515,7 @@ void processSounds(const ll_status t_ll_state, const bool t_ros_running, const l
         }
         last_ros_running_ = t_ros_running;
 
-        // HL mode or sub-mode changed
-        if (t_hl_state.current_mode != last_hl_state_.current_mode) {
-            auto mode = HighLevelState::getMode(t_hl_state.current_mode);
-            auto last_mode = HighLevelState::getMode(last_hl_state_.current_mode);
-            auto sub_mode = HighLevelState::getSubMode(t_hl_state.current_mode);
-            auto last_sub_mode = HighLevelState::getSubMode(last_hl_state_.current_mode);
-            switch (HighLevelState::getMode(t_hl_state.current_mode)) {
-                case HighLevelState::Mode::Recording:
-                    hl_mode_flags_ |= ModeFlags::started;
-                    playSound(SOUND_TRACK_ADV_MAP_RECORD_START);  // Starting map area recording
-                    if (t_hl_state.gps_quality < 75)
-                        playSound(SOUND_TRACK_ADV_RTKGPS_WAIT);  // Waiting for RTK GPS signal
-                    break;
-
-                case HighLevelState::Mode::Autonomous:
-                    hl_mode_flags_ |= ModeFlags::started;
-                    if (last_mode == HighLevelState::Mode::Idle && sub_mode == HighLevelState::SubModeAutonomous::Undocking) {
-                        // IDLE => Autonomous-Undocking
-                        playSound(SOUND_TRACK_ADV_AUTONOMOUS_START);  // Stay back, autonomous robot mower in use
-                        if (t_hl_state.gps_quality < 75)
-                            playSound(SOUND_TRACK_ADV_RTKGPS_WAIT);  // Waiting for RTK GPS signal
-                    } else if (last_sub_mode != HighLevelState::SubModeAutonomous::Docking && sub_mode == HighLevelState::SubModeAutonomous::Docking) {
-                        // !Docking => Docking
-                        playSound(SOUND_TRACK_ADV_MOW_DONE_DOCK);                                                   // OM has completed mowing the lawn, heading back to docking station
-                        playSound(TrackDef{.num = (uint16_t)(300 + (rand() % 4)), .type = TrackType::BACKGROUND});  // Play background track 300 to 203 by random
-                    }
-                    break;
-
-                default:
-                    hl_mode_has_fix_ms_ = 0;
-                    hl_mode_flags_ = 0;
-                    break;
-            }
-        }
-        last_hl_state_.current_mode = t_hl_state.current_mode;
-
-        // Handle GPS quality related sounds like "ping" or "Stalking Pink Panther"
+        handleHighLevelChanges(t_hl_state);
         handleGpsQuality(t_ll_state, t_ros_running, t_hl_state);
 
         // Generic, state-change-independent sounds
@@ -577,7 +598,7 @@ bool handleAutoplay_(const ll_status t_ll_state) {
 void playMowSound_() {
     static unsigned long last_mow_sound_started_ms = 0;
 
-    if (HighLevelState::getMode(last_hl_state_.current_mode) != HighLevelState::Mode::Autonomous || last_hl_state_.gps_quality < 50)
+    if (HighLevelState::getMode(last_hl_state_.current_mode) != HighLevelState::Mode::AUTONOMOUS || last_hl_state_.gps_quality < 50)
         return;
 
     unsigned long now = millis();

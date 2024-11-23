@@ -264,10 +264,10 @@ void manageUILEDS() {
         setLed(leds_message, LED_S1, LED_off);
     } else {
         switch (HighLevelState::getMode(last_high_level_state.current_mode)) {
-            case HighLevelState::Mode::Idle:
+            case HighLevelState::Mode::IDLE:
                 setLed(leds_message, LED_S1, LED_on);
                 break;
-            case HighLevelState::Mode::Autonomous:
+            case HighLevelState::Mode::AUTONOMOUS:
                 setLed(leds_message, LED_S1, LED_blink_slow);
                 break;
             default:
