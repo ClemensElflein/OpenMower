@@ -66,15 +66,20 @@ That's why I tried to adapt the code in that way, that some of these clones get 
 Check the larger chip on the backside of the module, to verify if your DFPlayer is supported. The following DFPlayer chips are supported/tested at the moment:
 
 - `DFROBOT LISP3` is the one on my original [DFPlayer by DFRobot](https://www.dfrobot.com/product-1121.html) module
-- `MH2024K-24SS` which is one of the older clones
-- `GD3200B` is one of the newer clones, but partly fail in support
+- `MH2024K-24SS` which is one of the older clones, whose support is okay
+- `AB23A799755` is a newer clone and seem to be supported very well
+- `GD3200B` is also one of the newer clones, but partly fail in support!
 
 The used DFPlayer library also indicate support for `YX5200-24SS` and `MH2024K-16SS`, but I couldn't test these by myself. If you've one of these, give it a try.
 
 ## SD-Card
 
 Look like all DFPlayer support a SD-Card size up to 32GB.
-As we don't have a lot soundfiles (<10MB), choose the smallest one you can find, format it with a FAT32 file system (or if it's already formatted, remove all existing files) and copy all these [files and folder](./soundfiles/) to your SD-Card.
+As we don't have a lot soundfiles (<10MB), choose the smallest one you can find, format it with a FAT32 file system and copy all these [files and folder](./soundfiles/) to your SD-Card.
+
+Do not simply delete all files from an ancient SD-Card which you found in a dusty box!<br>
+These tiny DFPlayer beasts are sensitive to SD-Card trash like orphaned files or unclean FAT tables and tend to loop or hang when initialized.<br>
+Always prefer to cleanly format it with a FAT32 partition!
 
 ### Folder/Track Structure
 
@@ -84,6 +89,4 @@ So we had to trick a little bit with the folder structure:
 
 - OM's old original sounds are now (partly) converted, translated, extended and reside now in a 2 digit, language specific subfolder. They're mainly 'advert' tracks as they're typically spoken adverts, which may interrupt background sounds like noises or music.
 - Folder 'mp3' contain background sounds (noises or music), which are hardcoded in the sources.
-- The single soundfile in the root folder, is used/required for (old/new) SD-Card-Structure detection, as well as for those DFPlayer types (i.e. DFRobot),
-  which start autoplaying directly after power-on, or after reset().<br>
-  You shouldn't change it, unless you take care that your replaced soundfile isn't shorter than the current one.
+- The single soundfile in the root folder, is used/required for DFPlayer "auto-play" detection. If you like to change it, you need to take care that the new file is as least 5 seconds long.
