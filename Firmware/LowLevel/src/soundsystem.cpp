@@ -492,7 +492,7 @@ void processSounds(const ll_status t_ll_state, const bool t_ros_running, const l
     }
     next_cycle = millis() + PROCESS_CYCLETIME;
 
-    // If get docked, shut up
+    // If get docked, stop all current playing and clear queue
     if (t_ll_state.v_charge > 20.0f && last_ll_state_.v_charge < 10.0f) {
         myMP3.stop();
         background_track_def_ = {};
