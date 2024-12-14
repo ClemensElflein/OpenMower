@@ -1,0 +1,36 @@
+-- file leading nr --   ------ string to convert ------------ 
+
+001					    Hi, I am Steve, your open mower green care is my profession
+002					    open mower start up successful
+003					    Initializing robot operating system
+004					    Starting map area recording
+005					    waiting for rtk gps signal
+006					    calculating map dimensions
+007					    initiate mowing sequence
+008					    stop button triggered
+009					    emergency wheel lift sensor triggered
+010					    rain detected, heading back to base
+011					    open mower has completed mowing the lawn, heading back to charging station
+012					    stay back, autononous robot mower in use
+013             	    ups, I did it again
+014					    Hallo, ich bin Tobi, dein intelligenter Rasemäher, Rasenpflege ist mein Beruf
+015					    Hello, I am Tobi, your smart mower, green care ist my profession
+016                     Robot operating system start up successful
+
+017                     Robot operating system stopped
+018                     Raspberry Pi shut down and powered off. It's save to power off your open mower now
+019                     IMU initialization failed
+020                     down
+021                     up
+022                     Switched to English Language
+023                     Emergency cleared
+024                     Emergency triggered by Robot operating system
+025                     Emergency triggered by collision sensor
+
+
+New adverts >= 0017 sampled via Google TTS with settings:
+Language: English (US), Neural2, en-US-Neural2-D
+Small home speaker, Speed = 1.00, Pitch 0
+
+Amplified to a max of -5db
+Saved as mono mp3 with medium quality

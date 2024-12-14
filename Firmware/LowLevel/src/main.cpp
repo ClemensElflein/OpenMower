@@ -19,16 +19,18 @@
 #include <LittleFS.h>
 #include <NeoPixelConnect.h>
 #include <PacketSerial.h>
-#include <functional>
+
 #include <etl/vector.h>
 
 #include "datatypes.h"
 #include "imu.h"
 #include "pins.h"
 #include "ui_board.h"
+#include "debug.h"
 
 #ifdef ENABLE_SOUND_MODULE
 #include <soundsystem.h>
+using namespace soundSystem;
 #endif
 
 #define IMU_CYCLETIME 20              // cycletime for refresh IMU data
@@ -38,20 +40,10 @@
 
 #define BUTTON_EMERGENCY_MILLIS 20 // Time for button emergency to activate. This is to debounce the button.
 
-// Define to stream debugging messages via USB
-// #define USB_DEBUG
-
-// Only define DEBUG_SERIAL if USB_DEBUG is actually enabled.
-// This enforces compile errors if it's used incorrectly.
-#ifdef USB_DEBUG
-#define DEBUG_SERIAL Serial
-#endif
 #define PACKET_SERIAL Serial1
 SerialPIO uiSerial(PIN_UI_TX, PIN_UI_RX, 250);
 
 #define UI1_SERIAL uiSerial
-
-#define ANZ_SOUND_SD_FILES 3
 
 // Millis after charging is retried
 #define CHARGING_RETRY_MILLIS 10000
@@ -74,10 +66,6 @@ PacketSerial packetSerial; // COBS communication PICO <> Raspi
 PacketSerial UISerial;     // COBS communication PICO UI-Board
 FastCRC16 CRC16;
 
-#ifdef ENABLE_SOUND_MODULE
-MP3Sound my_sound; // Soundsystem
-#endif
-
 unsigned long last_imu_millis = 0;
 unsigned long last_status_update_millis = 0;
 unsigned long last_heartbeat_millis = 0;
@@ -96,7 +84,7 @@ bool stock_ui_rain = false;           // Get set by received Get_Rain packet
 
 // Predefined message buffers, so that we don't need to allocate new ones later.
 struct ll_imu imu_message = {0};
-struct ll_status status_message = {0};
+struct ll_status status_message = {};
 // current high level state
 struct ll_high_level_state last_high_level_state = {0};
 
@@ -122,6 +110,7 @@ uint16_t ui_interval = 1000;               // UI send msg (LED/State) interval (
 // LL/HL config
 #define CONFIG_FILENAME "/openmower.cfg"  // Where our llhl_config get saved in LittleFS (flash)
 uint16_t config_crc_in_flash = 0;
+uint16_t config_size_in_flash = 0;        // Require for wear level protection
 struct ll_high_level_config llhl_config;  // LL/HL configuration (is initialized with YF-C500 defaults)
 
 // Available hall input sources, same order as in ll_high_level_config.hall_configs
@@ -146,6 +135,8 @@ void onPacketReceived(const uint8_t *buffer, size_t size);
 void onUIPacketReceived(const uint8_t *buffer, size_t size);
 void manageUISubscriptions();
 void readConfigFromFlash();
+void saveConfigToFlash(const uint8_t *t_buffer, const size_t t_size, const uint16_t t_crc);
+void updateConfigInFlash();
 
 void setRaspiPower(bool power) {
     // Update status bits in the status message
@@ -272,25 +263,25 @@ void manageUILEDS() {
     if (!ROS_running) {
         setLed(leds_message, LED_S1, LED_off);
     } else {
-        switch (last_high_level_state.current_mode & 0b111111) {
-            case HighLevelMode::MODE_IDLE:
+        switch (HighLevelState::getMode(last_high_level_state.current_mode)) {
+            case HighLevelState::Mode::IDLE:
                 setLed(leds_message, LED_S1, LED_on);
                 break;
-            case HighLevelMode::MODE_AUTONOMOUS:
+            case HighLevelState::Mode::AUTONOMOUS:
                 setLed(leds_message, LED_S1, LED_blink_slow);
                 break;
             default:
                 setLed(leds_message, LED_S1, LED_blink_fast);
                 break;
         }
-        switch ((last_high_level_state.current_mode >> 6) & 0b11) {
-            case 1:
+        switch (HighLevelState::getSubMode(last_high_level_state.current_mode)) {
+            case 1:  // Docking or Record outline
                 setLed(leds_message, LED_S2, LED_blink_slow);
                 break;
-            case 2:
+            case 2:  // Undocking or Record obstacle
                 setLed(leds_message, LED_S2, LED_blink_fast);
                 break;
-            case 3:
+            case 3:  // Not defined yet
                 setLed(leds_message, LED_S2, LED_on);
                 break;
             default:
@@ -333,8 +324,10 @@ void manageUISubscriptions()
 }
 
 void setup1() {
-    // Core
-    digitalWrite(LED_BUILTIN, HIGH);
+    pinMode(PIN_MUX_OUT, OUTPUT);
+    pinMode(PIN_MUX_ADDRESS_0, OUTPUT);
+    pinMode(PIN_MUX_ADDRESS_1, OUTPUT);
+    pinMode(PIN_MUX_ADDRESS_2, OUTPUT);
 }
 
 void loop1() {
@@ -349,9 +342,9 @@ void loop1() {
                 mutex_enter_blocking(&mtx_status_message);
 
                 if (state || stock_ui_rain) {
-                    status_message.status_bitmask |= 0b00010000;
+                    status_message.status_bitmask |= LL_STATUS_BIT_RAIN;
                 } else {
-                    status_message.status_bitmask &= 0b11101111;
+                    status_message.status_bitmask &= ~LL_STATUS_BIT_RAIN;
                 }
                 mutex_exit(&mtx_status_message);
 
@@ -359,9 +352,9 @@ void loop1() {
             case 6:
                 mutex_enter_blocking(&mtx_status_message);
                 if (state) {
-                    status_message.status_bitmask |= 0b01000000;
+                    status_message.status_bitmask &= ~LL_STATUS_BIT_SOUND_BUSY;
                 } else {
-                    status_message.status_bitmask &= 0b10111111;
+                    status_message.status_bitmask |= LL_STATUS_BIT_SOUND_BUSY;
                 }
                 mutex_exit(&mtx_status_message);
                 break;
@@ -370,17 +363,19 @@ void loop1() {
         }
     }
 
+#ifdef ENABLE_SOUND_MODULE
+    soundSystem::processSounds(status_message, ROS_running, last_high_level_state);
+#endif
+
     delay(100);
 }
 
 void setup() {
     //  We do hardware init in this core, so that we don't get invalid states.
-    //  Therefore, we pause the other core until setup() was a success
+    //  Therefore, we pause the other core until vars used in OtherCore got initialized.
     rp2040.idleOtherCore();
 
-#ifdef USB_DEBUG
-    DEBUG_SERIAL.begin(9600);
-#endif
+    DEBUG_BEGIN(9600);
 
     emergency_latch = true;
     ROS_running = false;
@@ -392,6 +387,9 @@ void setup() {
     status_message = {0};
     imu_message.type = PACKET_ID_LL_IMU;
     status_message.type = PACKET_ID_LL_STATUS;
+
+    // Save to start other core now, as well as required i.e. for LittleFS
+    rp2040.resumeOtherCore();
 
     // Setup pins
     pinMode(LED_BUILTIN, OUTPUT);
@@ -409,11 +407,6 @@ void setup() {
     setRaspiPower(true);
     p.neoPixelSetValue(0, 255, 0, 0, true);
 
-    pinMode(PIN_MUX_OUT, OUTPUT);
-    pinMode(PIN_MUX_ADDRESS_0, OUTPUT);
-    pinMode(PIN_MUX_ADDRESS_1, OUTPUT);
-    pinMode(PIN_MUX_ADDRESS_2, OUTPUT);
-
     pinMode(PIN_EMERGENCY_1, INPUT);
     pinMode(PIN_EMERGENCY_2, INPUT);
     pinMode(PIN_EMERGENCY_3, INPUT);
@@ -421,73 +414,29 @@ void setup() {
 
     analogReadResolution(12);
 
-    // init serial com to RasPi
+    // Init serial com to RasPi
     PACKET_SERIAL.begin(115200);
     packetSerial.setStream(&PACKET_SERIAL);
     packetSerial.setPacketHandler(&onPacketReceived);
 
+    // Init serial com to CoverUI
     UI1_SERIAL.begin(115200);
     UISerial.setStream(&UI1_SERIAL);
     UISerial.setPacketHandler(&onUIPacketReceived);
 
-    /*
-     * IMU INITIALIZATION
-     */
-
-    bool init_imu_success = false;
-    int init_imu_tries = 1000;
-    while(init_imu_tries --> 0) {
-        if(init_imu()) {
-            init_imu_success = true;
-            break;
-        }
-#ifdef USB_DEBUG
-        DEBUG_SERIAL.println("IMU initialization unsuccessful, retrying in 1 sec");
-#endif
-        p.neoPixelSetValue(0, 0, 0, 0, true);
-        delay(1000);
-        p.neoPixelSetValue(255, 255, 0, 0, true);
-        delay(100);
-        p.neoPixelSetValue(0, 0, 0, 0, true);
-        delay(100);
-    }
-
-    if (!init_imu_success) {
-#ifdef USB_DEBUG
-        DEBUG_SERIAL.println("IMU initialization unsuccessful");
-        DEBUG_SERIAL.println("Check IMU wiring or try cycling power");
-#endif
-        status_message.status_bitmask = 0;
-        while (1) { // Blink RED for IMU failure
-            p.neoPixelSetValue(0, 255, 0, 0, true);
-            delay(500);
-            p.neoPixelSetValue(0, 0, 0, 0, true);
-            delay(500);
-        }
-    }
-    p.neoPixelSetValue(0, 255, 255, 255, true);     // White for IMU Success
-
-#ifdef USB_DEBUG
-    DEBUG_SERIAL.println("Imu initialized");
-#endif
-
-    status_message.status_bitmask |= 1;
-
-    rp2040.resumeOtherCore();
-
     // Initialize flash and try to read config.
     // ATTENTION: LittleFS needs other core (at least for initial format)!
     LittleFS.begin();
-    readConfigFromFlash();
+    readConfigFromFlash();  // Set llhl_config with defaults or saved state
 
 #ifdef ENABLE_SOUND_MODULE
     p.neoPixelSetValue(0, 0, 255, 255, true);
-
-    sound_available = my_sound.begin();
+    sound_available = soundSystem::begin();
     if (sound_available) {
-        p.neoPixelSetValue(0, 0, 0, 255, true);
-        my_sound.setvolume(llhl_config.volume);
-        my_sound.playSoundAdHoc(1);
+        p.neoPixelSetValue(0, 0, 0, 255, true);  // Blue
+        soundSystem::applyConfig(llhl_config, true);
+        // Do NOT play any initial sound now, because we've to handle the special case of
+        // old DFPlayer SD-Card format @ DFROBOT LISP3 with wrong IO2 level. See soundSystem::processSounds()
         p.neoPixelSetValue(0, 255, 255, 0, true);
     } else {
         for (uint8_t b = 0; b < 3; b++) {
@@ -499,13 +448,60 @@ void setup() {
     }
 #endif
 
+    /*
+     * IMU INITIALIZATION
+     */
+    bool init_imu_success = false;
+    int init_imu_tries = 10;
+    while(init_imu_tries --> 0) {
+        if(init_imu()) {
+            init_imu_success = true;
+            break;
+        }
+        DEBUG_PRINTF("IMU initialization unsuccessful, retrying in 1 sec (%d tries left)\n", init_imu_tries + 1);
+
+        p.neoPixelSetValue(0, 0, 0, 0, true);
+        delay(800);
+        p.neoPixelSetValue(255, 255, 0, 0, true);
+        delay(100);
+        p.neoPixelSetValue(0, 0, 0, 0, true);
+        delay(100);
+    }
+
+    if (!init_imu_success) {
+        unsigned long next_ann = millis();
+        DEBUG_PRINTLN("IMU initialization failed");
+        DEBUG_PRINTLN("Check IMU wiring or try cycling power");
+
+        status_message.status_bitmask = 0;
+        while (1) {  // Infinite blink RED for IMU failure
+            p.neoPixelSetValue(0, 255, 0, 0, true);
+            delay(500);
+            p.neoPixelSetValue(0, 0, 0, 0, true);
+            delay(500);
+#ifdef ENABLE_SOUND_MODULE
+            if (millis() >= next_ann) {
+                soundSystem::playSound(SOUND_TRACK_ADV_IMU_INIT_FAILED);
+                soundSystem::playSound(SOUND_TRACK_BGD_OM_ALARM);
+                next_ann = millis() + 8000;
+            }
+#endif
+        }
+    }
+    p.neoPixelSetValue(0, 255, 255, 255, true);  // White for IMU Success
+    DEBUG_PRINTLN("Imu initialized");
+
+    status_message.status_bitmask |= LL_STATUS_BIT_INITIALIZED;
+
     // Cover UI board clear all LEDs
     leds_message.type = Set_LEDs;
     leds_message.leds = 0;
     sendUIMessage(&leds_message, sizeof(leds_message));
 
-    p.neoPixelSetValue(0, 255, 255, 255, true);     // White 1s final success
+    p.neoPixelSetValue(0, 255, 255, 255, true);  // White 1s final success
     delay(1000);
+
+    digitalWrite(LED_BUILTIN, HIGH);  // Signal that both cores got setup and looping start
 }
 
 void onUIPacketReceived(const uint8_t *buffer, size_t size) {
@@ -539,19 +535,30 @@ void onUIPacketReceived(const uint8_t *buffer, size_t size) {
         ui_event.button_id = msg->button_id;
         ui_event.press_duration = msg->press_duration;
         sendMessage(&ui_event, sizeof(ui_event));
-    }
-    else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency))
-    {
+
+#ifdef ENABLE_SOUND_MODULE
+        // Handle Sound Buttons. FIXME: Should/might go to mower_logic? But as sound isn't hip ... :-/
+        switch (msg->button_id) {
+            case 8:  // Mon = Volume up
+                llhl_config.volume = soundSystem::setVolumeUp();
+                updateConfigInFlash();
+                break;
+            case 9:  // Tue = Volume down
+                llhl_config.volume = soundSystem::setVolumeDown();
+                updateConfigInFlash();
+                break;
+
+            default:
+                break;
+        }
+#endif
+    } else if (buffer[0] == Get_Emergency && size == sizeof(struct msg_event_emergency)) {
         struct msg_event_emergency *msg = (struct msg_event_emergency *)buffer;
         stock_ui_emergency_state = msg->state;
-    }
-    else if (buffer[0] == Get_Rain && size == sizeof(struct msg_event_rain))
-    {
+    } else if (buffer[0] == Get_Rain && size == sizeof(struct msg_event_rain)) {
         struct msg_event_rain *msg = (struct msg_event_rain *)buffer;
         stock_ui_rain = (msg->value < llhl_config.rain_threshold);
-    }
-    else if (buffer[0] == Get_Subscribe && size == sizeof(struct msg_event_subscribe))
-    {
+    } else if (buffer[0] == Get_Subscribe && size == sizeof(struct msg_event_subscribe)) {
         struct msg_event_subscribe *msg = (struct msg_event_subscribe *)buffer;
         ui_topic_bitmask = msg->topic_bitmask;
         ui_interval = msg->interval;
@@ -625,7 +632,7 @@ void applyConfig(const uint8_t *buffer, const size_t size) {
     llhl_config = new_config;  // Make new config live
 }
 
-void onPacketReceived(const uint8_t *buffer, size_t size) {
+void onPacketReceived(const uint8_t *buffer, const size_t size) {
     // sanity check for CRC to work (1 type, 1 data, 2 CRC)
     if (size < 4)
         return;
@@ -659,18 +666,17 @@ void onPacketReceived(const uint8_t *buffer, size_t size) {
     } else if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ || buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP) {
         applyConfig(buffer + 1, size - 3);  // Skip packet- type and CRC
 
+#ifdef ENABLE_SOUND_MODULE
+        // We can't move the sound stuff to applyConfig because applyConfig get also called by readConfigFromFlash()
+        // which is before (and also needs to be before) soundSystem::begin()
+        soundSystem::applyConfig(llhl_config, true);
+#endif
+
         // Response if requested (before save, to ensure REQ/RSP timing)
         if (buffer[0] == PACKET_ID_LL_HIGH_LEVEL_CONFIG_REQ)
             sendConfigMessage(PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP);  // Other side requested a config response
 
-        // Store the whole received packet in flash and not the live (applied) config. This has the following benefits:
-        // - We're free to change ll_high_level_config defaults in future without fiddling with already stored ones
-        // - Reuse the already calculated and validated CRC
-        if (crc == config_crc_in_flash) return;  // Protect wear leveling
-        File f = LittleFS.open(CONFIG_FILENAME, "w");
-        if (!f) return;
-        if (f.write(buffer, size) == size) config_crc_in_flash = crc;
-        f.close();
+        saveConfigToFlash(buffer, size, crc);
     }
 }
 
@@ -795,11 +801,6 @@ void loop() {
     {
         next_ui_msg_millis = now + ui_interval;
         manageUISubscriptions();
-#ifdef ENABLE_SOUND_MODULE
-        if (sound_available) {
-            my_sound.processSounds();
-        }
-#endif
     }
 
     // Check UI version/available
@@ -882,4 +883,54 @@ void readConfigFromFlash() {
     config_crc_in_flash = crc;
     applyConfig(buffer + 1, size - 3);  // Skip Type & CRC
     free(buffer);
+}
+
+/**
+ * @brief saveConfigToFlash() save a (received) config packet to flash, if the crc differ to the one already stored in flash (wear level protection)
+ *
+ * We do store the whole received packet in flash and not the live (applied) config because this has the following advantages:
+ * - We're free to change ll_high_level_config defaults in future without fiddling with already stored ones
+ * - Reuse the already calculated and validated CRC
+ *
+ * @param t_buffer
+ * @param t_size
+ * @param t_crc
+ */
+void saveConfigToFlash(const uint8_t *t_buffer, const size_t t_size, const uint16_t t_crc) {
+    if (t_crc == config_crc_in_flash) return;  // Protect wear leveling
+    File f = LittleFS.open(CONFIG_FILENAME, "w");
+    if (!f) return;
+    if (f.write(t_buffer, t_size) == t_size) {
+        config_crc_in_flash = t_crc;
+        config_size_in_flash = t_size;
+    }
+    f.close();
+}
+
+/**
+ * @brief updateConfigInFlash() will update the config in flash with the live one, if CRC differ (wear level protection)
+ *
+ */
+void updateConfigInFlash() {
+    // We need to simulate a packet
+    uint16_t size = sizeof(struct ll_high_level_config) + 3;  // + 1 type + 2 crc
+    if (config_size_in_flash > 3)
+        size = min(size, config_size_in_flash);  // Wear level protection
+
+    uint8_t *buffer = (uint8_t *)malloc(size);
+    if (buffer == NULL) return;
+
+    buffer[0] = PACKET_ID_LL_HIGH_LEVEL_CONFIG_RSP;  // Not needed in real, but let's pretend to be
+    memcpy(buffer + 1, &llhl_config, size);          // Copy our live llhl_config into the buffer
+
+    uint16_t crc = CRC16.ccitt(buffer, size - 2);
+    if (crc == config_crc_in_flash) return;  // No need to write, protect wear leveling
+
+    buffer[size - 1] = (crc >> 8) & 0xFF;
+    buffer[size - 2] = crc & 0xFF;
+
+    File f = LittleFS.open(CONFIG_FILENAME, "w");
+    if (!f) return;
+    if (f.write(buffer, size) == size) config_crc_in_flash = crc;
+    f.close();
 }

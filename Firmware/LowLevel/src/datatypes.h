@@ -19,6 +19,7 @@
 #define _DATATYPES_H
 
 #include <stdint.h>
+#include <functional>
 
 #define PACKET_ID_LL_STATUS 1
 #define PACKET_ID_LL_IMU 2
@@ -28,10 +29,44 @@
 #define PACKET_ID_LL_HEARTBEAT 0x42
 #define PACKET_ID_LL_HIGH_LEVEL_STATE 0x43
 
-enum HighLevelMode {
-    MODE_IDLE = 1, // ROS connected, idle mode
-    MODE_AUTONOMOUS = 2, // ROS connected, Autonomous mode, either mowing or docking or undocking
-    MODE_RECORDING = 3 // ROS connected, Manual mode during recording etc
+/**
+ * @brief Simple class containing only the static methods,
+ * for more comfortable as well as more speaking HighLevel-Mode and SubMode handling
+ */
+#define HL_MODE_MASK 0b11111
+#define HL_SUBMODE_SHIFT 6
+#define HL_SUBMODE_MASK 0b11
+class HighLevelState {
+   public:
+    enum class Mode : uint8_t {
+        IDLE = 1,        // ROS connected, idle mode
+        AUTONOMOUS = 2,  // ROS connected, Autonomous mode, either mowing or docking or undocking
+        RECORDING = 3,   // ROS connected, Manual mode during recording etc
+    };
+    enum SubModeIdle : uint8_t {
+        AUTONOMOUS_MOWING = 0,  // ?!
+    };
+    enum SubModeAutonomous : uint8_t {
+        MOWING = 0,
+        DOCKING = 1,
+        UNDOCKING = 2,
+    };
+    enum SubModeRecording : uint8_t {
+        OUTLINE = 1,
+        OBSTACLE = 2,
+    };
+
+    static Mode getMode(uint8_t t_mode) {
+        return Mode(t_mode & HL_MODE_MASK);
+    }
+
+    static uint8_t getSubMode(uint8_t t_mode) {
+        return (t_mode >> HL_SUBMODE_SHIFT) & HL_SUBMODE_MASK;
+    }
+
+    static SubModeAutonomous getAutonomousSubMode(uint8_t t_mode) {
+        return SubModeAutonomous(getSubMode(t_mode));
+    }
 };
 
 // clang-format off
@@ -48,7 +83,14 @@ enum HighLevelMode {
 #define LL_EMERGENCY_BIT_CU_LIFTX (1 << 5)  // CoverUI-LIFTX (as of CoverUI FW 2.1x)
 #define LL_EMERGENCY_BIT_CU_RBUMP (1 << 6)  // CoverUI-RBUMP (as of CoverUI FW 2.1x)
 
-#define LL_STATUS_BIT_UI_AVAIL (1 << 7)
+#define LL_STATUS_BIT_INITIALIZED (1 << 0)
+#define LL_STATUS_BIT_RASPI_POWER (1 << 1)
+#define LL_STATUS_BIT_CHARGING    (1 << 2)
+#define LL_STATUS_BIT_FREE        (1 << 3)
+#define LL_STATUS_BIT_RAIN        (1 << 4)
+#define LL_STATUS_BIT_SOUND_AVAIL (1 << 5)
+#define LL_STATUS_BIT_SOUND_BUSY  (1 << 6)
+#define LL_STATUS_BIT_UI_AVAIL    (1 << 7)
 // clang-format on
 
 #pragma pack(push, 1)
