@@ -1,7 +1,6 @@
 #pragma once
 
 #ifdef HW_0_9_X
-#define PIN_IMU_CS 17
 #define PIN_ANALOG_BATTERY_VOLTAGE 27
 #define PIN_ANALOG_CHARGE_VOLTAGE 26
 #define PIN_ANALOG_CHARGE_CURRENT 28
@@ -32,15 +31,21 @@
 #define PIN_SOUND_RX 9
 #endif
 
-#ifdef WT901_INSTEAD_OF_SOUND
+// IMU Variants
+#ifdef WT901_INSTEAD_OF_SOUND  // WT901 via HardwareSerial
 #ifdef ENABLE_SOUND_MODULE
 #error you can not enable sound and have wt901 on sound port at the same time.
 #endif
 #define PIN_WT901_TX 8
 #define PIN_WT901_RX 9
-#elif WT901 //This is to use WT901 on MPU9250 Slot via Serial.
+#elif WT901  // WT901 on MPU9250 Slot via SerialPIO.
 #define PIN_WT901_TX 17
 #define PIN_WT901_RX 16
+#else
+#define PIN_IMU_CS 17   // MPU9250
+#define PIN_IMU_RX 16   // LSM6DSx
+#define PIN_IMU_TX 19   // LSM6DSx
+#define PIN_IMU_SCK 18  // LSM6DSx
 #endif
 
 #elif HW_0_10_X || HW_0_11_X || HW_0_12_X
