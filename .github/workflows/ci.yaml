@@ -96,6 +96,10 @@ jobs:
           cp Firmware/LowLevel/.pio/build/0_11_X_WT901/firmware.elf ./artifacts/0_11_X_WT901
           cp Firmware/LowLevel/.pio/build/0_11_X_WT901/firmware.uf2 ./artifacts/0_11_X_WT901
           
+          mkdir ./artifacts/0_11_X_LSM6DSO
+          cp Firmware/LowLevel/.pio/build/0_11_X_LSM6DSO/firmware.elf ./artifacts/0_11_X_LSM6DSO
+          cp Firmware/LowLevel/.pio/build/0_11_X_LSM6DSO/firmware.uf2 ./artifacts/0_11_X_LSM6DSO
+          
           mkdir ./artifacts/0_10_X_MPU9250
           cp Firmware/LowLevel/.pio/build/0_10_X_MPU9250/firmware.elf ./artifacts/0_10_X_MPU9250
           cp Firmware/LowLevel/.pio/build/0_10_X_MPU9250/firmware.uf2 ./artifacts/0_10_X_MPU9250
@@ -103,6 +107,10 @@ jobs:
           mkdir ./artifacts/0_10_X_WT901
           cp Firmware/LowLevel/.pio/build/0_10_X_WT901/firmware.elf ./artifacts/0_10_X_WT901
           cp Firmware/LowLevel/.pio/build/0_10_X_WT901/firmware.uf2 ./artifacts/0_10_X_WT901
+          
+          mkdir ./artifacts/0_10_X_LSM6DSO
+          cp Firmware/LowLevel/.pio/build/0_10_X_LSM6DSO/firmware.elf ./artifacts/0_10_X_LSM6DSO
+          cp Firmware/LowLevel/.pio/build/0_10_X_LSM6DSO/firmware.uf2 ./artifacts/0_10_X_LSM6DSO
           
           mkdir ./artifacts/0_9_X_MPU9250
           cp Firmware/LowLevel/.pio/build/0_9_X_MPU9250/firmware.elf ./artifacts/0_9_X_MPU9250
@@ -115,7 +123,11 @@ jobs:
           mkdir ./artifacts/0_9_X_WT901_INSTEAD_OF_SOUND
           cp Firmware/LowLevel/.pio/build/0_9_X_WT901_INSTEAD_OF_SOUND/firmware.elf ./artifacts/0_9_X_WT901_INSTEAD_OF_SOUND
           cp Firmware/LowLevel/.pio/build/0_9_X_WT901_INSTEAD_OF_SOUND/firmware.uf2 ./artifacts/0_9_X_WT901_INSTEAD_OF_SOUND
-          
+
+          mkdir ./artifacts/0_9_X_LSM6DSO
+          cp Firmware/LowLevel/.pio/build/0_9_X_LSM6DSO/firmware.elf ./artifacts/0_9_X_LSM6DSO
+          cp Firmware/LowLevel/.pio/build/0_9_X_LSM6DSO/firmware.uf2 ./artifacts/0_9_X_LSM6DSO
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:

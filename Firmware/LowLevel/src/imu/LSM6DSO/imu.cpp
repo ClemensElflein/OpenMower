@@ -2,8 +2,8 @@
 #include "pins.h"
 #include <LSM6DSOSensor.h>
 
-#ifdef HW_0_12_X
-// Needs software UART because pins were messed up in 0.12
+#if defined(HW_0_10_X) || defined(HW_0_11_X) || defined(HW_0_12_X)
+// Needs software SPI because pins were messed up in 0.10-0.12
 #include <PioSPI.h>
 PioSPI spiBus(PIN_IMU_MOSI, PIN_IMU_MISO, PIN_IMU_SCK, PIN_IMU_CS, SPI_MODE3, 1000000);
 #else
@@ -16,7 +16,7 @@ int32_t accelerometer[3];
 int32_t gyroscope[3];
 
 bool init_imu() {
-#ifdef HW_0_12_X
+#if defined(HW_0_10_X) || defined(HW_0_11_X) || defined(HW_0_12_X)
   spiBus.begin();
 #else
   spiBus.setCS(PIN_IMU_CS);
