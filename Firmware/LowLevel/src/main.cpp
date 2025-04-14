@@ -102,6 +102,7 @@ bool ROS_running = false;
 unsigned long charging_disabled_time = 0;
 
 float imu_temp[9];
+float pitch_angle = 0, roll_angle = 0, tilt_angle = 0;
 
 uint16_t ui_version = 0;                   // Last received UI firmware version
 uint8_t ui_topic_bitmask = Topic_set_leds; // UI subscription, default to Set_LEDs
@@ -395,6 +396,9 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(PIN_ENABLE_CHARGE, OUTPUT);
     digitalWrite(PIN_ENABLE_CHARGE, HIGH);
+
+    pinMode(PIN_ESC_SHUTDOWN, OUTPUT);
+    digitalWrite(PIN_ESC_SHUTDOWN, LOW);
 
     gpio_init(PIN_RASPI_POWER);
     gpio_put(PIN_RASPI_POWER, true);
@@ -751,6 +755,12 @@ void loop() {
         sendMessage(&imu_message, sizeof(struct ll_imu));
 
         last_imu_millis = now;
+
+        // Update pitch, roll, tilt
+        pitch_angle = atan2f(imu_temp[0], imu_temp[2]) * 180.0f / M_PI;
+        roll_angle = atan2f(imu_temp[1], imu_temp[2]) * 180.0f / M_PI;
+        float accXY = sqrtf((imu_temp[0]*imu_temp[0]) + (imu_temp[1]*imu_temp[1]));
+        tilt_angle = atan2f(accXY, imu_temp[2]) * 180.0f / M_PI;
     }
 
     if (now - last_status_update_millis > STATUS_CYCLETIME) {
@@ -761,6 +771,25 @@ void loop() {
         status_message.v_charge =
                 (float) analogRead(PIN_ANALOG_CHARGE_VOLTAGE) * (3.3f / 4096.0f) * ((VIN_R1 + VIN_R2) / VIN_R2);
         status_message.charging_current = llhl_config.options.ignore_charging_current == OptionState::ON ? -1.0f : (float)analogRead(PIN_ANALOG_CHARGE_CURRENT) * (3.3f / 4096.0f) / (CURRENT_SENSE_GAIN * R_SHUNT);
+
+
+        // ESC power saving
+        bool shutdown_escs = false;
+        if (llhl_config.shutdown_esc_max_pitch != 0) {
+            bool emergency_or_idle = emergency_latch || HighLevelState::getMode(last_high_level_state.current_mode) == HighLevelState::Mode::IDLE;
+            bool on_slope = fabs(pitch_angle) > llhl_config.shutdown_esc_max_pitch;
+            if(ROS_running && emergency_or_idle && !on_slope) {
+                shutdown_escs = true;
+            }
+        }
+        if (shutdown_escs){
+            digitalWrite(PIN_ESC_SHUTDOWN, HIGH);
+            status_message.status_bitmask &= 0b11110111;
+        } else {
+            digitalWrite(PIN_ESC_SHUTDOWN, LOW);
+            status_message.status_bitmask |= 0b1000;
+        }
+
 
         status_message.status_bitmask = (status_message.status_bitmask & 0b11111011) | ((charging_allowed & 0b1) << 2);
         status_message.status_bitmask = (status_message.status_bitmask & 0b11011111) | ((sound_available & 0b1) << 5);

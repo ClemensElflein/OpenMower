@@ -101,7 +101,7 @@ struct ll_status {
     // Bit 0: Initialized (i.e. setup() was a success). If this is 0, all other bits are meaningless.
     // Bit 1: Raspberry Power
     // Bit 2: Charging enabled
-    // Bit 3: don't care (reserved for ESC shutdown PR)
+    // Bit 3: ESC power
     // Bit 4: Rain detected
     // Bit 5: Sound available
     // Bit 6: Sound busy
@@ -168,7 +168,7 @@ struct ll_high_level_state {
 struct ll_ui_event {
     // Type of this message. Has to be PACKET_ID_LL_UI_EVENT
     uint8_t type;
-    uint8_t button_id; 
+    uint8_t button_id;
     uint8_t press_duration;   // 0 for single press, 1 for long, 2 for very long press
     uint16_t crc;
 } __attribute__((packed));
@@ -236,7 +236,7 @@ struct ll_high_level_config {
     float v_battery_full = 28.7f - 0.3f;   // Full battery voltage used for % calc of capacity (-1 = unknown)
     uint16_t lift_period = 100;            // Period (ms) for >=2 wheels to be lifted in order to count as emergency (0 = disable, 0xFFFF = unknown). This is to filter uneven ground
     uint16_t tilt_period = 2500;           // Period (ms) for a single wheel to be lifted in order to count as emergency (0 = disable, 0xFFFF = unknown). This is to filter uneven ground
-    uint8_t shutdown_esc_max_pitch = 0;    // Do not shutdown ESCs if absolute pitch angle is greater than this (0 = disable, 0xffff = unknown) (to be implemented, see PR #97)
+    uint8_t shutdown_esc_max_pitch = 0;    // Do not shutdown ESCs if absolute pitch angle is greater than this (0 = disable, 0xffff = unknown)
     iso639_1 language = {'e', 'n'};        // ISO 639-1 (2-char) language code (en, de, ...)
     uint8_t volume = 80;                   // Volume (0-100%) feedback (if directly changed i.e. via CoverUI or WebApp) (0xff = do not change)
     HallConfig hall_configs[MAX_HALL_INPUTS] = {

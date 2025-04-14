@@ -20,14 +20,20 @@ bool imu_read(float *acceleration_mss, float *gyro_rads, float *mag_uT)
 {
     IMU.readSensor();
 
-    acceleration_mss[0] = IMU.getAccelX_mss();
-    acceleration_mss[1] = IMU.getAccelY_mss();
+    // TODO: test this
+    // Left down: Y = -g
+    acceleration_mss[1] = -IMU.getAccelX_mss();
+    // Nose down: X = -g
+    acceleration_mss[0] = IMU.getAccelY_mss();
+    // Flat: Z = +g
     acceleration_mss[2] = IMU.getAccelZ_mss();
 
-    gyro_rads[0] = IMU.getGyroX_rads();
-    gyro_rads[1] = IMU.getGyroY_rads();
+    // MPU-9250 Datasheet shows gyro and acceleromter axes are aligned
+    gyro_rads[1] = -IMU.getGyroX_rads();
+    gyro_rads[0] = IMU.getGyroY_rads();
     gyro_rads[2] = -IMU.getGyroZ_rads();
 
+    // Mag is NED coordinates
     mag_uT[0] = IMU.getMagX_uT();
     mag_uT[1] = IMU.getMagY_uT();
     mag_uT[2] = IMU.getMagZ_uT();
