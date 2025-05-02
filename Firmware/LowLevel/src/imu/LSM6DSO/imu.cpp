@@ -4,8 +4,8 @@
 
 #if defined(HW_0_10_X) || defined(HW_0_11_X) || defined(HW_0_12_X)
 // Needs software SPI because pins were messed up in 0.10-0.12
-#include <PioSPI.h>
-PioSPI spiBus(PIN_IMU_MOSI, PIN_IMU_MISO, PIN_IMU_SCK, PIN_IMU_CS, SPI_MODE3, 1000000);
+#include <SoftwareSPI.h>
+SoftwareSPI spiBus(PIN_IMU_SCK, PIN_IMU_MISO, PIN_IMU_MOSI);
 #else
 #include <SPI.h>
 #define spiBus SPI
