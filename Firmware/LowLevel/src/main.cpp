@@ -449,7 +449,7 @@ void setup() {
 #endif
         p.neoPixelSetValue(0, 0, 0, 0, true);
         delay(1000);
-        p.neoPixelSetValue(255, 255, 0, 0, true);
+        p.neoPixelSetValue(0, 255, 255, 0, true);
         delay(100);
         p.neoPixelSetValue(0, 0, 0, 0, true);
         delay(100);
@@ -468,7 +468,8 @@ void setup() {
             delay(500);
         }
     }
-    p.neoPixelSetValue(0, 255, 255, 255, true);     // White for IMU Success
+    p.neoPixelSetValue(0, 0, 128, 0, true);     // Dim-green for IMU Success
+    delay(200);
 
 #ifdef USB_DEBUG
     DEBUG_SERIAL.println("Imu initialized");
