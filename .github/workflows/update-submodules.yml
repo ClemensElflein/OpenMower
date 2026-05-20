@@ -1,9 +1,12 @@
 name: Update Submodules on New Release
 
 on:
-  schedule:
-    - cron: '0 * * * *'  # every hour
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — detect updates and print release notes, but do not commit or create a release'
+        type: boolean
+        default: false
 
 jobs:
   update:
@@ -85,15 +88,25 @@ jobs:
           echo "updated=$UPDATED" >> "$GITHUB_OUTPUT"
           echo "notes_file=$RELEASE_NOTES_FILE" >> "$GITHUB_OUTPUT"
 
+      - name: Print release notes (dry run)
+        if: steps.update.outputs.updated == 'true' && inputs.dry_run == true
+        run: |
+          echo "### Dry run — no changes will be committed or released"
+          echo ""
+          echo "Would create release: release-$(date +%Y.%m.%d.%H%M)"
+          echo ""
+          echo "--- Release notes ---"
+          cat "${{ steps.update.outputs.notes_file }}"
+
       - name: Commit and push
-        if: steps.update.outputs.updated == 'true'
+        if: steps.update.outputs.updated == 'true' && inputs.dry_run != true
         run: |
           git add .
           git commit -m "chore: update submodules to latest releases"
           git push
 
       - name: Create release
-        if: steps.update.outputs.updated == 'true'
+        if: steps.update.outputs.updated == 'true' && inputs.dry_run != true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
