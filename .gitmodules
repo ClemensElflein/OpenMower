@@ -1,0 +1,24 @@
+[submodule "software/open_mower_ros"]
+	path = software/open_mower_ros
+	url = https://github.com/ClemensElflein/open_mower_ros
+[submodule "software/OpenMowerOS"]
+	path = software/OpenMowerOS
+	url = https://github.com/ClemensElflein/OpenMowerOS
+[submodule "software/openmower-app"]
+	path = software/openmower-app
+	url = https://github.com/xtech/openmower-app
+[submodule "firmware/fw-openmower-v2"]
+	path = firmware/fw-openmower-v2
+	url = https://github.com/xtech/fw-openmower-v2
+[submodule "firmware/xesc_firmware"]
+	path = firmware/xesc_firmware
+	url = https://github.com/ClemensElflein/xesc_firmware
+[submodule "hardware/hw-openmower-universal"]
+	path = hardware/hw-openmower-universal
+	url = https://github.com/xtech/hw-openmower-universal
+[submodule "hardware/hw-openmower-yardforce"]
+	path = hardware/hw-openmower-yardforce
+	url = https://github.com/xtech/hw-openmower-yardforce
+[submodule "hardware/hw-openmower-sabo"]
+	path = hardware/hw-openmower-sabo
+	url = https://github.com/xtech/hw-openmower-sabo
