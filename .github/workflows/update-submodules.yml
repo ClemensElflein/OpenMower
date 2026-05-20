@@ -1,0 +1,110 @@
+name: Update Submodules on New Release
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # every hour
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update submodules to latest releases
+        id: update
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          UPDATED=false
+          RELEASE_NOTES_FILE=$(mktemp)
+
+          update_submodule() {
+            local subpath="$1"
+            local repo="$2"
+
+            echo "Checking $repo..."
+
+            LATEST_TAG=$(gh release view --repo "$repo" --json tagName -q .tagName 2>/dev/null || true)
+            if [ -z "$LATEST_TAG" ]; then
+              echo "  No releases found, skipping."
+              return
+            fi
+
+            git -C "$subpath" fetch --tags --quiet origin
+
+            TARGET_SHA=$(git -C "$subpath" rev-list -n 1 "$LATEST_TAG" 2>/dev/null || true)
+            if [ -z "$TARGET_SHA" ]; then
+              echo "  Tag $LATEST_TAG not found locally after fetch, skipping."
+              return
+            fi
+
+            CURRENT_SHA=$(git -C "$subpath" rev-parse HEAD)
+
+            if [ "$CURRENT_SHA" = "$TARGET_SHA" ]; then
+              echo "  Already at $LATEST_TAG, nothing to do."
+              return
+            fi
+
+            echo "  Updating $subpath: $(git -C "$subpath" rev-parse --short HEAD) -> $LATEST_TAG ($TARGET_SHA)"
+            git -C "$subpath" checkout --quiet "$LATEST_TAG"
+            UPDATED=true
+
+            NOTES=$(gh release view "$LATEST_TAG" --repo "$repo" --json body -q .body 2>/dev/null || true)
+            echo "" >> "$RELEASE_NOTES_FILE"
+            echo "## [$repo](https://github.com/$repo) — $LATEST_TAG" >> "$RELEASE_NOTES_FILE"
+            echo "" >> "$RELEASE_NOTES_FILE"
+            if [ -n "$NOTES" ]; then
+              echo "$NOTES" >> "$RELEASE_NOTES_FILE"
+            else
+              echo "_No release notes provided._" >> "$RELEASE_NOTES_FILE"
+            fi
+          }
+
+          update_submodule "software/open_mower_ros"         "ClemensElflein/open_mower_ros"
+          update_submodule "software/OpenMowerOS"            "ClemensElflein/OpenMowerOS"
+          update_submodule "software/openmower-app"          "xtech/openmower-app"
+          update_submodule "firmware/fw-openmower-v2"        "xtech/fw-openmower-v2"
+          update_submodule "firmware/xesc_firmware"          "ClemensElflein/xesc_firmware"
+          update_submodule "hardware/hw-openmower-universal" "xtech/hw-openmower-universal"
+          update_submodule "hardware/hw-openmower-yardforce"  "xtech/hw-openmower-yardforce"
+          update_submodule "hardware/hw-openmower-sabo"      "xtech/hw-openmower-sabo"
+
+          echo "updated=$UPDATED" >> "$GITHUB_OUTPUT"
+          echo "notes_file=$RELEASE_NOTES_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push
+        if: steps.update.outputs.updated == 'true'
+        run: |
+          git add .
+          git commit -m "chore: update submodules to latest releases"
+          git push
+
+      - name: Create release
+        if: steps.update.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="release-$(date +%Y.%m.%d.%H%M)"
+
+          {
+            echo "This release bundles the latest releases from all OpenMower sub-repositories."
+            echo ""
+            cat "${{ steps.update.outputs.notes_file }}"
+          } > release_body.md
+
+          gh release create "$TAG" \
+            --title "OpenMower $TAG" \
+            --notes-file release_body.md
