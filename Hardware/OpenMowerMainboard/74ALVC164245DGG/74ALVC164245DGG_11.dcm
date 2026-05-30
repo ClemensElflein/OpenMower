@@ -1,9 +1,0 @@
-EESchema-DOCLIB  Version 2.0
-#
-$CMP 74ALVC164245DGG,11
-D 74ALVC164245 - 16-bit dual supply translating transceiver; 3-state@en-us
-K
-F https://assets.nexperia.com/documents/data-sheet/74ALVC164245.pdf
-$ENDCMP
-#
-#End Doc Library

@@ -1,9 +1,0 @@
-EESchema-DOCLIB  Version 2.0
-#
-$CMP TSC101CILT
-D TSC101CILT, Current Sensing Amplifier Single 5-Pin SOT-23
-K
-F http://www.st.com/st-web-ui/static/active/en/resource/technical/document/datasheet/CD00153725.pdf
-$ENDCMP
-#
-#End Doc Library
