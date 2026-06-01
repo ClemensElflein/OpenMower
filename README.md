@@ -121,7 +121,7 @@ git submodule update --init --recursive
 
 Many robotic mowers share the same underlying hardware manufactured by SUMEC Hardware, sold under brands like YardForce, Herkules, and others. By upgrading one of these robots, a large number of devices become OpenMower-capable.
 
-Check the [compatible mowers list](https://docs.google.com/spreadsheets/d/1BX0-KEs5v-VED8-RA4BLE-wRdXHtlmcKy4n9K5vJVAA) for disassembly photos, model numbers, and community findings.
+Check the [openmower website](https://openmower.de/latest/docs/getting-started/#is-your-mower-compatible) to check, if your mower is compatible.
 
 <br>
 
