@@ -90,6 +90,13 @@
 #endif
 
 #elif HW_0_13_X
+
+#define WT901_WIRE Wire
+
+#define PIN_WT901_SDA 4
+#define PIN_WT901_SCL 5
+
+
 #define PIN_IMU_SCK 6
 #define PIN_IMU_TX 7
 #define PIN_IMU_RX 4
