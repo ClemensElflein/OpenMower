@@ -1,0 +1,18 @@
+[Match]
+Name=br0
+
+[Network]
+# eth0's own IP config used to live directly on eth0 (see 20-ethernet.
+# network); now that eth0 is a bridge member (Bridge=br0) instead, L3
+# config belongs on the bridge itself -- a member port with its own
+# address/DHCP would fight with the bridge for the same traffic. Moved
+# here as-is: DHCP client for whatever external network eth0 (and now also
+# usb0) is plugged into, plus the static address dnsmasq.conf listens on
+# for the internal CM4<->xCore link (172.16.78.0/24) -- unchanged from
+# before, just now reachable from usb0 too.
+DHCP=yes
+MulticastDNS=yes
+Address=172.16.78.1/24
+
+[DHCPv4]
+RouteMetric=100

@@ -28,3 +28,15 @@ enable dnsmasq.service
 enable docker.service
 enable webterminal.service
 enable dockge.service
+
+# USB0 composite gadget (console + Improv WiFi + ethernet) -- see
+# board/openmower-cm4/rootfs-overlay's openmower-usb-gadget-init. Host vs.
+# device switching itself is automatic in dwc2 (native USB_OTG_ID pin),
+# nothing to enable for that separately.
+enable openmower-usb-gadget-init.service
+enable improv-serial.service
+# systemd-getty-generator already wires this up automatically from
+# console=ttyGS0 on the kernel cmdline, and systemd's own udev rules
+# SYSTEMD_WANTS it the moment /dev/ttyGS0 appears -- enabled explicitly too
+# so it doesn't depend solely on either of those firing correctly.
+enable serial-getty@ttyGS0.service

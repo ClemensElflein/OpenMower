@@ -1,7 +1,12 @@
 [Unit]
 Description=DHCP server for the internal CM4-xCore link (172.16.78.0/24)
-After=systemd-networkd.service sys-subsystem-net-devices-eth0.device
-Requires=sys-subsystem-net-devices-eth0.device
+# br0, not eth0 directly -- see /etc/dnsmasq.conf's own comment. br0 is
+# created by systemd-networkd (15-br0.netdev) rather than existing from
+# boot the way eth0 does, but it still gets its own udev device unit like
+# any other netdev the instant it's created, so this dependency form still
+# applies unchanged.
+After=systemd-networkd.service sys-subsystem-net-devices-br0.device
+Requires=sys-subsystem-net-devices-br0.device
 
 [Service]
 Type=simple

@@ -1,0 +1,9 @@
+[Match]
+Name=usb0
+
+[Network]
+# usb0 is the USB0 gadget's CDC NCM function (see openmower-usb-gadget-
+# init) -- exists persistently once the gadget is assembled, whether or
+# not a host is actually attached right now. Bridge member, same as eth0
+# (20-ethernet.network): no IP config of its own, see 16-br0.network.
+Bridge=br0
