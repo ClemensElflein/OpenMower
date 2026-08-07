@@ -1,0 +1,16 @@
+[Unit]
+Description=Improv WiFi serial provisioning (ttyGS1)
+# Permanently available -- unlike improv-ble this never exits after a
+# successful provisioning, so no ConditionPathExists on the wifi config.
+# /dev/ttyGS1 only exists once the USB0 composite gadget is assembled.
+After=openmower-usb-gadget-init.service openmower-hostname.service
+RequiresMountsFor=/data
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/improv-serial
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

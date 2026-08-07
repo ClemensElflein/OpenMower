@@ -13,3 +13,17 @@ arm_64bit=1
 # Headless: minimal GPU memory, no rainbow splash
 gpu_mem=16
 disable_splash=1
+
+# USB0 dual-role (OTG): behind a hardware mux on this carrier board that
+# routes it to either an external (device) or internal (host) connector.
+# USB_OTG_ID (CM4 edge connector pin 101, same pin the official CM4 IO
+# board breaks out) is wired through to the mux's cable-detect output, so
+# dwc2's own OTG ID-pin comparator sees it directly -- host/device
+# switching on a Connector ID Status Change is then handled entirely by
+# dwc2 itself in hardware/kernel (drivers/usb/dwc2/hcd.c:
+# dwc2_conn_id_status_change(), fired from the CONIDSTSCHNG IRQ), no
+# software role switch or userspace cable-detect polling needed at all --
+# the stock overlay already supports everything required here. Not a
+# usercfg.txt setting -- required for the USB gadget to work at all, not a
+# user-facing preference like antenna/UART/fan.
+dtoverlay=dwc2,dr_mode=otg

@@ -1,0 +1,93 @@
+#!/bin/sh
+# Assemble the composite USB0 gadget via ConfigFS: two CDC ACM serial ports
+# (console on ttyGS0, Improv WiFi provisioning on ttyGS1) and one CDC NCM
+# ethernet function (usb0). Deliberately not the legacy monolithic g_serial/
+# g_ether/g_multi drivers -- those can each only expose one identity, we
+# need all three functions live in a single composite device.
+#
+# NCM was chosen over ECM/RNDIS: it's the most modern of the three with
+# still-good cross-platform support (native drivers on current Linux,
+# Windows 10+, and macOS), so a single function covers every host OS this
+# needs to work with without the complexity of multiple USB configurations
+# for the host to pick between.
+#
+# This only builds the gadget and binds it to dwc2's UDC once, at boot --
+# it does NOT decide host vs. peripheral electrically, and never needs to
+# run again after a cable event. dwc2 is a dual-role (OTG) controller with
+# USB_OTG_ID (the carrier board's cable-detect mux output) wired straight
+# into its own ID-pin comparator (see kernel-fragment.config's USB0
+# dual-role comment and config.txt's dtoverlay=dwc2,dr_mode=otg): a
+# Connector ID Status Change interrupt makes dwc2 itself switch host vs.
+# device mode in-kernel, using whatever UDC is already bound. Binding once
+# here, permanently, at boot (rather than reacting to role changes
+# ourselves) is what keeps ttyGS0/ttyGS1/usb0 "always available": serial-
+# getty, improv-serial and the network bridge all come up immediately and
+# stay up, with no gadget rebuild/getty restart/netdev flap on every cable
+# insert or removal -- dwc2 just stops presenting the device side
+# electrically while in host mode.
+set -eu
+
+GADGET=/sys/kernel/config/usb_gadget/g1
+
+mount -t configfs none /sys/kernel/config 2>/dev/null || true
+modprobe libcomposite
+
+if [ -d "$GADGET" ]; then
+	# Already assembled (e.g. service restarted) -- nothing to do.
+	exit 0
+fi
+
+mkdir -p "$GADGET"
+cd "$GADGET"
+
+# Linux Foundation's own placeholder for exactly this: a generic composite
+# gadget with no single "real" upstream product identity of its own.
+# Matches the in-kernel legacy g_multi driver's own IDs
+# (drivers/usb/gadget/legacy/multi.c: MULTI_VENDOR_NUM/MULTI_PRODUCT_NUM).
+echo 0x1d6b > idVendor
+echo 0x0104 > idProduct
+echo 0x0200 > bcdUSB    # USB 2.0
+echo 0x0100 > bcdDevice
+
+mkdir -p strings/0x409
+MACHINE_ID="$(cat /etc/machine-id 2>/dev/null || echo 00000000000000000000000000000000)"
+echo "OpenMower"           >strings/0x409/manufacturer
+echo "OpenMower CM4"        >strings/0x409/product
+echo "$MACHINE_ID"          >strings/0x409/serialnumber
+
+# CDC ACM #0: the system console (ttyGS0). Kept as the very first serial
+# line created (port_num 0) so the kernel auto-registers it as a console --
+# see kernel-fragment.config's CONFIG_U_SERIAL_CONSOLE comment.
+mkdir -p functions/acm.usb0
+
+# CDC ACM #1: Improv WiFi provisioning only (ttyGS1) -- see
+# external/package/improv-serial.
+mkdir -p functions/acm.usb1
+
+# CDC NCM ethernet (usb0 netdev). host_addr/dev_addr are derived from the
+# persistent machine-id rather than left to u_ether's own random default,
+# so the MAC (and therefore DHCP lease / ARP / neighbor state) is stable
+# across reboots instead of churning on every boot. Fixed locally-
+# administered first octets (02/12, distinct from each other) keep both
+# addresses valid unicast/locally-administered MACs without needing to
+# twiddle hash output bits.
+mkdir -p functions/ncm.usb0
+DEV_MAC="02:$(printf '%s' "${MACHINE_ID}-usb0-dev" | md5sum | cut -c1-10 | sed 's/\(..\)/\1:/g;s/:$//')"
+HOST_MAC="12:$(printf '%s' "${MACHINE_ID}-usb0-host" | md5sum | cut -c1-10 | sed 's/\(..\)/\1:/g;s/:$//')"
+echo "$DEV_MAC"  >functions/ncm.usb0/dev_addr
+echo "$HOST_MAC" >functions/ncm.usb0/host_addr
+
+mkdir -p configs/c.1/strings/0x409
+echo "OpenMower USB"  >configs/c.1/strings/0x409/configuration
+echo 250              >configs/c.1/MaxPower
+
+ln -s functions/acm.usb0 configs/c.1/
+ln -s functions/acm.usb1 configs/c.1/
+ln -s functions/ncm.usb0 configs/c.1/
+
+UDC="$(ls /sys/class/udc | head -n1)"
+if [ -z "$UDC" ]; then
+	echo "openmower-usb-gadget-init: no UDC found" >&2
+	exit 1
+fi
+echo "$UDC" >UDC

@@ -2,9 +2,10 @@
 # uses NamePolicy=... onboard ... , which renames the CM4's onboard
 # ethernet via udev's ID_NET_NAME_ONBOARD heuristic -- observed in practice
 # renaming it away from "eth0" (likely to "end0"), which breaks every
-# eth0-hardcoded config in this tree: 20-ethernet.network's [Match],
-# dnsmasq.conf's interface=, dnsmasq.service's sys-subsystem-net-devices-
-# eth0.device dependency. Sorts before 99-default.link (10 < 99), so this
+# eth0-hardcoded config in this tree: 20-ethernet.network's [Match] (and
+# through it, its Bridge=br0 membership -- see 15-br0.netdev/
+# 16-br0.network/dnsmasq.conf, which all key off br0 existing and having
+# eth0 actually join it). Sorts before 99-default.link (10 < 99), so this
 # is the one that actually applies -- keep the kernel's own raw name
 # (eth0, wlan0, ...) instead, matching what the rest of this tree assumes.
 #

@@ -3,3 +3,13 @@
 # units, and before 80-buildroot.preset's catch-all.
 enable openmower-ssh-hostkeys.service
 enable sshd.service
+
+# Console on the default UART header pins (GPIO14/15, mini-UART/ttyS0) --
+# dev image only, see post-image.sh (adds console=ttyS0,115200 to
+# cmdline.txt for this variant) and config.txt's enable_uart=1 comment for
+# why prod leaves this port alone (real hardware wired there, not a debug
+# terminal). systemd-getty-generator already wires this up from that
+# cmdline console=, enabled explicitly too so it doesn't depend solely on
+# that firing correctly -- same reasoning as serial-getty@ttyGS0 in the
+# shared preset.
+enable serial-getty@ttyS0.service

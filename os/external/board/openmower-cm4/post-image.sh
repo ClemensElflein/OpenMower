@@ -6,10 +6,30 @@ BOARD_DIR="$(cd "$(dirname "$0")" && pwd)"
 OS_DIR="$(cd "$BOARD_DIR/../../.." && pwd)"
 
 OPENMOWER_VERSION="${OPENMOWER_VERSION:-$(date -u +%Y%m%d%H%M%S)}"
+# Set via BR2_ROOTFS_POST_IMAGE_SCRIPT_ARGS in openmower_cm4_dev_defconfig
+# only ("$1" is BINARIES_DIR, unused positionally below -- we read it from
+# the env var Buildroot also exports).
+OPENMOWER_VARIANT="${2:-prod}"
 
 # --- Build boot filesystem images (differ only in cmdline.txt) ---------------
 # Contents: Pi firmware (incl. our config.txt), kernel, DTBs.
 BOOT_FILES=("$BINARIES_DIR"/rpi-firmware/* "$BINARIES_DIR"/Image "$BINARIES_DIR"/*.dtb)
+
+# Dev image only: show a console on the default UART hardware pins (GPIO14/
+# 15, the mini-UART -- ttyS0/serial0, already clocked correctly via config.
+# txt's enable_uart=1) in addition to the USB gadget one. Resolved into
+# BINARIES_DIR rather than editing cmdline-{a,b}.txt in place: those are
+# shared with prod, where those same pins carry real mower hardware
+# traffic (LL board or similar), not a debug terminal -- see config.txt's
+# own enable_uart=1 comment for that reasoning.
+CMDLINE_A="$BOARD_DIR/cmdline-a.txt"
+CMDLINE_B="$BOARD_DIR/cmdline-b.txt"
+if [ "$OPENMOWER_VARIANT" = "dev" ]; then
+    CMDLINE_A="$BINARIES_DIR/cmdline-a.txt"
+    CMDLINE_B="$BINARIES_DIR/cmdline-b.txt"
+    sed 's/$/ console=ttyS0,115200/' "$BOARD_DIR/cmdline-a.txt" >"$CMDLINE_A"
+    sed 's/$/ console=ttyS0,115200/' "$BOARD_DIR/cmdline-b.txt" >"$CMDLINE_B"
+fi
 
 make_boot_vfat() {
     local out="$1" cmdline="$2"
@@ -24,8 +44,8 @@ make_boot_vfat() {
     mcopy -i "$out" -o -Q "$TARGET_DIR/etc/openmower/usercfg.txt.default" ::/usercfg.txt
 }
 
-make_boot_vfat "$BINARIES_DIR/boot-a.vfat" "$BOARD_DIR/cmdline-a.txt" BOOT-A
-make_boot_vfat "$BINARIES_DIR/boot-b.vfat" "$BOARD_DIR/cmdline-b.txt" BOOT-B
+make_boot_vfat "$BINARIES_DIR/boot-a.vfat" "$CMDLINE_A" BOOT-A
+make_boot_vfat "$BINARIES_DIR/boot-b.vfat" "$CMDLINE_B" BOOT-B
 
 cp -f "$BOARD_DIR/autoboot.txt" "$BINARIES_DIR/autoboot.txt"
 

@@ -1,0 +1,314 @@
+#!/usr/bin/env python3
+"""Improv WiFi Serial provisioning daemon (https://www.improv-wifi.com/serial/).
+
+Speaks the Improv Serial byte-stream protocol on /dev/ttyGS1 (the second
+CDC ACM function of the USB0 composite gadget, see
+openmower-usb-gadget-init) and, on receiving credentials, writes a
+wpa_supplicant config to /data/wifi and (re)starts wpa_supplicant@wlan0.
+
+Unlike improv-ble (BLE transport, same underlying protocol): this daemon
+never exits after a successful provisioning. ttyGS0/ttyGS1 are permanently
+present USB endpoints, not something that gets "used up" once -- the whole
+point of exposing Improv over an always-on USB serial port is that a user
+can plug in months later and replace the WiFi credentials the same way,
+without needing to factory-reset or re-flash anything first.
+
+The protocol itself is intentionally simple, so this stays single-threaded
+and fully synchronous (plain blocking pyserial reads, blocking subprocess
+calls) rather than pulling in asyncio -- provisioning a WiFi network is not
+something that benefits from handling concurrent requests, and the
+wait-for-association step blocking the read loop for a few seconds is a
+fine trade for the simplicity.
+"""
+
+import logging
+import socket
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import serial  # pyserial
+
+LOG = logging.getLogger("improv-serial")
+
+PORT = "/dev/ttyGS1"
+# Nominal only: USB CDC ACM has no real baud rate, this just satisfies
+# pyserial's API and is what a host's terminal will typically default to.
+BAUD = 115200
+
+MAGIC = b"IMPROV"
+VERSION = 1
+
+# Outer byte-stream packet types.
+PKT_CURRENT_STATE = 0x01
+PKT_ERROR_STATE = 0x02
+PKT_RPC_COMMAND = 0x03
+PKT_RPC_RESULT = 0x04
+
+# RPC commands (first byte of an RPC Command packet's data).
+CMD_WIFI_SETTINGS = 0x01
+CMD_GET_CURRENT_STATE = 0x02
+CMD_GET_DEVICE_INFO = 0x03
+CMD_GET_WIFI_NETWORKS = 0x04
+
+# Improv states -- numerically match improv-ble's (same protocol family,
+# just a different transport framing).
+STATE_AUTHORIZED = 0x02
+STATE_PROVISIONING = 0x03
+STATE_PROVISIONED = 0x04
+
+# Improv errors.
+ERR_NONE = 0x00
+ERR_INVALID_RPC = 0x01
+ERR_UNKNOWN_CMD = 0x02
+ERR_UNABLE_TO_CONNECT = 0x03
+
+WIFI_CONF = Path("/data/wifi/wpa_supplicant-wlan0.conf")
+CONNECT_TIMEOUT_S = 45
+READ_TIMEOUT_S = 1.0
+FRAME_TIMEOUT_S = 2.0
+
+
+def checksum(data: bytes) -> int:
+    return sum(data) & 0xFF
+
+
+def build_packet(pkt_type: int, data: bytes) -> bytes:
+    assert len(data) <= 255
+    body = MAGIC + bytes([VERSION, pkt_type, len(data)]) + data
+    return body + bytes([checksum(body)])
+
+
+def run(cmd: list) -> subprocess.CompletedProcess:
+    LOG.debug("run: %s", " ".join(cmd))
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def write_wifi_config(ssid: bytes, password: str) -> None:
+    if password:
+        secret = '\tpsk="{}"'.format(
+            password.replace(chr(92), chr(92) * 2).replace(chr(34), chr(92) + chr(34))
+        )
+    else:
+        secret = "\tkey_mgmt=NONE"
+    conf = (
+        "ctrl_interface=/var/run/wpa_supplicant\n"
+        "update_config=0\n\n"
+        "network={\n"
+        f"\tssid={ssid.hex()}\n"
+        f"{secret}\n"
+        "}\n"
+    )
+    WIFI_CONF.parent.mkdir(parents=True, exist_ok=True)
+    tmp = WIFI_CONF.with_suffix(".tmp")
+    tmp.write_text(conf)
+    tmp.chmod(0o600)
+    tmp.rename(WIFI_CONF)
+
+
+def wifi_connected() -> bool:
+    status = run(["wpa_cli", "-i", "wlan0", "status"]).stdout
+    if "wpa_state=COMPLETED" not in status:
+        return False
+    addrs = run(["ip", "-4", "addr", "show", "dev", "wlan0"]).stdout
+    return "inet " in addrs
+
+
+def wait_for_connection() -> bool:
+    for _ in range(CONNECT_TIMEOUT_S):
+        time.sleep(1)
+        if wifi_connected():
+            return True
+    return False
+
+
+def scan_wifi_networks() -> list:
+    """Return a list of (ssid, rssi_dbm, encrypted) tuples."""
+    run(["wpa_cli", "-i", "wlan0", "scan"])
+    time.sleep(2)  # let the scan actually complete before reading results
+    out = run(["wpa_cli", "-i", "wlan0", "scan_results"]).stdout
+    networks = []
+    for line in out.splitlines()[1:]:  # first line is the header
+        fields = line.split("\t")
+        if len(fields) < 5:
+            continue
+        _bssid, _freq, signal, flags, ssid = fields[0], fields[1], fields[2], fields[3], fields[4]
+        if not ssid:
+            continue
+        try:
+            rssi = int(signal)
+        except ValueError:
+            rssi = 0
+        encrypted = "WPA" in flags or "WEP" in flags
+        networks.append((ssid, rssi, encrypted))
+    return networks
+
+
+def read_exact(ser: serial.Serial, n: int, deadline_s: float) -> bytes:
+    """Read exactly n bytes, or return None if deadline_s elapses first."""
+    buf = b""
+    deadline = time.monotonic() + deadline_s
+    while len(buf) < n:
+        if time.monotonic() > deadline:
+            return None
+        chunk = ser.read(n - len(buf))
+        if chunk:
+            buf += chunk
+    return buf
+
+
+def find_magic(ser: serial.Serial) -> bool:
+    """Block (respecting the port's own read timeout) until MAGIC is seen."""
+    window = b""
+    while True:
+        b = ser.read(1)
+        if not b:
+            return False  # nothing available this cycle -- let the caller loop
+        window = (window + b)[-len(MAGIC):]
+        if window == MAGIC:
+            return True
+
+
+class ImprovDaemon:
+    def __init__(self):
+        self.ser = None
+        self.state = STATE_PROVISIONED if wifi_connected() else STATE_AUTHORIZED
+
+    def write(self, packet: bytes) -> None:
+        try:
+            self.ser.write(packet)
+        except serial.SerialException:
+            pass  # host not actually attached right now -- state broadcasts are best-effort
+
+    def send_state(self, state: int) -> None:
+        self.state = state
+        self.write(build_packet(PKT_CURRENT_STATE, bytes([state])))
+
+    def send_error(self, error: int) -> None:
+        self.write(build_packet(PKT_ERROR_STATE, bytes([error])))
+
+    def send_result(self, cmd: int, strings: list) -> None:
+        payload = bytes([cmd])
+        strs = b""
+        for s in strings:
+            b = s.encode()
+            strs += bytes([len(b)]) + b
+        payload += bytes([len(strs)]) + strs
+        self.write(build_packet(PKT_RPC_RESULT, payload))
+
+    def send_wifi_networks(self, cmd: int) -> None:
+        for ssid, rssi, encrypted in scan_wifi_networks():
+            self.send_result(cmd, [ssid, str(rssi), "YES" if encrypted else "NO"])
+        self.send_result(cmd, [])  # empty result marks end-of-list, per spec
+
+    def send_device_info(self, cmd: int) -> None:
+        version = "unknown"
+        try:
+            for line in Path("/usr/lib/os-release").read_text().splitlines():
+                if line.startswith("VERSION_ID="):
+                    version = line.split("=", 1)[1].strip('"')
+        except OSError:
+            pass
+        self.send_result(
+            cmd,
+            ["OpenMower OS", version, "RaspberryPiCM4", socket.gethostname()],
+        )
+
+    def provision(self, ssid: bytes, password: str) -> None:
+        LOG.info("provisioning for SSID %r", ssid.decode(errors="replace"))
+        self.send_state(STATE_PROVISIONING)
+        write_wifi_config(ssid, password)
+        run(["systemctl", "restart", "wpa_supplicant@wlan0.service"])
+
+        if wait_for_connection():
+            LOG.info("connected")
+            self.send_state(STATE_PROVISIONED)
+            self.send_result(CMD_WIFI_SETTINGS, [f"http://{socket.gethostname()}.local/"])
+        else:
+            LOG.warning("could not connect to %r", ssid.decode(errors="replace"))
+            # Same trade-off as improv-ble: this also tears down a previously
+            # -working connection if re-provisioning with new (bad)
+            # credentials fails, rather than trying to restore the old ones.
+            WIFI_CONF.unlink(missing_ok=True)
+            run(["systemctl", "stop", "wpa_supplicant@wlan0.service"])
+            self.send_error(ERR_UNABLE_TO_CONNECT)
+            self.send_state(STATE_AUTHORIZED)
+
+    def handle_rpc(self, data: bytes) -> None:
+        LOG.info("RPC: %s", data.hex())
+        self.send_error(ERR_NONE)
+        if len(data) < 2:
+            self.send_error(ERR_INVALID_RPC)
+            return
+        cmd, arglen = data[0], data[1]
+        args = data[2 : 2 + arglen]
+        if len(args) != arglen:
+            self.send_error(ERR_INVALID_RPC)
+            return
+
+        if cmd == CMD_WIFI_SETTINGS:
+            try:
+                ssid_len = args[0]
+                ssid = args[1 : 1 + ssid_len]
+                pass_len = args[1 + ssid_len]
+                password = args[2 + ssid_len : 2 + ssid_len + pass_len].decode()
+                if not ssid:
+                    raise ValueError("empty ssid")
+            except (IndexError, ValueError, UnicodeDecodeError):
+                self.send_error(ERR_INVALID_RPC)
+                return
+            self.provision(ssid, password)
+        elif cmd == CMD_GET_CURRENT_STATE:
+            self.send_state(self.state)
+        elif cmd == CMD_GET_DEVICE_INFO:
+            self.send_device_info(cmd)
+        elif cmd == CMD_GET_WIFI_NETWORKS:
+            self.send_wifi_networks(cmd)
+        else:
+            self.send_error(ERR_UNKNOWN_CMD)
+
+    def serve(self, ser: serial.Serial) -> None:
+        self.ser = ser
+        LOG.info("listening on %s", PORT)
+        # Announce ourselves as soon as the port is opened -- Improv host
+        # tools identify a device by watching for this unsolicited packet,
+        # they don't necessarily send anything first.
+        self.send_state(self.state)
+
+        while True:
+            if not find_magic(ser):
+                continue
+            header = read_exact(ser, 3, FRAME_TIMEOUT_S)
+            if header is None:
+                continue
+            version, pkt_type, length = header[0], header[1], header[2]
+            if version != VERSION:
+                continue
+            rest = read_exact(ser, length + 1, FRAME_TIMEOUT_S)
+            if rest is None:
+                continue
+            data, recv_checksum = rest[:-1], rest[-1]
+            body = MAGIC + header + data
+            if checksum(body) != recv_checksum:
+                LOG.warning("bad checksum, dropping packet")
+                continue
+            if pkt_type == PKT_RPC_COMMAND:
+                self.handle_rpc(data)
+
+
+def main() -> int:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    daemon = ImprovDaemon()
+
+    while True:
+        try:
+            with serial.Serial(PORT, BAUD, timeout=READ_TIMEOUT_S) as ser:
+                daemon.serve(ser)
+        except (serial.SerialException, OSError) as exc:
+            LOG.warning("%s: %s -- retrying", PORT, exc)
+            time.sleep(2)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

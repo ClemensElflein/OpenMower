@@ -1,0 +1,26 @@
+[Unit]
+Description=Assemble the composite USB0 gadget (console + Improv + ethernet)
+DefaultDependencies=no
+After=openmower-machine-id.service systemd-udevd.service
+Before=sysinit.target
+# Deliberately NOT ordered before network-pre.target/systemd-networkd.service
+# (used to be): usb0 appearing late is already handled fine by networkd's
+# normal udev-triggered interface matching, and a stuck/failed gadget-init
+# must not also take networking (SSH included) down with it -- that's the
+# one thing that makes a hang here debuggable at all instead of a total
+# lockout requiring a physical reflash to even look at.
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Bounded: if this hangs (real hardware wedge, not a graceful failure --
+# see kernel-fragment.config's USB0 dual-role comment for what this talks
+# to), fail the unit instead of hanging the boot transaction/watchdog
+# forever. TimeoutStartSec alone can't save the box from an actual in-
+# kernel spin (nothing userspace does can, at that point) -- this is purely
+# so a merely-slow/stuck *systemd job* doesn't masquerade as the same thing.
+TimeoutStartSec=10s
+ExecStart=/usr/bin/openmower-usb-gadget-init
+
+[Install]
+WantedBy=sysinit.target

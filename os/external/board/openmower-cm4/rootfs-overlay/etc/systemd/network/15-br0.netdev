@@ -1,0 +1,13 @@
+[NetDev]
+Name=br0
+Kind=bridge
+
+[Bridge]
+# Plain L2 switch joining eth0 (xCore + external RJ45, see 20-ethernet.
+# network) and usb0 (the USB0 gadget's CDC NCM function, active only while
+# USB0 is in peripheral/device mode -- see openmower-usb-gadget-init and
+# 21-usb-ethernet.network) into one broadcast domain, so DHCP/ARP/mDNS
+# reach both sides identically. No STP: both ports are leaves (an xCore/
+# external-network link and a point-to-point USB link), there's no loop to
+# break.
+STP=no
