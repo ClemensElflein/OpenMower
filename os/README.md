@@ -316,12 +316,16 @@ image](#unified-cm4cm5-image).
   ([usbboot](https://github.com/raspberrypi/usbboot)), then `dd` to the
   exposed block device.
 
-No serial console on **prod** — GPIO14/15 is a plain UART wired to real
-mower hardware (see "Local boot-config overrides" below), and
-`cmdline-{a,b}.txt` deliberately carries no `console=` for that port. The
-**dev image** trades that away for a debug console instead
-(`cmdline-{a,b}-dev.txt`: `console=ttyS0,115200`, picked by post-image.sh
-via the `DEFCONFIG` build.sh already knows — systemd's own
+Serial console on `cmdline-{a,b}.txt`'s `console=ttyGS0,115200`: the USB0
+composite gadget's own console function (see "USB device mode" — plug into
+a PC, `openmower-usb-gadget-init.service` brings up a ConfigFS gadget with
+ACM console + Improv-serial + ethernet), on **both** prod and dev, no
+separate hardware needed. GPIO14/15 (the hardware UART header pins) is a
+different story: that's a plain UART wired to real mower hardware on
+**prod** (see "Local boot-config overrides" below), so `cmdline-{a,b}.txt`
+carries no `console=` for it there. The **dev image** trades that away for
+a second debug console instead — post-image.sh appends `console=ttyS0,115200`
+when `BR2_ROOTFS_POST_IMAGE_SCRIPT_ARGS` is `dev` (systemd's own
 `systemd-getty-generator` auto-spawns `serial-getty@` on whatever `console=`
 names, no separate unit to enable) — 115200 8N1 on GPIO14 (TX)/GPIO15 (RX).
 `ttyS0` (the mini-UART's real kernel device name), not the `serial0` alias
@@ -344,6 +348,23 @@ actually work (see `post-build.sh`'s comment for why, including the exact
 failure mode on real hardware). One side effect worth knowing: `/etc` as a
 whole is now genuinely writable at runtime, so e.g. `systemctl enable`
 persists too, not just `passwd`.
+
+Root's `$HOME` persists too, differently: `/etc/passwd`'s root entry points
+`HOME` straight at `/data/root` (`post-build.sh`) rather than `/root` — a
+`/root` → `/data/root` symlink was the first attempt, but collides with a
+generic buildroot device-table entry that unconditionally expects a real
+directory there (`system/device_table.txt`, unlike `/etc/dropbear` above,
+which has no such entry). Standard login behavior (bash, sshd, dropbear)
+already sets `$HOME`/cwd from `pw_dir`, so nothing else needed to change.
+`/etc/tmpfiles.d/home-root.conf` creates `/data/root` and seeds
+`.bashrc`/`.profile` from `/etc/skel` on first boot only (on-device edits
+survive later boots/updates). Without this, anything writing under `$HOME`
+— shell history, `ssh` `known_hosts`, and `openmower-cli`'s own shiv
+extraction cache — silently
+vanished every reboot, since `/root` used to be a plain directory on the
+read-only squashfs. That's also why `openmower-cli`'s zipapp needs no
+`SHIV_ROOT` override (or wrapper script at all) anymore: shiv's own default
+extraction path, `$HOME/.shiv`, now just works.
 
 ## Migrating from stock Raspberry Pi OS
 

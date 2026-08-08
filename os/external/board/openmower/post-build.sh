@@ -98,9 +98,24 @@ echo "OpenMower OS $OPENMOWER_VERSION ($OPENMOWER_GIT_REV)" > "$TARGET_DIR/etc/i
 # "root" via a users_table, so this is the only place to change it). Boot-
 # critical scripts stay POSIX sh regardless (openmower-nspawn-start,
 # openmower-shell, openmower-check-config) -- this is purely for interactive
-# comfort, see rootfs-overlay/root/.bashrc for the Raspberry-Pi-OS-style
+# comfort, see rootfs-overlay/etc/skel/.bashrc for the Raspberry-Pi-OS-style
 # prompt/aliases that go with it.
-sed -i 's#^root:\(.*\):/bin/sh$#root:\1:/bin/bash#' "$TARGET_DIR/etc/passwd"
+#
+# Same sed also repoints root's HOME field from /root to /data/root, so
+# $HOME persists on /data (anything writing under it -- bash history, ssh
+# known_hosts, openmower-cli's shiv cache/config -- would otherwise vanish
+# every reboot, /root being read-only squashfs). NOT a /root -> /data/root
+# symlink (tried first): buildroot's own generic system/device_table.txt
+# unconditionally makedevs's a real directory at /root on every build
+# (unlike /etc/dropbear below, which has no such generic entry) -- that
+# runs AFTER this script, so a symlink here just gets clobbered/fails.
+# Repointing passwd's pw_dir instead sidesteps the collision entirely: standard
+# login behavior (bash, sshd, dropbear, all of them) already sets $HOME and
+# the initial cwd from this field, no code anywhere hardcodes "/root".
+# tmpfiles.d (home-root.conf) creates /data/root itself and seeds
+# .bashrc/.profile from /etc/skel on first boot -- not done here, since
+# /data doesn't exist yet at build time.
+sed -i 's#^root:x:0:0:root:/root:/bin/sh$#root:x:0:0:root:/data/root:/bin/bash#' "$TARGET_DIR/etc/passwd"
 
 # RAUC keyring = dev signing cert (production: real CA cert here instead).
 install -D -m 0644 "$OS_DIR/keys/dev-cert.pem" "$TARGET_DIR/etc/rauc/keyring.pem"
@@ -108,6 +123,20 @@ install -D -m 0644 "$OS_DIR/keys/dev-cert.pem" "$TARGET_DIR/etc/rauc/keyring.pem
 # Dropbear host keys must survive updates and reboots -> /data.
 rm -rf "$TARGET_DIR/etc/dropbear"
 ln -s /data/dropbear "$TARGET_DIR/etc/dropbear"
+
+# Dev image only (gated on $TARGET_DIR/etc/ssh existing -- created by
+# BR2_PACKAGE_OPENSSH's own install, dev-only; prod uses dropbear, above):
+# openssh's host key baked in at build time from the same local, gitignored
+# dev key every build reuses (keys-gen-dev.sh), so CLion/ssh see the same
+# host key across rebuilds AND reflashes -- not just runtime-persisted
+# across reboots, which is what a /data-generated-at-first-boot key (the
+# dropbear pattern above) would only have given us. Same trade-off already
+# applied to the dev root password/RAUC cert: convenience for local dev,
+# not for sharing across machines or production.
+if [ -d "$TARGET_DIR/etc/ssh" ]; then
+    install -D -m 0600 "$OS_DIR/keys/dev-ssh-host-key" "$TARGET_DIR/etc/ssh/ssh_host_ed25519_key"
+    install -D -m 0644 "$OS_DIR/keys/dev-ssh-host-key.pub" "$TARGET_DIR/etc/ssh/ssh_host_ed25519_key.pub"
+fi
 
 # Root's password persistence lives entirely at runtime (see
 # openmower-persist-etc / openmower-etc-overlay.service), NOT here or in

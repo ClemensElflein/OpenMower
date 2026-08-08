@@ -131,8 +131,8 @@ fi
 # docker-build an incomplete open_mower_ros tree.
 git -C "$HERE" submodule update --init --recursive
 
-if [ ! -f "$HERE/keys/dev-cert.pem" ]; then
-    echo ">> No RAUC dev keys found, generating (keys/)"
+if [ ! -f "$HERE/keys/dev-cert.pem" ] || [ ! -f "$HERE/keys/dev-ssh-host-key" ]; then
+    echo ">> Dev keys missing, generating (keys/)"
     "$HERE/keys-gen-dev.sh"
 fi
 
