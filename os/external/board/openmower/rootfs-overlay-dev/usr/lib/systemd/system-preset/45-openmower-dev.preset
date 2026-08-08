@@ -1,7 +1,6 @@
 # Dev-image-only services (CLion remote-dev tooling). Numbered after
 # 40-openmower.preset so the prod preset doesn't need to know about dev-only
 # units, and before 80-buildroot.preset's catch-all.
-enable openmower-ssh-hostkeys.service
 enable sshd.service
 
 # Console on the default UART header pins (GPIO14/15, mini-UART/ttyS0) --
