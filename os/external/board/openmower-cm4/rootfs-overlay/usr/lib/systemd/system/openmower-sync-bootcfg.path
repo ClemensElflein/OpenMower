@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for local boot-config edits (usercfg.txt)
+RequiresMountsFor=/data
+
+[Path]
+PathModified=/data/boot/usercfg.txt
+
+[Install]
+WantedBy=multi-user.target

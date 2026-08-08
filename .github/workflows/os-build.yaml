@@ -1,0 +1,191 @@
+name: OS Build
+
+# Triggered from open_mower_ros once it has a public ghcr image ready (see
+# build-image.yaml's and push-pr-image.yaml's "merge" jobs there) -- this
+# repo never needs to check out or build open_mower_ros itself, just pull
+# the image by reference. workflow_dispatch is kept as a manual entry point
+# for testing without needing a real dispatch from that repo.
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: 'ghcr image ref to build against, e.g. ghcr.io/clemenselflein/open_mower_ros:sha-abc1234'
+        required: true
+        type: string
+      ref:
+        description: 'Branch/PR/tag name this build is for (cosmetic, used for the run name)'
+        required: false
+        type: string
+        default: 'manual'
+      build_sdcard:
+        description: 'Also build the full flashable sdcard.img'
+        default: false
+        type: boolean
+      is_release:
+        description: 'Tag + publish a GitHub Release from this build'
+        default: false
+        type: boolean
+      tag_name:
+        description: 'Release tag name (required if is_release is set)'
+        required: false
+        type: string
+  repository_dispatch:
+    types: [os-build]
+
+run-name: >-
+  OS build for
+  ${{ github.event.client_payload.ref || github.event.inputs.ref || 'manual' }}
+  @ ${{ github.event.client_payload.sha || 'manual' }}
+
+concurrency:
+  group: os-build-${{ github.event.client_payload.sha || github.event.inputs.image }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write   # only actually used by the release step, tag builds only
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Resolve inputs
+        id: in
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "image=${{ github.event.client_payload.image }}" >> "$GITHUB_OUTPUT"
+            # String-compare after GH's own stringification, not a GH-expression
+            # `== true`: GH coerces mismatched types by converting to number,
+            # so a client_payload.is_release sent as the JSON string "true"
+            # (e.g. from `gh api -f`) would silently compare unequal to the
+            # boolean literal `true` there.
+            echo "is_release=$([ '${{ github.event.client_payload.is_release }}' = 'true' ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+            echo "tag_name=${{ github.event.client_payload.tag_name }}" >> "$GITHUB_OUTPUT"
+            echo "build_sdcard=$([ '${{ github.event.client_payload.is_release }}' = 'true' ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=${{ github.event.inputs.image }}" >> "$GITHUB_OUTPUT"
+            echo "is_release=${{ github.event.inputs.is_release }}" >> "$GITHUB_OUTPUT"
+            echo "tag_name=${{ github.event.inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+            echo "build_sdcard=$([ '${{ github.event.inputs.is_release }}' = 'true' ] || [ '${{ github.event.inputs.build_sdcard }}' = 'true' ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Only os/buildroot is needed to build -- the repo's other submodules
+      # (software/firmware/hardware, see .gitmodules) are unrelated
+      # ecosystem trackers, multiple GB combined, that a full `submodules:
+      # recursive` checkout would pull for nothing on every run.
+      - name: Check out os/buildroot submodule
+        run: git submodule update --init os/buildroot
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /opt/hostedtoolcache "$AGENT_TOOLSDIRECTORY" || true
+          df -h /
+
+      # Stable CI signing identity instead of build.sh's own default (a
+      # fresh throwaway keypair generated every run and discarded with the
+      # runner). NOT the production key -- that stays offline per the
+      # README; this is a dedicated CI dev key. Falls through to build.sh's
+      # own generate-on-demand default if the secrets aren't set.
+      - name: Install the CI dev signing key
+        env:
+          RAUC_CI_DEV_CERT: ${{ secrets.RAUC_CI_DEV_CERT }}
+          RAUC_CI_DEV_KEY: ${{ secrets.RAUC_CI_DEV_KEY }}
+        run: |
+          if [ -z "$RAUC_CI_DEV_CERT" ]; then
+            echo "No RAUC_CI_DEV_CERT secret set, falling back to build.sh's own throwaway key"
+            exit 0
+          fi
+          mkdir -p os/keys
+          printf '%s' "$RAUC_CI_DEV_CERT" > os/keys/dev-cert.pem
+          printf '%s' "$RAUC_CI_DEV_KEY" > os/keys/dev-key.pem
+          chmod 600 os/keys/dev-key.pem
+
+      # Single fixed key: this repo's Actions cache pool is dedicated to
+      # this one workflow (no docker buildx cache or anything else
+      # competing for the shared 10GB-per-repo cap), so there's no eviction
+      # pressure the way there was when this cache lived alongside
+      # open_mower_ros' docker layer cache.
+      #
+      # Explicit restore, not the combined actions/cache@v4 (restore + an
+      # automatic post-job save): the automatic post-save is unreliable
+      # exactly when this job gets cancelled by a concurrency-group
+      # cancel-in-progress. Explicit save steps gated on if: always() below
+      # don't have that problem.
+      - name: Restore Buildroot cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            os/.cache/dl
+            os/.cache/ccache
+            os/.cache/openmower-cli
+            os/output/build
+            os/output/host
+          key: os-build
+
+      # OMR_SOURCE=ghcr (build.sh's own default) pulls OMR_IMAGE itself --
+      # no separate docker pull/load step needed here. The image is always
+      # public (push/tag builds publish to ghcr on push; PR builds publish
+      # a pr-<number> tag too, see push-pr-image.yaml in open_mower_ros),
+      # so no registry auth is required either.
+      - name: Build
+        id: build
+        working-directory: os
+        env:
+          OMR_IMAGE: ${{ steps.in.outputs.image }}
+          OPENMOWER_BUILD_SDCARD: ${{ steps.in.outputs.build_sdcard }}
+        run: ./build.sh image
+
+      # if: always() so this still runs when Build fails or the job gets
+      # cancelled mid-Build -- a failed/cancelled build has still done most
+      # of the slow work (downloads, ccache, output/build|host), which is
+      # exactly what a following debugging run wants restored.
+      # Delete-then-save because actions/cache/save silently no-ops on an
+      # existing key -- must clear it first so the save below actually lands.
+      - name: Delete stale Buildroot cache entry
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh cache delete os-build --repo "${{ github.repository }}" || true
+
+      - name: Save Buildroot cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            os/.cache/dl
+            os/.cache/ccache
+            os/.cache/openmower-cli
+            os/output/build
+            os/output/host
+          key: os-build
+
+      - name: Upload RAUC bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmower-os-raucb
+          path: os/output/images/openmower-*.raucb
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload sdcard.img
+        if: steps.in.outputs.build_sdcard == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmower-os-sdcard
+          path: os/output/images/sdcard.img
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Create GitHub Release
+        if: steps.in.outputs.is_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.in.outputs.tag_name }}
+          files: |
+            os/output/images/openmower-*.raucb
+            os/output/images/sdcard.img

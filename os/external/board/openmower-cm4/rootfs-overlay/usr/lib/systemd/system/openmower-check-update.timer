@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily check for an available OpenMower OS update
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=1h
+# The mower is realistically off overnight more often than not; without
+# this, a device that's never up at the scheduled time would never run the
+# check at all.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,20 @@
+[Unit]
+Description=DHCP server for the internal CM4-xCore link (172.16.78.0/24)
+After=systemd-networkd.service sys-subsystem-net-devices-eth0.device
+Requires=sys-subsystem-net-devices-eth0.device
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/dnsmasq --keep-in-foreground --conf-file=/etc/dnsmasq.conf --no-resolv --no-hosts
+Restart=on-failure
+RestartSec=5
+# Defense in depth alongside bind-dynamic (see dnsmasq.conf): don't let a
+# burst of early-boot restarts permanently lock this out via systemd's
+# default rate limit (5 failures/10s) -- give it real headroom to actually
+# converge instead of going to "failed" and staying there until a manual
+# restart or reboot.
+StartLimitIntervalSec=300
+StartLimitBurst=20
+
+[Install]
+WantedBy=multi-user.target

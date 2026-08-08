@@ -1,0 +1,4 @@
+# Start wpa_supplicant only after the kernel has created wlan0. This avoids a
+# boot-blocking start job for a nonexistent device; the unit itself checks that
+# provisioning has already created its configuration on /data.
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan0", TAG+="systemd", ENV{SYSTEMD_WANTS}+="wpa_supplicant@wlan0.service"

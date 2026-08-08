@@ -1,0 +1,9 @@
+[Unit]
+Description=Commit the running A/B slot after the system survived 90s
+
+[Timer]
+OnBootSec=90s
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

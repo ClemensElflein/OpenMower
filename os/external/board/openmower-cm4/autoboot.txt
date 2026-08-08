@@ -1,0 +1,5 @@
+[all]
+tryboot_a_b=1
+boot_partition=2
+[tryboot]
+boot_partition=3

@@ -1,0 +1,98 @@
+# OpenMower config (/etc/openmower/openmower.conf). Ships with safe
+# defaults; put your own values in /data/openmower/openmower.conf instead --
+# it survives OS updates and overrides this file. Don't edit this file
+# directly, changes are lost on the next update.
+
+#
+# Specify the hardware platform you are using.
+#
+# Valid Values:
+# 1: For v1 hardware
+#    (The first OpenMower mainboards for YardForce).
+#    If you got it from Vermut, it's 1.
+# 2: For any of the new v2 boards
+#    (new YardForce, SABO, JohnDeere, Universal, ...)
+#
+HARDWARE_PLATFORM=2
+
+#
+# The type of mower you're using.
+#
+# YardForce500   : YardForce C500
+# YardForceSA650 : YardForce models
+#                  like SA, SC, ...
+# Worx           : If you've one of the
+#                  supported Worx models
+# Sabo           : For Sabo carrierboard
+# CUSTOM         : For a custom mower
+#                  build
+#
+#MOWER=CHANGE_ME
+
+#
+# Specifies which firmware to use for your hardware.
+#
+# For v2 hardware, this is the "Robot" to use
+# (check /robots the directory in fw-openmower-v2)
+#
+# For v1 this is the same as the old OM_HARDWARE_VERSION
+# environment variable. So it should be something like 0_13_X.
+#
+# Check the OpenMower docs (https://openmower.de/docs/versions/)
+# for the firmware versions.
+# Supported values as of today:
+#
+# V2 Hardware:
+# yardforce: Use this for the YardForce mowers
+#            (with 3x xESC installed)
+# yardforce-v4: Use this for older YardForce mowers
+#               (with Apehaenger's mower motor adaptor)
+# sabo: Use this for SABO / JohnDeere mowers
+# worx, lyfco-e1600: Use those at own risk
+#
+# V1 Hardware:
+# 0_13_X: 0.13.x mainboard (default)
+# 0_12_X_LSM6DSO: LSM6DSOTR with 0.12.x mainboard
+# 0_11_X_WT901: WT901 with 0.11.x mainboard
+# 0_10_X_WT901: WT901 with 0.10.x mainboard
+# 0_10_X_MPU9250: MPU9250 with 0.10.x mainboard
+# 0_9_X_WT901_INSTEAD_OF_SOUND:
+#     Use this if you have soldered the WT901
+#     in the sound module's slot
+#     and have a 0.9.x mainboard.
+# 0_9_X_MPU9250: MPU9250 with 0.9.x mainboard
+FIRMWARE=CHANGE_ME
+
+# ESC type (only relevant for V1 Hardware):
+# Supported values as of today:
+# xesc_mini: for the STM32 version (VESC)
+# xesc_mini_w_r4ma: for the STM32 version (VESC),
+#     but with Rev4 (Mow) Motor Adapter
+#     (only available for YardForceSA650 mower type)
+# xesc_2040: for the RP2040 version
+#     (very experimental!)
+# xesc_2040_w_r4ma:
+#     for the RP2040 version (very experimental!)
+#     but with Rev4 (Mow) Motor Adapter
+#     (only available for YardForceSA650 mower type)
+ESC_TYPE=xesc_mini
+
+#
+# Once your mower is working,
+# set to False to reduce log verbosity.
+# and by this SD card wear.
+#
+DEBUG=True
+
+#
+# Also required: a per-robot /data/openmower/params/mower_params.yaml
+# (calibration -- no template can provide this).
+#
+# Optional, see open_mower_ros/config/mower_config.sh.example for the full
+# list (NTRIP, MQTT, docking/mowing behavior tuning, etc.) -- same var
+# names, just without "export" here.
+#
+# The auxiliary Docker stack's mosquitto (MQTT broker for
+# xbot_monitoring/OpenMowerApp) is reachable at localhost. Uncomment to use it:
+#   OM_MQTT_HOSTNAME=localhost
+#   OM_MQTT_PORT=1883

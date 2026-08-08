@@ -1,0 +1,14 @@
+config BR2_PACKAGE_OPENMOWER_ROS
+	bool "openmower-ros"
+	help
+	  Vendored ROS Noetic + open_mower_ros install tree, fetched by
+	  build.sh (either pulled prebuilt from GHCR, or cross-built locally
+	  via docker buildx --platform linux/arm64 from
+	  open_mower_ros/docker/Dockerfile) into .cache/openmower-rootfs.
+	  Buildroot never touches apt/dpkg itself -- this package just copies
+	  that prebuilt tree wholesale into the target rootfs under
+	  /opt/openmower-root.
+
+	  At runtime, openmower.service boots that tree via systemd-nspawn
+	  (BR2_PACKAGE_SYSTEMD_NSPAWN) -- a lightweight container runtime
+	  built into systemd, not docker/podman.

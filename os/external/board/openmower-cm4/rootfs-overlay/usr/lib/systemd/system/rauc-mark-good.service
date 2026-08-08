@@ -1,0 +1,10 @@
+[Unit]
+Description=Mark current RAUC slot as good
+Documentation=https://rauc.readthedocs.io
+Requires=rauc.service
+After=rauc.service
+RequiresMountsFor=/data
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/rauc status mark-good

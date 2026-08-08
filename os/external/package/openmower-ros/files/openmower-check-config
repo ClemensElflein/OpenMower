@@ -1,0 +1,23 @@
+#!/bin/sh
+# ExecCondition= for openmower.service: refuse to start (without counting as
+# a failure -- no Restart= churn) on a freshly-flashed/unconfigured device.
+# Runs on the HOST (installed to /usr/bin, not inside the vendored tree) --
+# this is just a file/env check, no need to go through systemd-nspawn for
+# it. HARDWARE_PLATFORM/MOWER come from the unit's own EnvironmentFile=
+# (the same /etc + /data conf files openmower-start also sources directly
+# inside the container -- this script doesn't depend on that propagating
+# through nspawn at all).
+#
+# _comms.launch requires HARDWARE_PLATFORM/MOWER with no default, and the
+# non-legacy _params.launch path hard-fails roslaunch if mower_params.yaml
+# (per-robot calibration, never shipped as a template) doesn't exist.
+set -eu
+
+: "${HARDWARE_PLATFORM:?set HARDWARE_PLATFORM (1 or 2) in /data/openmower/openmower.conf}"
+: "${MOWER:?set MOWER in /data/openmower/openmower.conf}"
+
+PARAMS_PATH="${PARAMS_PATH:-/data/openmower/params}"
+[ -f "$PARAMS_PATH/mower_params.yaml" ] || {
+    echo "openmower-check-config: missing $PARAMS_PATH/mower_params.yaml, not starting" >&2
+    exit 1
+}

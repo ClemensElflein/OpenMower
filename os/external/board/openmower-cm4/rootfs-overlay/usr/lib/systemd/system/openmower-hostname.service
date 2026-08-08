@@ -1,0 +1,14 @@
+[Unit]
+Description=Set hostname from the data partition
+DefaultDependencies=no
+RequiresMountsFor=/data
+After=data.mount
+Before=network-pre.target systemd-networkd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/openmower-set-hostname
+
+[Install]
+WantedBy=sysinit.target

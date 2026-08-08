@@ -1,0 +1,30 @@
+# Higher priority than 50-wpa_supplicant.preset and 80-buildroot.preset;
+# buildroot runs `systemctl preset-all` on the rootfs after the overlay is
+# merged, so enablement must be expressed here, not only as wants-symlinks.
+# wpa_supplicant@wlan0 is started by the wlan0 udev event. Enabling it here
+# would make systemd wait for its required device unit at boot when Wi-Fi is
+# unavailable or still initializing.
+disable wpa_supplicant@.service
+disable wpa_supplicant.service
+disable wpa_supplicant-nl80211@.service
+disable wpa_supplicant-wired@.service
+enable openmower-etc-overlay.service
+enable improv-ble.service
+enable openmower-machine-id.service
+enable openmower-hostname.service
+enable openmower-sync-bootcfg.service
+enable openmower-sync-bootcfg.path
+enable rauc-mark-good.timer
+enable openmower-check-update.timer
+# Not auto-started: an unconfigured/untuned mower shouldn't come alive just
+# because the device booted. Start explicitly via openmower-cli (`systemctl
+# start openmower`) once HARDWARE_PLATFORM/MOWER/mower_params.yaml are set.
+# `systemctl enable` now actually persists (openmower-etc-overlay.service
+# makes /etc writable, /data-backed), so openmower-cli's planned `enable`
+# subcommand can just be a plain `systemctl enable` once it exists --
+# no bespoke marker-file mechanism needed after all.
+disable openmower.service
+enable dnsmasq.service
+enable docker.service
+enable webterminal.service
+enable dockge.service

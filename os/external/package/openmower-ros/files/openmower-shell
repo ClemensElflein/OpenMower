@@ -1,0 +1,62 @@
+#!/bin/sh
+# Interactive debug shell inside the vendored ROS tree, via systemd-nspawn --
+# same runtime view openmower.service gets (see openmower.service and
+# openmower-nspawn-start for the flag rationale), so /tmp, DNS, and the
+# /data/openmower bind all just work, with setup/teardown handled by nspawn
+# itself (no manual mount/umount/trap dance -- that's the whole point of
+# not hand-rolling this via chroot anymore).
+#
+# Device binds use the same detect-what-actually-exists loop as
+# openmower-nspawn-start, NOT --bind=/dev -- that breaks nspawn's own
+# console/pty setup (tries to create its own /dev/console, collides with
+# the host's real one once the whole host /dev is bound in wholesale).
+#
+# POSIX sh, not bash: this runs on the base rootfs, which has no bash (see
+# openmower-nspawn-start's comment) -- the "bash -c" at the bottom is fine
+# as-is though, since that one execs *inside* the container, where the
+# vendored Ubuntu tree does have real bash.
+set -eu
+
+# mode=1777 (sticky+world-writable): bare --tmpfs=/tmp defaults to
+# mode=0755 root-owned, which the non-root --user=openmower can't write to
+# -- see openmower-nspawn-start's comment (same fix, same reason).
+#
+# --machine=openmower-shell-$$ (PID-suffixed): without an explicit name,
+# nspawn derives one from the last path component of --directory=, i.e.
+# "openmower-root" -- the SAME implicit name openmower.service's own nspawn
+# invocation would get, and they'd collide on
+# /run/systemd/nspawn/unix-export/openmower-root the moment both run at
+# once ("Mount point ... exists already, refusing", observed in practice
+# running this while the service was up). PID-suffixed rather than a fixed
+# name so multiple concurrent openmower-shell sessions don't also collide
+# with each other.
+# --bind-ro=/etc/hosts: see openmower-nspawn-start's comment (same fix,
+# same reason -- "localhost" doesn't resolve otherwise).
+args="--quiet --register=no --read-only --machine=openmower-shell-$$ --directory=/opt/openmower-root --bind=/data/openmower:/home/openmower --bind-ro=/etc/hosts --tmpfs=/tmp:mode=1777 --resolv-conf=bind-host --user=openmower"
+
+for dev in /dev/ttyAMA0 /dev/ttyAMA1 /dev/ttyAMA2 /dev/ttyAMA3 /dev/ttyAMA4 /dev/ttyAMA5 \
+           /dev/ttyACM0 /dev/ttyACM1 /dev/ttyUSB0 /dev/ttyUSB1 /dev/input/js0; do
+    [ -e "$dev" ] && args="$args --bind=$dev"
+done
+
+# With trailing args (openmower-cli's `openmower exec <cmd...>`), run that command
+# non-interactively instead of dropping into bash -- "$@" inside the single-quoted
+# bash -c script is bash's own positional params, set via the `-- "$@"` after the
+# script text (bash -c 'script' arg0 arg1 ... convention: arg0 becomes $0,
+# everything after becomes $1.. -- "$@" here is THIS script's own args, passed
+# through verbatim including any embedded spaces).
+if [ "$#" -gt 0 ]; then
+    # shellcheck disable=SC2086  # intentional word-splitting, see comment above
+    exec systemd-nspawn $args bash -c '
+          source /opt/ros/noetic/setup.bash
+          source /opt/open_mower_ros/devel/setup.bash
+          exec "$@"
+        ' -- "$@"
+else
+    # shellcheck disable=SC2086  # intentional word-splitting, see comment above
+    exec systemd-nspawn $args bash -c '
+          source /opt/ros/noetic/setup.bash
+          source /opt/open_mower_ros/devel/setup.bash
+          exec bash
+        '
+fi

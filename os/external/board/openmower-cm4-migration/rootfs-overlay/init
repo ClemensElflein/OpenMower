@@ -1,0 +1,179 @@
+#!/bin/sh
+# PID1 of the migration initramfs (see ../../../configs/openmower_cm4_migration_defconfig).
+#
+# tryboot'd from a running stock Raspberry Pi OS install by
+# scripts/migrate-to-openmower.sh to convert the SD card from the stock
+# single-rootfs layout to the openmower-cm4 A/B layout, over the network,
+# with no SD card removal. Runs once, never returns: either it reboots into
+# the freshly-written slot A, or it fails before touching the disk and drops
+# to a shell (old install is untouched at that point).
+#
+# Writes the disk by `dd`ing the full sdcard.img (see
+# board/openmower-cm4/genimage.cfg) staged by migrate-to-openmower.sh
+# straight onto $DISK -- partition table included, so nothing about the
+# layout is duplicated or needs keeping in sync here; genimage.cfg is the
+# only place that defines it.
+set -eu
+export PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+log() { echo "[openmower-migration] $*"; }
+
+DIRTY=0
+
+fail() {
+    log "FATAL: $*"
+    if [ "$DIRTY" = 1 ]; then
+        log "Disk is PARTIALLY migrated -- old install may no longer boot."
+        log "Do NOT power off. Recover from this shell: re-run the dd by hand"
+        log "against \$DISK using /run/stage/sdcard.img.gz (see this script"
+        log "for the exact command)."
+    else
+        log "Disk has NOT been touched -- power-cycling now boots back into"
+        log "the old install."
+    fi
+    log "Dropping to a shell (this console only) for debugging."
+    exec /bin/sh
+}
+trap 'fail "unexpected error at line $LINENO"' EXIT
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+# CONFIG_DEVTMPFS_MOUNT=y only pre-populates a handful of static nodes
+# baked into the cpio at build time (console, null, tty...) -- it does NOT
+# mean the kernel auto-mounts a live devtmpfs here for us. Confirmed
+# against real hardware: the kernel found mmcblk0/p1/p2 fine
+# (/proc/partitions, dmesg's "mmcblk0: p1 p2"), but /dev/mmcblk0p2 never
+# existed because nothing had mounted devtmpfs at all.
+mount -t devtmpfs devtmpfs /dev
+
+# --- Parse kernel cmdline -----------------------------------------------
+DISK="" SRC="" SRCFS="" STAGE=""
+for kv in $(cat /proc/cmdline); do
+    case "$kv" in
+        ommigration.disk=*)  DISK="${kv#ommigration.disk=}" ;;
+        ommigration.src=*)   SRC="${kv#ommigration.src=}" ;;
+        ommigration.srcfs=*) SRCFS="${kv#ommigration.srcfs=}" ;;
+        ommigration.stage=*) STAGE="${kv#ommigration.stage=}" ;;
+    esac
+done
+[ -n "$DISK" ] || fail "ommigration.disk= missing from kernel cmdline"
+[ -n "$SRC" ] || fail "ommigration.src= missing from kernel cmdline"
+[ -n "$SRCFS" ] || fail "ommigration.srcfs= missing from kernel cmdline"
+[ -n "$STAGE" ] || fail "ommigration.stage= missing from kernel cmdline"
+
+log "disk=$DISK src=$SRC ($SRCFS) stage=$STAGE"
+
+# MMC enumeration isn't done by the time /init starts -- devtmpfs creates
+# block device nodes as the controller/card driver discovers them, which
+# takes a moment (observed in practice: $SRC not yet present, "mounting
+# ... failed: no such file or directory"). Used again below for the
+# freshly-written partition nodes after dd, same reason.
+wait_for_device() {
+    tries=20
+    while [ ! -b "$1" ] && [ "$tries" -gt 0 ]; do
+        sleep 1
+        tries=$((tries - 1))
+    done
+    [ -b "$1" ]
+}
+
+# --- Stage the OS image into RAM, then let go of the source partition ----
+# Everything we need must be fully read into tmpfs BEFORE the first write
+# to $DISK: the new partition table's early partitions physically overlap
+# where the old boot/rootfs partitions live, so reading $SRC after that
+# point would race an in-progress overwrite of its own filesystem.
+wait_for_device "$SRC" || fail "$SRC never appeared (mmc enumeration timeout)"
+mkdir -p /mnt/old
+mount -t "$SRCFS" -o ro "$SRC" /mnt/old || fail "cannot mount $SRC as $SRCFS"
+
+mkdir -p /run/stage
+[ -f "/mnt/old/$STAGE/sdcard.img.gz" ] || fail "missing staged file: $STAGE/sdcard.img.gz on $SRC"
+log "copying staged OS image from $SRC into tmpfs..."
+cp "/mnt/old/$STAGE/sdcard.img.gz" /run/stage/sdcard.img.gz
+
+# Best-effort: user data staged by migrate-to-openmower.sh (see its own
+# "stage user data next to the new OS image" comment) -- optional, absent
+# on manually-built installers or if staging failed there, so no fail()
+# here, just skip and move on.
+if [ -d "/mnt/old/$STAGE/migrated-data" ]; then
+    log "found staged user data, copying into tmpfs..."
+    cp -a "/mnt/old/$STAGE/migrated-data" /run/stage/migrated-data \
+        || log "WARNING: failed to copy staged user data, continuing without it"
+fi
+
+sync
+umount /mnt/old
+
+# --- Point of no return --------------------------------------------------
+log "OS image staged in RAM. Writing $DISK in 5s (old data goes now)..."
+sleep 5
+DIRTY=1
+
+wipefs -a "$DISK" >/dev/null || fail "wipefs $DISK failed"
+
+# One dd writes the whole disk, partition table included, straight from the
+# downloaded sdcard.img (see board/openmower-cm4/genimage.cfg for the
+# layout it bakes in: config, boot-a/b, rootfs-a/b and a freshly-formatted
+# empty data partition) -- no separate sfdisk/mkfs needed here, this file
+# no longer has its own copy of the partition layout to keep in sync.
+# No conv=sparse: this is busybox dd, not GNU coreutils -- its conv= only
+# understands notrunc/sync/noerror/fsync/swab (confirmed against busybox
+# 1.37's own coreutils/dd.c), sparse isn't implemented. Every byte of the
+# decompressed stream, including the still-empty data partition, gets
+# physically written.
+log "writing $DISK from staged image..."
+gzip -dc /run/stage/sdcard.img.gz | dd of="$DISK" bs=4M conv=fsync status=none \
+    || fail "writing $DISK from sdcard.img.gz failed"
+
+blockdev --rereadpt "$DISK" 2>/dev/null || true
+
+p() { echo "${DISK}p$1"; }
+
+wait_for_device "$(p 7)" || fail "$(p 7) (data partition) never appeared after writing $DISK"
+
+# Restore staged user data (best-effort, see above) onto the fresh data
+# partition, matching openmower-ros's expected layout: /data/openmower is
+# the ROS user's whole $HOME (see README's "Configuration" section), same
+# principle the old /home/openmower was built on, so this is a direct
+# wholesale copy, not a curated one. openmower.env becomes openmower.conf
+# directly -- same KEY=VALUE-no-export format and variable names as the
+# new EnvironmentFile= (HARDWARE_PLATFORM, MOWER, ESC_TYPE, ...); a stray
+# old-only key (e.g. VERSION) is a harmless unused var, not a conflict.
+# wpa_supplicant-wlan0.conf is dropped straight into /data/wifi -- already
+# rendered into the target format by migrate-to-openmower.sh (old OS uses
+# NetworkManager, not wpa_supplicant.conf), so this is a plain file copy
+# same as the others.
+# Non-fatal throughout: the OS itself is already fully written to disk by
+# this point, so a failure here must not fail() into a dropped shell --
+# that would make a successful OS migration look like it failed.
+if [ -d /run/stage/migrated-data ]; then
+    log "restoring staged user data onto data partition..."
+    mkdir -p /mnt/newdata
+    if mount -t ext4 "$(p 7)" /mnt/newdata; then
+        mkdir -p /mnt/newdata/openmower
+        if [ -d /run/stage/migrated-data/home-openmower ]; then
+            cp -a /run/stage/migrated-data/home-openmower/. /mnt/newdata/openmower/ \
+                || log "WARNING: failed to restore /home/openmower data"
+        fi
+        if [ -f /run/stage/migrated-data/openmower.env ]; then
+            cp -a /run/stage/migrated-data/openmower.env /mnt/newdata/openmower/openmower.conf \
+                || log "WARNING: failed to restore openmower.env -> openmower.conf"
+        fi
+        if [ -f /run/stage/migrated-data/wifi/wpa_supplicant-wlan0.conf ]; then
+            mkdir -p /mnt/newdata/wifi
+            cp -a /run/stage/migrated-data/wifi/wpa_supplicant-wlan0.conf /mnt/newdata/wifi/wpa_supplicant-wlan0.conf \
+                || log "WARNING: failed to restore wifi credentials"
+        fi
+        sync
+        umount /mnt/newdata
+    else
+        log "WARNING: could not mount $(p 7) to restore staged user data, skipping"
+    fi
+fi
+
+sync
+log "done. Rebooting into OpenMower OS (slot A)..."
+sleep 2
+reboot -f
+# reboot -f should never return control; if it does, fall through to the
+# EXIT trap below rather than silently hanging.

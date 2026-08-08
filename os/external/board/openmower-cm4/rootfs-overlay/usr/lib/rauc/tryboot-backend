@@ -1,0 +1,111 @@
+#!/bin/sh
+# RAUC custom bootloader backend for the Raspberry Pi tryboot mechanism.
+#
+# The firmware reads autoboot.txt from the first FAT partition (p1):
+#   [all]      boot_partition=<primary>     - normal boots
+#   [tryboot]  boot_partition=<other>       - one-shot, selected by rebooting
+#                                             with the "tryboot" reboot argument
+#
+# Slot A = boot partition 2, slot B = boot partition 3.
+#
+# Update flow:
+#   set-primary <new>   -> point [tryboot] at the new slot, remember it as
+#                          pending; [all] keeps the current (known-good) slot,
+#                          so any reset before commit falls back automatically.
+#   set-state <new> good (from rauc-mark-good on the first successful boot of
+#                          the new slot) -> commit: [all]=<new>, [tryboot]=<old>.
+set -eu
+
+CONFIG_DEV=/dev/mmcblk0p1
+MNT=/run/openmower/autoboot
+STATE_DIR=/data/rauc
+
+part_of() { [ "$1" = "A" ] && echo 2 || echo 3; }
+other_of() { [ "$1" = "A" ] && echo B || echo A; }
+
+booted_slot() {
+    sed -n 's/.*rauc\.slot=\([AB]\).*/\1/p' /proc/cmdline
+}
+
+mount_cfg() {
+    mkdir -p "$MNT"
+    mountpoint -q "$MNT" || mount -t vfat "$CONFIG_DEV" "$MNT"
+}
+
+cleanup() {
+    mountpoint -q "$MNT" 2>/dev/null && umount "$MNT" || true
+}
+trap cleanup EXIT
+
+read_primary() {
+    mount_cfg
+    awk -F= '/^\[/{s=$0} s=="[all]" && $1=="boot_partition"{print $2}' \
+        "$MNT/autoboot.txt" | tr -d ' \r'
+}
+
+# write_autoboot <primary_slot> <tryboot_slot>
+write_autoboot() {
+    mount_cfg
+    cat > "$MNT/autoboot.txt.new" <<EOF
+[all]
+tryboot_a_b=1
+boot_partition=$(part_of "$1")
+[tryboot]
+boot_partition=$(part_of "$2")
+EOF
+    mv "$MNT/autoboot.txt.new" "$MNT/autoboot.txt"
+    sync
+}
+
+primary_slot() {
+    case "$(read_primary)" in
+        2) echo A ;;
+        3) echo B ;;
+        *) echo "unknown primary boot_partition" >&2; exit 1 ;;
+    esac
+}
+
+mkdir -p "$STATE_DIR"
+
+case "$1" in
+    get-primary)
+        # While an update is pending, report the slot we intend to boot.
+        if [ -f "$STATE_DIR/pending" ]; then
+            cat "$STATE_DIR/pending"
+        else
+            primary_slot
+        fi
+        ;;
+    set-primary)
+        SLOT="$2"
+        if [ "$SLOT" = "$(booted_slot)" ]; then
+            # Making the currently running slot primary: commit immediately.
+            write_autoboot "$SLOT" "$(other_of "$SLOT")"
+            rm -f "$STATE_DIR/pending"
+        else
+            # Stage: keep current primary, arm [tryboot] with the new slot.
+            write_autoboot "$(primary_slot)" "$SLOT"
+            printf '%s\n' "$SLOT" > "$STATE_DIR/pending"
+        fi
+        ;;
+    get-state)
+        SLOT="$2"
+        cat "$STATE_DIR/state-$SLOT" 2>/dev/null || echo good
+        ;;
+    set-state)
+        SLOT="$2"
+        STATE="$3"
+        printf '%s\n' "$STATE" > "$STATE_DIR/state-$SLOT"
+        if [ "$STATE" = "good" ] && [ "$(cat "$STATE_DIR/pending" 2>/dev/null)" = "$SLOT" ] \
+            && [ "$(booted_slot)" = "$SLOT" ]; then
+            write_autoboot "$SLOT" "$(other_of "$SLOT")"
+            rm -f "$STATE_DIR/pending"
+        elif [ "$STATE" = "bad" ] && [ "$(cat "$STATE_DIR/pending" 2>/dev/null)" = "$SLOT" ]; then
+            rm -f "$STATE_DIR/pending"
+        fi
+        ;;
+    *)
+        echo "unsupported operation: $1" >&2
+        exit 1
+        ;;
+esac

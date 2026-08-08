@@ -1,0 +1,18 @@
+services:
+  webterminal:
+    image: tsl0922/ttyd:latest
+    container_name: webterminal
+    privileged: true
+    pid: host
+    network_mode: host
+    restart: unless-stopped
+    # You can add `--credential ${TTYD_USER}:${TTYD_PASS}` to the command for some basic authentication
+    command: >
+      sh -c 'ttyd --client-option disableReconnect=true --client-option
+      disableLeaveConfirmation=true --writable --port ${TTYD_PORT} \
+        -W nsenter -t 1 -a su -'
+# Dockge-specific extras shown in the UI
+x-dockge:
+  urls:
+    - http://${HOSTNAME}:${TTYD_PORT}
+networks: {}

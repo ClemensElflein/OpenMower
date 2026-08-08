@@ -1,0 +1,60 @@
+# OpenMower OS: local Raspberry Pi firmware config overrides (antenna
+# selection, UART, fan, etc.). Lives on /data, so unlike config.txt it
+# survives OS updates -- edit it here.
+#
+# Edit this file, then reboot for a change to take effect.
+#
+## For more options and information see
+## https://www.raspberrypi.com/documentation/computers/config_txt.html
+## For device filters (the [all]/[pi4]/[cm4]/[cm5] sections below) see
+## https://www.raspberrypi.com/documentation/computers/config_txt.html#model-filters
+
+[all]
+## Enable Hardware UART for Serial Communication -- GPIO14/15 as a
+## general-purpose UART (mini-UART, serial0/ttyS0) -- a real device is wired
+## to it on the mower, not a debug terminal, so no console= on this port
+## (cmdline-{a,b}.txt) and no getty. enable_uart=1 is still needed to fix the
+## mini-UART's clock (otherwise it tracks the scaling ARM core frequency and
+## the baud rate drifts).
+#
+# dtoverlay=disable-bt (moving the better PL011 UART onto these pins
+# instead) is deliberately NOT set: improv-ble needs Bluetooth for BLE
+# wifi provisioning, and uart2-5 below already give four more independent
+# hardware UARTs for LL board/xESC/GPS comms, so keeping PL011 on
+# Bluetooth isn't a capacity problem worth trading BLE provisioning away for.
+enable_uart=1
+dtoverlay=uart2
+dtoverlay=uart3
+dtoverlay=uart4
+dtoverlay=uart5
+
+[pi4]
+## Enable DRM VC4 V3D driver on top of the dispmanx display stack
+#dtoverlay=vc4-fkms-v3d
+#max_framebuffers=2
+## Do not use more than 256Mb on Pi Model 4, it uses its own Management.
+#gpu_mem=256
+
+[cm4]
+## CM4 Wi-Fi antenna selection
+# Internal/on-module antenna (default):
+dtparam=ant1
+# External U.FL/IPEX antenna connector:
+#dtparam=ant2
+
+## CM4 IO board fan control (GPIO18, starts at 70C) -- enabled by default.
+## Harmless if your carrier board doesn't have one wired (just an unused
+## GPIO toggling under load).
+dtoverlay=pwm-gpio-fan,fan_gpio=18,temp=70000
+
+[cm5]
+## CM5 Wi-Fi antenna selection
+# Internal/on-module antenna (default):
+dtparam=ant1
+# External U.FL/IPEX antenna connector:
+#dtparam=ant2
+
+## CM5 IO board fan control (GPIO18, starts at 70C) -- enabled by default.
+## Harmless if your carrier board doesn't have one wired (just an unused
+## GPIO toggling under load).
+dtoverlay=pwm-gpio-fan,fan_gpio=18,temp=70000

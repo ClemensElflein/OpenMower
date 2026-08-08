@@ -1,0 +1,47 @@
+ll:
+  # eth0 IP of your CM4
+  bind_ip: "172.16.78.1"
+
+  services:
+    sound:
+      language: "en"
+      volume: -1
+    gps:
+      baud_rate: 921600
+      # GPS protocol. Use UBX for u-blox chipsets (e.g. Ardusimple) and NMEA for everything else
+      protocol: "UBX"
+      # Set to coordinates near your docking station, this will be your map origin
+      datum_lat: 53.457452
+      datum_long: 10.014737
+
+ntrip_client:
+  host: "www.your-ntrip-caster.de"
+  port: 2101
+  username: "ntripuser"
+  password: "ntrippass"
+  mountpoint: "ntripmount"
+
+mower_logic:
+  automatic_mode: 0
+  docking_approach_distance: 1.0
+  # Increase if necessary in small increments (e.g 0.1s) to ensure mower gets good contact on charging pins
+  docking_extra_time: 0.2
+  docking_retry_count: 3
+  docking_redock: false
+  outline_overlap_count: 1
+  mow_angle_offset: 0
+  mow_angle_offset_is_absolute: false
+  mow_angle_increment: 0
+  gps_wait_time: 5.0
+  gps_timeout: 5.0
+  rain_mode: 0
+  rain_delay_minutes: 30
+  rain_check_seconds: 20
+  undock_distance: 1.0
+  undock_angled_distance: 2.0
+  undock_angle: 0.0
+  undock_fixed_angle: false
+  undock_use_curve: true
+  # Once you validated the functionality of your emergency sensors,
+  # set this to true to enable the mow-motor
+  enable_mower: false

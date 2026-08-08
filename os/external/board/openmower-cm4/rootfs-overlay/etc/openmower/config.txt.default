@@ -1,0 +1,15 @@
+# OpenMower OS boot config -- Raspberry Pi 4 / CM4 (BCM2711), headless.
+#
+# Don't edit this file -- it's overwritten wholesale on every OS update. To
+# change a setting (antenna, UART, fan, ...), edit /data/boot/usercfg.txt
+# instead (see its own comments); anything set there overrides this file.
+
+start_file=start4.elf
+fixup_file=fixup4.dat
+
+kernel=Image
+arm_64bit=1
+
+# Headless: minimal GPU memory, no rainbow splash
+gpu_mem=16
+disable_splash=1

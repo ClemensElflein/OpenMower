@@ -1,0 +1,16 @@
+#!/bin/sh
+# Per-device hostname on the writable data partition -- the rootfs slots are
+# squashfs and can't hold this themselves. Defaults to "openmower"; edit
+# /data/hostname (one line) and re-run this command (or reboot) to change
+# it -- useful for running more than one mower on the same network, where
+# the shared default would otherwise collide (mDNS, ssh, the URLs under
+# "Manage the auxiliary stack" in the README).
+set -eu
+
+HOSTNAME_FILE=/data/hostname
+
+if [ ! -s "$HOSTNAME_FILE" ]; then
+    echo "openmower" > "$HOSTNAME_FILE"
+fi
+
+hostname "$(cat "$HOSTNAME_FILE")"

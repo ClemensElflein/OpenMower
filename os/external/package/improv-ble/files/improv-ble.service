@@ -1,0 +1,17 @@
+[Unit]
+Description=Improv BLE wifi provisioning
+# Only while unprovisioned; after success the daemon exits and the
+# condition keeps it off on subsequent boots.
+ConditionPathExists=!/data/wifi/wpa_supplicant-wlan0.conf
+Requires=bluetooth.service
+After=bluetooth.service systemd-networkd.service openmower-hostname.service
+RequiresMountsFor=/data
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/improv-ble
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

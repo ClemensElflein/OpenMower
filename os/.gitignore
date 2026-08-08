@@ -1,0 +1,19 @@
+.cache/
+output/
+output-migration/
+keys/
+*.img
+*.raucb
+__pycache__/
+
+# The repo root's own .gitignore has bare bin/ and lib/ patterns (for ROS
+# catkin build-artifact dirs elsewhere in this repo) that also match every
+# rootfs-overlay*/usr/bin/ and usr/lib/ in here -- real committed source
+# (systemd units, scripts), not build output. Un-ignore them: negating a
+# directory pattern from a MORE specific .gitignore (this one) makes git
+# descend into it again, which a plain negated file pattern alone can't do
+# once a parent dir is excluded.
+!**/rootfs-overlay*/usr/bin/
+!**/rootfs-overlay*/usr/bin/**
+!**/rootfs-overlay*/usr/lib/
+!**/rootfs-overlay*/usr/lib/**

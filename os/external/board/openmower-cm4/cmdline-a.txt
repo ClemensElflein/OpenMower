@@ -1,0 +1,1 @@
+console=tty1 root=/dev/mmcblk0p5 rootfstype=squashfs ro rootwait panic=10 rauc.slot=A
