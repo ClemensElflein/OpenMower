@@ -8,6 +8,10 @@
 set -eu
 
 DISK=/dev/mmcblk0
+# p7 (data) is a LOGICAL partition inside the MBR extended container p4
+# (see genimage.cfg: "genimage puts partitions 4+ into an extended
+# partition") -- both partition numbers matter below, not just p7.
+EXT_PART_NUM=4
 PART_NUM=7
 PART_DEV="${DISK}p${PART_NUM}"
 
@@ -35,9 +39,19 @@ fi
 echo "openmower-expand-data: growing $PART_DEV to fill $DISK ($(( (DISK_SECTORS - PART_END) / 2048 ))MiB available) ..."
 
 # ", +" is sfdisk's own idiom for "extend this partition to consume all
-# remaining space" -- rewrites only partition PART_NUM's table entry,
+# remaining space" -- rewrites only the given partition's table entry,
 # --no-reread defers telling the kernel (data is mounted; a full re-read
 # would fail/be refused while any of its partitions are busy).
+#
+# TWO steps, not one -- confirmed the hard way (real device stuck at the
+# build-time floor size despite this "succeeding" with no error every
+# boot): a logical partition's own "+" growth is capped at its PARENT
+# extended partition's existing end boundary -- sfdisk does NOT auto-grow
+# the container to make room, it just silently caps p7 at whatever p4
+# already was (which is why this looked like a no-op success, not a
+# failure). Grow the extended container first, then the logical partition
+# within it can actually use the new space.
+echo ", +" | sfdisk -N "$EXT_PART_NUM" --no-reread "$DISK"
 echo ", +" | sfdisk -N "$PART_NUM" --no-reread "$DISK"
 
 # partx -u updates the kernel's view of PART_DEV's size in place -- unlike
