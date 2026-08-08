@@ -1,0 +1,12 @@
+# allow_anonymous: this broker is reachable from wherever eth0 is plugged in
+# (see README's "Internal LAN" section and "Known trade-offs").
+log_type notice
+log_dest stdout
+
+# Add 0.0.0.0 to listen on all interfaces and not only localhost
+listener 1883
+allow_anonymous true
+
+listener 9001 0.0.0.0
+protocol websockets
+allow_anonymous true

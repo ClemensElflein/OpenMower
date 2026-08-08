@@ -1,0 +1,367 @@
+#!/usr/bin/env python3
+"""Improv Wi-Fi BLE provisioning daemon (https://www.improv-wifi.com/ble/).
+
+Exposes the Improv GATT service via BlueZ and, on receiving credentials,
+writes a wpa_supplicant config to /data/wifi and starts wpa_supplicant@wlan0.
+Exits cleanly once the device is provisioned.
+"""
+
+import asyncio
+import logging
+import socket
+import subprocess
+import sys
+from pathlib import Path
+
+from dbus_fast import BusType, Variant
+from dbus_fast.aio import MessageBus
+from dbus_fast.service import ServiceInterface, dbus_property, method
+from dbus_fast.constants import PropertyAccess
+
+LOG = logging.getLogger("improv-ble")
+
+BLUEZ = "org.bluez"
+ADAPTER_PATH = "/org/bluez/hci0"
+APP_PATH = "/com/xtech/improv"
+
+UUID_SERVICE = "00467768-6228-2272-4663-277478268000"
+UUID_CURRENT_STATE = "00467768-6228-2272-4663-277478268001"
+UUID_ERROR_STATE = "00467768-6228-2272-4663-277478268002"
+UUID_RPC_COMMAND = "00467768-6228-2272-4663-277478268003"
+UUID_RPC_RESULT = "00467768-6228-2272-4663-277478268004"
+UUID_CAPABILITIES = "00467768-6228-2272-4663-277478268005"
+# Improv advertisements use a separate Bluetooth SIG base UUID for their
+# 16-bit Service Data field; this is not the 128-bit GATT service UUID above.
+UUID_ADVERTISEMENT_SERVICE_DATA = "00004677-0000-1000-8000-00805f9b34fb"
+
+# Improv states
+STATE_AUTHORIZED = 0x02
+STATE_PROVISIONING = 0x03
+STATE_PROVISIONED = 0x04
+
+# Improv errors
+ERR_NONE = 0x00
+ERR_INVALID_RPC = 0x01
+ERR_UNKNOWN_CMD = 0x02
+ERR_UNABLE_TO_CONNECT = 0x03
+
+CMD_WIFI_SETTINGS = 0x01
+CMD_IDENTIFY = 0x02
+
+CAPABILITIES = 0x00  # no identify support (no LED yet)
+
+WIFI_CONF = Path("/data/wifi/wpa_supplicant-wlan0.conf")
+CONNECT_TIMEOUT_S = 45
+
+
+def checksum(data: bytes) -> int:
+    return sum(data) & 0xFF
+
+
+def run(cmd: list[str]) -> subprocess.CompletedProcess:
+    LOG.debug("run: %s", " ".join(cmd))
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def write_wifi_config(ssid: bytes, password: str) -> None:
+    if password:
+        secret = f'\tpsk="{password.replace(chr(92), chr(92) * 2).replace(chr(34), chr(92) + chr(34))}"'
+    else:
+        secret = "\tkey_mgmt=NONE"
+    conf = (
+        "ctrl_interface=/var/run/wpa_supplicant\n"
+        "update_config=0\n\n"
+        "network={\n"
+        f"\tssid={ssid.hex()}\n"
+        f"{secret}\n"
+        "}\n"
+    )
+    WIFI_CONF.parent.mkdir(parents=True, exist_ok=True)
+    tmp = WIFI_CONF.with_suffix(".tmp")
+    tmp.write_text(conf)
+    tmp.chmod(0o600)
+    tmp.rename(WIFI_CONF)
+
+
+async def wait_for_connection() -> bool:
+    """Wait until wlan0 is associated and has an IPv4 address."""
+    for _ in range(CONNECT_TIMEOUT_S):
+        await asyncio.sleep(1)
+        status = run(["wpa_cli", "-i", "wlan0", "status"]).stdout
+        if "wpa_state=COMPLETED" not in status:
+            continue
+        addrs = run(["ip", "-4", "addr", "show", "dev", "wlan0"]).stdout
+        if "inet " in addrs:
+            return True
+    return False
+
+
+class GattService(ServiceInterface):
+    PATH = APP_PATH + "/service0"
+
+    def __init__(self):
+        super().__init__("org.bluez.GattService1")
+
+    @dbus_property(access=PropertyAccess.READ)
+    def UUID(self) -> "s":
+        return UUID_SERVICE
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Primary(self) -> "b":
+        return True
+
+
+class Characteristic(ServiceInterface):
+    def __init__(self, index: int, uuid: str, flags: list[str]):
+        super().__init__("org.bluez.GattCharacteristic1")
+        self.path = f"{GattService.PATH}/char{index}"
+        self.uuid = uuid
+        self.flags = flags
+        self.value = b"\x00"
+
+    @dbus_property(access=PropertyAccess.READ)
+    def UUID(self) -> "s":
+        return self.uuid
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Service(self) -> "o":
+        return GattService.PATH
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Flags(self) -> "as":
+        return self.flags
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Value(self) -> "ay":
+        return bytearray(self.value)
+
+    @method()
+    def ReadValue(self, options: "a{sv}") -> "ay":
+        return bytearray(self.value)
+
+    @method()
+    def WriteValue(self, value: "ay", options: "a{sv}"):
+        self.on_write(bytes(value))
+
+    @method()
+    def StartNotify(self):
+        pass
+
+    @method()
+    def StopNotify(self):
+        pass
+
+    def on_write(self, value: bytes):
+        pass
+
+    def set_value(self, value: bytes):
+        self.value = value
+        self.emit_properties_changed({"Value": bytearray(value)})
+
+
+class Advertisement(ServiceInterface):
+    PATH = APP_PATH + "/advertisement0"
+
+    def __init__(self, get_state):
+        super().__init__("org.bluez.LEAdvertisement1")
+        self.get_state = get_state
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Type(self) -> "s":
+        return "peripheral"
+
+    @dbus_property(access=PropertyAccess.READ)
+    def ServiceUUIDs(self) -> "as":
+        return [UUID_SERVICE]
+
+    @dbus_property(access=PropertyAccess.READ)
+    def ServiceData(self) -> "a{sv}":
+        data = bytes([self.get_state(), CAPABILITIES, 0, 0, 0, 0])
+        return {UUID_ADVERTISEMENT_SERVICE_DATA: Variant("ay", bytearray(data))}
+
+    # Legacy BLE advertising is limited to 31 bytes; flags + the 128-bit
+    # Improv service UUID + the six-byte Service Data payload already fill
+    # that budget, so LocalName can't fit in the primary packet. The spec
+    # only requires ServiceUUIDs/ServiceData to be in the primary packet, not
+    # LocalName, and BlueZ pushes properties that don't fit into the scan
+    # response automatically rather than rejecting the advertisement.
+    # Without a name, Chrome's Web Bluetooth picker shows the device as
+    # "unknown or unsupported device", so this is needed for provisioning.
+    @dbus_property(access=PropertyAccess.READ)
+    def LocalName(self) -> "s":
+        return socket.gethostname()
+
+    @method()
+    def Release(self):
+        LOG.info("advertisement released")
+
+
+class ObjectManager(ServiceInterface):
+    def __init__(self, objects):
+        super().__init__("org.freedesktop.DBus.ObjectManager")
+        self.objects = objects  # {path: ServiceInterface}
+
+    @method()
+    def GetManagedObjects(self) -> "a{oa{sa{sv}}}":
+        managed = {}
+        for path, iface in self.objects.items():
+            props = {}
+            for prop in ServiceInterface._get_properties(iface):
+                if prop.disabled:
+                    continue
+                props[prop.name] = Variant(
+                    prop.signature, prop.prop_getter(iface)
+                )
+            managed[path] = {iface.name: props}
+        return managed
+
+
+class ImprovDaemon:
+    def __init__(self):
+        self.state = STATE_AUTHORIZED
+        self.provision_task = None
+        self.done = asyncio.get_running_loop().create_future()
+
+        self.service = GattService()
+        self.char_state = Characteristic(0, UUID_CURRENT_STATE, ["read", "notify"])
+        self.char_error = Characteristic(1, UUID_ERROR_STATE, ["read", "notify"])
+        self.char_rpc = Characteristic(2, UUID_RPC_COMMAND, ["write", "write-without-response"])
+        self.char_result = Characteristic(3, UUID_RPC_RESULT, ["read", "notify"])
+        self.char_caps = Characteristic(4, UUID_CAPABILITIES, ["read"])
+
+        self.char_state.value = bytes([self.state])
+        self.char_error.value = bytes([ERR_NONE])
+        self.char_caps.value = bytes([CAPABILITIES])
+        self.char_rpc.on_write = self.handle_rpc
+
+    def set_state(self, state: int):
+        self.state = state
+        self.char_state.set_value(bytes([state]))
+
+    def set_error(self, error: int):
+        self.char_error.set_value(bytes([error]))
+
+    def send_result(self, cmd: int, strings: list[str]):
+        payload = b""
+        for s in strings:
+            b = s.encode()
+            payload += bytes([len(b)]) + b
+        packet = bytes([cmd, len(payload)]) + payload
+        packet += bytes([checksum(packet)])
+        self.char_result.set_value(packet)
+
+    def handle_rpc(self, value: bytes):
+        LOG.info("RPC write: %s", value.hex())
+        self.set_error(ERR_NONE)
+        if len(value) < 3 or checksum(value[:-1]) != value[-1]:
+            self.set_error(ERR_INVALID_RPC)
+            return
+        cmd, length = value[0], value[1]
+        data = value[2:-1]
+        if len(data) != length:
+            self.set_error(ERR_INVALID_RPC)
+            return
+
+        if cmd == CMD_WIFI_SETTINGS:
+            try:
+                ssid_len = data[0]
+                ssid = data[1 : 1 + ssid_len]
+                pass_len = data[1 + ssid_len]
+                password = data[2 + ssid_len : 2 + ssid_len + pass_len].decode()
+                if not ssid:
+                    raise ValueError("empty ssid")
+            except (IndexError, ValueError, UnicodeDecodeError):
+                self.set_error(ERR_INVALID_RPC)
+                return
+            if self.provision_task and not self.provision_task.done():
+                return
+            self.provision_task = asyncio.ensure_future(self.provision(ssid, password))
+        elif cmd == CMD_IDENTIFY:
+            LOG.info("identify requested (no-op)")
+        else:
+            self.set_error(ERR_UNKNOWN_CMD)
+
+    async def provision(self, ssid: bytes, password: str):
+        LOG.info("provisioning for SSID %r", ssid.decode(errors="replace"))
+        self.set_state(STATE_PROVISIONING)
+        write_wifi_config(ssid, password)
+        run(["systemctl", "restart", "wpa_supplicant@wlan0.service"])
+
+        if await wait_for_connection():
+            LOG.info("connected")
+            self.set_state(STATE_PROVISIONED)
+            self.send_result(CMD_WIFI_SETTINGS, [f"http://{socket.gethostname()}.local/"])
+            # Give the client a moment to read the result, then exit.
+            await asyncio.sleep(10)
+            self.done.set_result(True)
+        else:
+            LOG.warning("could not connect to %r", ssid.decode(errors="replace"))
+            WIFI_CONF.unlink(missing_ok=True)
+            run(["systemctl", "stop", "wpa_supplicant@wlan0.service"])
+            self.set_error(ERR_UNABLE_TO_CONNECT)
+            self.set_state(STATE_AUTHORIZED)
+
+
+async def main() -> int:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    if WIFI_CONF.exists():
+        LOG.info("already provisioned, exiting")
+        return 0
+
+    daemon = ImprovDaemon()
+    bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+
+    objects = {
+        GattService.PATH: daemon.service,
+        daemon.char_state.path: daemon.char_state,
+        daemon.char_error.path: daemon.char_error,
+        daemon.char_rpc.path: daemon.char_rpc,
+        daemon.char_result.path: daemon.char_result,
+        daemon.char_caps.path: daemon.char_caps,
+    }
+    bus.export(APP_PATH, ObjectManager(objects))
+    for path, iface in objects.items():
+        bus.export(path, iface)
+
+    adv = Advertisement(lambda: daemon.state)
+    bus.export(Advertisement.PATH, adv)
+
+    # The BT controller may not be up yet at boot (serdev probe + firmware
+    # upload take a few seconds). bluetoothd also exports /org/bluez/hci0
+    # before it finishes registering interfaces on it, so introspection can
+    # succeed while org.freedesktop.DBus.Properties is still missing. Retry
+    # the whole readiness sequence (fresh introspection each time) instead of
+    # just the object lookup, until the adapter is actually usable.
+    adapter = None
+    props = None
+    while props is None:
+        try:
+            introspection = await bus.introspect(BLUEZ, ADAPTER_PATH)
+            adapter = bus.get_proxy_object(BLUEZ, ADAPTER_PATH, introspection)
+            props = adapter.get_interface("org.freedesktop.DBus.Properties")
+            await props.call_set("org.bluez.Adapter1", "Powered", Variant("b", True))
+        except Exception as exc:
+            LOG.info("waiting for bluetooth adapter (%s)", exc.__class__.__name__)
+            props = None
+            await asyncio.sleep(5)
+
+    gatt_mgr = adapter.get_interface("org.bluez.GattManager1")
+    await gatt_mgr.call_register_application(APP_PATH, {})
+    LOG.info("GATT application registered")
+
+    adv_mgr = adapter.get_interface("org.bluez.LEAdvertisingManager1")
+    await adv_mgr.call_register_advertisement(Advertisement.PATH, {})
+    LOG.info("advertising as %s", socket.gethostname())
+
+    await daemon.done
+    try:
+        await adv_mgr.call_unregister_advertisement(Advertisement.PATH)
+        await gatt_mgr.call_unregister_application(APP_PATH)
+    except Exception:
+        pass
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(asyncio.run(main()))

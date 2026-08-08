@@ -1,0 +1,13 @@
+config BR2_PACKAGE_OPENMOWER_CLI
+	bool "openmower-cli"
+	depends on BR2_PACKAGE_PYTHON3
+	help
+	  OpenMower CLI (github.com/ClemensElflein/openmower-cli): firmware/
+	  openocd/serial-bridge helpers for the xCore, plus Docker Compose
+	  stack management. Unmodified upstream zipapp release, needs only a
+	  python3 interpreter on PATH to run.
+
+	  Its Compose-stack integration (default paths, default service) is
+	  being aligned with this repo's layout (open_mower_ros runs via
+	  systemd-nspawn, not docker-compose) in a follow-up -- not yet wired
+	  up here beyond installing the binary.

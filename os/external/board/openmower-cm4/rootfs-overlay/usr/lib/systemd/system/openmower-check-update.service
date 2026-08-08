@@ -1,0 +1,14 @@
+[Unit]
+Description=Check for an available OpenMower OS update
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/data
+# Opt-out: `touch /data/openmower/no-update-check` to stop the daily check
+# (documented on openmower.de's Data Collection page). Presence-only, no
+# content read -- same convention as re-provisioning wifi by rm'ing its
+# conf file. Condition failure isn't a unit failure, just a skipped run.
+ConditionPathExists=!/data/openmower/no-update-check
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/openmower check-os-update

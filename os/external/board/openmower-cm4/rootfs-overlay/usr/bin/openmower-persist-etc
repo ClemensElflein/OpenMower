@@ -1,0 +1,53 @@
+#!/bin/sh
+# Overlay /etc with a writable layer on /data, so anything that needs to
+# edit a file under /etc at runtime -- concretely, `passwd` rewriting
+# /etc/shadow -- actually can. Root is read-only squashfs.
+#
+# A symlink or bind-mount of just /etc/shadow (tried first, reverted --
+# see post-build.sh's comment) does NOT work: `passwd` doesn't write
+# /etc/shadow directly, it creates /etc/shadow+ next to it and renames it
+# into place. Creating that new directory entry needs /etc ITSELF to be
+# writable, regardless of what /etc/shadow alone points to -- confirmed by
+# the exact "can't create '/etc/shadow+': Read-only file system" failure
+# on real hardware. Overlaying the whole directory is the actual fix.
+#
+# lowerdir is a private bind-mount of /etc (/run/etc-lower), NOT /etc
+# itself -- mounting the overlay with lowerdir=/etc back onto /etc worked
+# in an isolated privileged-container test, but on real hardware caused
+# the mount to hang, which stalls this whole unit forever. This unit
+# previously ran with Before=sysinit.target; a stuck mount there means
+# sysinit.target never completes, so timers.target (and with it
+# rauc-mark-good.timer) never even arms -- the watchdog eventually resets
+# the board and RAUC's tryboot firmware falls back to the other slot,
+# silently "reverting" every boot. Bind-mounting to a distinct lowerdir
+# path first is the standard, non-self-referential way to do this and
+# avoids the hang; this unit is also no longer on the sysinit.target
+# critical path at all (see the .service file) so a future stall here
+# can't take rauc-mark-good down with it.
+#
+# No manual seeding needed: overlayfs's own copy-up handles "first write
+# to a lower-only file populates upperdir with that file's original
+# content and permissions" automatically.
+#
+# CONFIG_OVERLAY_FS=m in this kernel (not built-in) -- explicit modprobe
+# rather than relying on mount's own on-demand module loading, even
+# though the alias (fs-overlay -> overlay) is there and that should work
+# too; one less thing to silently go wrong at the earliest point in boot.
+set -eu
+
+modprobe overlay
+
+mkdir -p /data/etc-overlay/upper /data/etc-overlay/work /run/etc-lower
+mount --bind /etc /run/etc-lower
+mount -t overlay overlay \
+    -o lowerdir=/run/etc-lower,upperdir=/data/etc-overlay/upper,workdir=/data/etc-overlay/work \
+    /etc
+
+# The mount above lands on /etc itself, which shadows anything already
+# mounted on a path underneath it -- namely openmower-machine-id.service's
+# bind-mount of /etc/machine-id, which runs earlier in boot (sysinit.target)
+# and is now covered up by this later mount. Re-assert it: idempotent
+# (it only (re)writes /data/machine-id the first time it's ever run, see
+# that script), and cheap enough not to matter that it also reruns after
+# an ordinary reboot where nothing actually changed.
+/usr/bin/openmower-persist-machine-id

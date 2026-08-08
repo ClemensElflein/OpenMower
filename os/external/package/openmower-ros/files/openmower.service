@@ -1,0 +1,43 @@
+[Unit]
+Description=OpenMower ROS stack
+After=network.target
+RequiresMountsFor=/data
+
+[Service]
+# Host-side only -- used by ExecCondition= below (openmower-check-config
+# runs on the host, doesn't need the container). openmower-start also
+# sources these same two files itself, directly, from inside the
+# container -- doesn't rely on this propagating through systemd-nspawn.
+EnvironmentFile=-/etc/openmower/openmower.conf
+EnvironmentFile=-/data/openmower/openmower.conf
+ExecCondition=/usr/bin/openmower-check-config
+# systemd-nspawn: lightweight container runtime (part of systemd, already
+# built -- see BR2_PACKAGE_SYSTEMD_NSPAWN), used instead of a hand-rolled
+# RootDirectory=/BindPaths= unit. Handles /dev, /proc, /tmp, resolv.conf
+# mount-point setup itself instead of us doing it piecemeal.
+#
+# The actual nspawn invocation lives in openmower-nspawn-start, not inline
+# here: it needs a device-detection loop (bind only the mower comms/GPS/
+# teleop devices that actually exist right now, not the whole host /dev --
+# that collides with nspawn's own console/pty setup, see that script's
+# comments) which a static ExecStart= command line can't express.
+#
+# Notable flags (see openmower-nspawn-start for the full list/rationale):
+#   --user=openmower : resolved against the CONTAINER's own /etc/passwd (has
+#                       openmower uid/gid 1000 baked in by open_mower_ros/
+#                       docker/Dockerfile's useradd) -- unlike systemd's own
+#                       User=, which resolves on the host before the
+#                       container even exists (see git history: that's what
+#                       broke with plain RootDirectory=).
+#   --read-only       : /opt/openmower-root IS read-only (squashfs) --
+#                       without this, nspawn takes an EXCLUSIVE flock() on
+#                       the directory by default and that hard-fails with
+#                       EROFS (confirmed in systemd's own source: EROFS on
+#                       the lock file is only tolerated for a SHARED lock,
+#                       which --read-only switches to).
+ExecStart=/usr/bin/openmower-nspawn-start
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

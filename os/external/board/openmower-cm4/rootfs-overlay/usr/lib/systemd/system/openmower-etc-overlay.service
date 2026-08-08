@@ -1,0 +1,14 @@
+[Unit]
+Description=Overlay /etc with a writable layer on the data partition
+RequiresMountsFor=/data
+After=data.mount openmower-machine-id.service
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=30s
+ExecStart=/usr/bin/openmower-persist-etc
+
+[Install]
+WantedBy=multi-user.target

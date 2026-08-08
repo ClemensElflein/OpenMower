@@ -1,0 +1,5 @@
+# Root is a read-only squashfs A/B slot; all persistent state lives in /data.
+# passno 0: rely on the ext4 journal, no fsck binary on the target
+LABEL=data	/data	ext4	defaults,noatime	0	0
+tmpfs		/var	tmpfs	mode=0755,nosuid,nodev	0	0
+tmpfs		/tmp	tmpfs	nosuid,nodev	0	0

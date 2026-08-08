@@ -1,0 +1,69 @@
+#!/bin/bash
+# Entrypoint for openmower.service, run inside the vendored ROS tree via
+# systemd-nspawn (see openmower.service). Replaces what
+# docker/openmower_entrypoint.sh plus the env derivation from the
+# (excluded) legacy docker entrypoint used to do -- open_mower_ros's lean
+# Dockerfile deliberately leaves that to "the OS", which is us now.
+set -e
+
+# Source config directly rather than relying on the wrapping systemd
+# unit's EnvironmentFile= propagating through systemd-nspawn into this
+# process -- explicit, doesn't depend on nspawn's environment-passthrough
+# behavior. /etc/openmower/openmower.conf here is the container's own copy
+# (installed by the openmower-ros package); /home/openmower/openmower.conf
+# is the bind-mounted /data/openmower/openmower.conf (device-specific,
+# loaded second so it overrides).
+#
+# set -a (allexport): these files are written in systemd EnvironmentFile
+# format (bare KEY=VALUE, no "export" -- that's what openmower-check-config
+# correctly reads via the unit's own EnvironmentFile= lines, which is why
+# ExecCondition= passes). But a plain `.` sourcing a bare KEY=VALUE line
+# only sets a local shell variable, NOT a real environment variable --
+# roslaunch (exec'd below as a separate process) never saw it (observed:
+# "RLException: environment variable 'HARDWARE_PLATFORM' is not set" even
+# though the file plainly sets it). set -a makes every assignment in this
+# block auto-export, matching what EnvironmentFile= does natively.
+set -a
+[ -f /etc/openmower/openmower.conf ] && . /etc/openmower/openmower.conf
+[ -f /home/openmower/openmower.conf ] && . /home/openmower/openmower.conf
+set +a
+
+source /opt/ros/noetic/setup.bash
+source /opt/open_mower_ros/devel/setup.bash
+
+# DEBUG toggle, ported from the original docker/openmower_entrypoint.sh
+# (never carried over when this script was first written). DEBUG=1/true/
+# yes/on/y: full rosout logging, no WARN-only filter. Otherwise (default):
+# quiet console, matches the WARN-threshold /config/rosconsole.config.
+shopt -s nocasematch
+case "${DEBUG:-0}" in
+    1|true|yes|on|y)
+        export ROSOUT_DISABLE_FILE_LOGGING=False
+        unset ROSCONSOLE_CONFIG_FILE
+    ;;
+    *)
+        export ROSCONSOLE_CONFIG_FILE=/config/rosconsole.config
+        export ROSOUT_DISABLE_FILE_LOGGING=True
+    ;;
+esac
+shopt -u nocasematch || true
+
+export ROSCONSOLE_STDOUT_LINE_BUFFERED=1
+export PYTHONUNBUFFERED=1
+
+# /data/openmower is bind-mounted onto /home/openmower itself (see
+# openmower.service) -- the whole home dir is persistent/writable, survives
+# RAUC A/B updates, not just a curated subdir (matches the original docker
+# container's behaviour, where the whole thing was writable via the
+# container's overlay fs -- anything else that writes under $HOME, e.g. pip/
+# catkin caches, just works instead of hitting the read-only squashfs).
+# Subdir layout matches the "OS-level compose provides services" convention
+# the lean Dockerfile was written for (see open_mower_ros's own
+# docker-simulation/docker-compose.yaml: ROS_HOME=/data/ros,
+# RECORDINGS_PATH=/data/recordings, PARAMS_PATH=/data/params) -- we're that
+# OS layer now, same three env vars, same subdir split.
+export ROS_HOME="${ROS_HOME:-/home/openmower/ros}"
+export RECORDINGS_PATH="${RECORDINGS_PATH:-/home/openmower/recordings}"
+export PARAMS_PATH="${PARAMS_PATH:-/home/openmower/params}"
+
+exec roslaunch open_mower open_mower.launch

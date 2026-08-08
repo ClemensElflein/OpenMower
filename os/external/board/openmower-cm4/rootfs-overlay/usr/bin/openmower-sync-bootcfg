@@ -1,0 +1,41 @@
+#!/bin/sh
+# Mirror the user's persistent boot-config override (/data/boot/usercfg.txt)
+# onto the ACTIVE boot partition's vfat, so it's there for the Pi firmware
+# to `include` on the next power-on. config.txt/usercfg.txt on that
+# partition are read by firmware before Linux even starts, so nothing
+# running here can affect the boot already in progress -- only the next one.
+#
+# Runs on every boot (self-healing after a fresh flash or an OTA update
+# that just installed a fresh boot.vfat with no local override applied
+# yet -- see rauc-hook.sh's slot-post-install for the OTA-time equivalent
+# of this same copy) and on-demand whenever /data/boot/usercfg.txt changes
+# (openmower-sync-bootcfg.path), so a single reboot after editing is
+# usually enough instead of two.
+set -eu
+
+SRC=/data/boot/usercfg.txt
+MNT=/run/openmower/bootcfg
+
+# tmpfiles.d seeds this from /etc/openmower/usercfg.txt.default on first
+# boot; if it's still missing (very first boot, before tmpfiles-setup has
+# run) there's nothing to sync yet -- config.txt's `include usercfg.txt`
+# tolerates the target being absent on the boot partition too.
+[ -f "$SRC" ] || exit 0
+
+case "$(sed -n 's/.*rauc\.slot=\([AB]\).*/\1/p' /proc/cmdline)" in
+    A) DEV=/dev/mmcblk0p2 ;;
+    B) DEV=/dev/mmcblk0p3 ;;
+    *)
+        echo "openmower-sync-bootcfg: can't determine the booted slot from /proc/cmdline" >&2
+        exit 1
+        ;;
+esac
+
+mkdir -p "$MNT"
+mount -t vfat "$DEV" "$MNT"
+trap 'umount "$MNT"' EXIT
+
+# Write-then-rename: half-written usercfg.txt on power loss mid-copy would
+# otherwise be read by firmware as-is on the next boot (FAT has no journal).
+cp "$SRC" "$MNT/usercfg.txt.new"
+mv "$MNT/usercfg.txt.new" "$MNT/usercfg.txt"

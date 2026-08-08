@@ -22,3 +22,6 @@
 [submodule "hardware/hw-openmower-sabo"]
 	path = hardware/hw-openmower-sabo
 	url = https://github.com/xtech/hw-openmower-sabo
+[submodule "os/buildroot"]
+	path = os/buildroot
+	url = https://gitlab.com/buildroot.org/buildroot.git

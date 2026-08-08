@@ -1,0 +1,31 @@
+# Upstream compose.yaml (github.com/louislam/dockge, master branch, as
+# fetched for this port -- see README if bumping the pinned `image:` tag).
+# DOCKGE_ENABLE_CONSOLE=false added on top: ttyd (see /etc/webterminal-stack)
+# already covers in-browser console access.
+#
+# /opt/stacks and /opt/dockge are symlinks into /data (see post-build.sh) --
+# host path == container path is required below (Dockge's own comment).
+# data/ (Dockge's SQLite DB) is pre-seeded with a fixed fleet-wide DB (auth
+# disabled, one jwtSecret, same on every device) -- see
+# rootfs-overlay/etc/tmpfiles.d/docker-stacks.conf and README's
+# "Known trade-offs".
+services:
+  dockge:
+    image: louislam/dockge:1
+    restart: unless-stopped
+    ports:
+      # Host Port : Container Port
+      - 5001:5001
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/app/data
+
+      # Stacks Directory
+      # READ IT CAREFULLY. If you did it wrong, your data could end up writing into a WRONG PATH.
+      # 1. FULL path only. No relative path (MUST)
+      # 2. Left Stacks Path === Right Stacks Path (MUST)
+      - /opt/stacks:/opt/stacks
+    environment:
+      # Tell Dockge where is your stacks directory
+      - DOCKGE_STACKS_DIR=/opt/stacks
+      - DOCKGE_ENABLE_CONSOLE=false

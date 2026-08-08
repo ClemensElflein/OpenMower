@@ -1,0 +1,13 @@
+# Grant the openmower service user (uid 1000, matching the vendored ROS
+# tree's own useradd -- see external/package/openmower-ros) direct access to
+# mower comms/GPS serial ports and the teleop joystick. Deliberately by
+# numeric uid, not by group membership: the process runs inside a
+# systemd-nspawn container, where group *names* like "dialout"/"input"
+# resolve against the vendored tree's own /etc/group, a different database
+# than the one these udev rules (host-side, since --bind=/dev shares the
+# host's real /dev) see -- numeric uid is the only thing both sides agree
+# on by construction.
+KERNEL=="ttyAMA*", OWNER="1000", MODE="0660"
+KERNEL=="ttyACM*", OWNER="1000", MODE="0660"
+KERNEL=="ttyUSB*", OWNER="1000", MODE="0660"
+SUBSYSTEM=="input", KERNEL=="js0", OWNER="1000", MODE="0660"

@@ -1,0 +1,9 @@
+config BR2_PACKAGE_IMPROV_BLE
+	bool "improv-ble"
+	depends on BR2_PACKAGE_PYTHON3
+	select BR2_PACKAGE_PYTHON_DBUS_FAST
+	help
+	  Wifi provisioning daemon implementing the Improv Wi-Fi BLE
+	  protocol (https://www.improv-wifi.com) as a BlueZ GATT server.
+	  Runs while the device is unprovisioned; writes the received
+	  credentials to /data/wifi and hands over to wpa_supplicant.

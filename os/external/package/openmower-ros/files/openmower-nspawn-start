@@ -1,0 +1,53 @@
+#!/bin/sh
+# ExecStart= for openmower.service. A plain static systemd-nspawn command
+# line can't do this: expose whichever mower comms/GPS/teleop device nodes
+# actually exist right now (varies by hardware platform and what's
+# physically plugged in), individually -- NOT the whole host /dev via a
+# single --bind=/dev. That was tried first and breaks nspawn's own
+# console/pty setup ("Failed to create /dev/console symlink: File exists"):
+# nspawn wants to manage its own private /dev (standard nodes + a
+# pty-backed /dev/console), and binding the host's whole /dev in wholesale
+# collides with that since the host's real /dev/console is already there.
+#
+# nspawn's --bind= has no "optional if missing" mode on the CLI (confirmed
+# in systemd's own source -- the graceful flag on custom mounts is only
+# ever set by the OCI-bundle codepath, never by plain --bind= parsing), so
+# a static --bind=/dev/ttyUSB0 would hard-fail startup whenever no USB
+# serial adapter happens to be plugged in. Hence this loop instead of a
+# fixed command line.
+#
+# POSIX sh, not bash: this runs on the base rootfs, which has no bash
+# (BR2_PACKAGE_BASH was never added -- everything on-target is ash/dash-
+# compatible by convention; only the vendored Ubuntu tree under
+# /opt/openmower-root has real bash). Plain word-splitting on an unquoted
+# $args instead of a bash array -- safe here since none of these values
+# ever contain spaces.
+set -eu
+
+# --tmpfs=/tmp with no options defaults to mode=0755, mounted while the
+# process is still root (before dropping to --user=openmower) -- owner
+# (root) can write, group/other can't, so the non-root openmower user gets
+# EACCES on anything under /tmp (observed: mktemp failing). Standard /tmp
+# needs the sticky+world-writable bit, mode=1777, like every other /tmp.
+#
+# --machine=openmower: without an explicit name, nspawn derives one from
+# the last path component of --directory= (confirmed in systemd's own
+# source, nspawn.c: path_extract_filename(arg_directory, &arg_machine)) --
+# i.e. "openmower-root", same as openmower-shell would get by default too.
+# Both then collide on /run/systemd/nspawn/unix-export/openmower-root
+# ("Mount point ... exists already, refusing", observed in practice) the
+# moment they run concurrently. Explicit distinct names avoid that.
+# --bind-ro=/etc/hosts: Docker deliberately excludes /etc/hosts (like
+# resolv.conf/hostname) from committed image layers, injecting it fresh
+# per-container at runtime instead -- so the vendored tree never had one.
+# Without this, roslaunch/roscore can't even resolve "localhost" (observed:
+# "RLException: cannot resolve host address for machine [localhost]").
+args="--quiet --keep-unit --register=no --read-only --machine=openmower --directory=/opt/openmower-root --bind=/data/openmower:/home/openmower --bind-ro=/etc/hosts --tmpfs=/tmp:mode=1777 --resolv-conf=bind-host --user=openmower"
+
+for dev in /dev/ttyAMA0 /dev/ttyAMA1 /dev/ttyAMA2 /dev/ttyAMA3 /dev/ttyAMA4 /dev/ttyAMA5 \
+           /dev/ttyACM0 /dev/ttyACM1 /dev/ttyUSB0 /dev/ttyUSB1 /dev/input/js0; do
+    [ -e "$dev" ] && args="$args --bind=$dev"
+done
+
+# shellcheck disable=SC2086  # intentional word-splitting, see comment above
+exec systemd-nspawn $args /usr/local/bin/openmower-start
