@@ -242,7 +242,6 @@ jobs:
               is_release: $is_release, tag_name: $tag_name, repo: $repo,
               run_id: $run_id, artifact_name: $artifact_name}')
           curl --fail --silent --show-error \
-            -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             -d "$PAYLOAD" \
-            https://api.openmower.de/os-builds
+            "https://api.openmower.de/v1/os-build?build-key=$TOKEN"
