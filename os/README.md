@@ -309,8 +309,18 @@ image](#unified-cm4cm5-image).
   ([usbboot](https://github.com/raspberrypi/usbboot)), then `dd` to the
   exposed block device.
 
-No serial console — GPIO14/15 is a plain UART wired to real mower hardware
-(see "Local boot-config overrides" below). Login over SSH/`openmower-shell`:
+No serial console on **prod** — GPIO14/15 is a plain UART wired to real
+mower hardware (see "Local boot-config overrides" below), and
+`cmdline-{a,b}.txt` deliberately carries no `console=` for that port. The
+**dev image** trades that away for a debug console instead
+(`cmdline-{a,b}-dev.txt`: `console=serial0,115200`, picked by post-image.sh
+via the `DEFCONFIG` build.sh already knows — systemd's own
+`systemd-getty-generator` auto-spawns `serial-getty@` on whatever `console=`
+names, no separate unit to enable) — 115200 8N1 on GPIO14 (TX)/GPIO15 (RX),
+same as stock Raspberry Pi OS's `serial0`. Don't wire real mower hardware to
+that UART on a dev build.
+
+Login over SSH/`openmower-shell`:
 `root` / `openmower` (**development image only** — production must switch
 to key-only auth).
 `passwd` persists across reboots and RAUC A/B updates: `openmower-etc-overlay.service`
