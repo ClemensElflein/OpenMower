@@ -6,7 +6,7 @@ BOARD_DIR="$(cd "$(dirname "$0")" && pwd)"
 OS_DIR="$(cd "$BOARD_DIR/../../.." && pwd)"
 
 OPENMOWER_VERSION="${OPENMOWER_VERSION:-$(date -u +%Y%m%d%H%M%S)}"
-# Set via BR2_ROOTFS_POST_IMAGE_SCRIPT_ARGS in openmower_cm4_dev_defconfig
+# Set via BR2_ROOTFS_POST_IMAGE_SCRIPT_ARGS in openmower_dev_defconfig
 # only ("$1" is BINARIES_DIR, unused positionally below -- we read it from
 # the env var Buildroot also exports).
 OPENMOWER_VARIANT="${2:-prod}"
