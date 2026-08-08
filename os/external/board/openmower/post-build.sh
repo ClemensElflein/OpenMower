@@ -124,19 +124,12 @@ install -D -m 0644 "$OS_DIR/keys/dev-cert.pem" "$TARGET_DIR/etc/rauc/keyring.pem
 rm -rf "$TARGET_DIR/etc/dropbear"
 ln -s /data/dropbear "$TARGET_DIR/etc/dropbear"
 
-# Dev image only (gated on $TARGET_DIR/etc/ssh existing -- created by
-# BR2_PACKAGE_OPENSSH's own install, dev-only; prod uses dropbear, above):
-# openssh's host key baked in at build time from the same local, gitignored
-# dev key every build reuses (keys-gen-dev.sh), so CLion/ssh see the same
-# host key across rebuilds AND reflashes -- not just runtime-persisted
-# across reboots, which is what a /data-generated-at-first-boot key (the
-# dropbear pattern above) would only have given us. Same trade-off already
-# applied to the dev root password/RAUC cert: convenience for local dev,
-# not for sharing across machines or production.
-if [ -d "$TARGET_DIR/etc/ssh" ]; then
-    install -D -m 0600 "$OS_DIR/keys/dev-ssh-host-key" "$TARGET_DIR/etc/ssh/ssh_host_ed25519_key"
-    install -D -m 0644 "$OS_DIR/keys/dev-ssh-host-key.pub" "$TARGET_DIR/etc/ssh/ssh_host_ed25519_key.pub"
-fi
+# Dev image's openssh host key: generated per-device at runtime instead
+# (see openmower-ssh-hostkeys.service/openmower-gen-ssh-hostkeys), same
+# shape as dropbear above -- deliberately NOT baked in at build time here:
+# that would make every device flashed from the same build share one
+# identical host key, losing the per-device uniqueness runtime generation
+# gives for free.
 
 # Root's password persistence lives entirely at runtime (see
 # openmower-persist-etc / openmower-etc-overlay.service), NOT here or in
