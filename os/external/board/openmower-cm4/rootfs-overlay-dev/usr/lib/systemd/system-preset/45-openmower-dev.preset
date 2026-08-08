@@ -8,8 +8,15 @@ enable sshd.service
 # dev image only, see post-image.sh (adds console=ttyS0,115200 to
 # cmdline.txt for this variant) and config.txt's enable_uart=1 comment for
 # why prod leaves this port alone (real hardware wired there, not a debug
-# terminal). systemd-getty-generator already wires this up from that
-# cmdline console=, enabled explicitly too so it doesn't depend solely on
-# that firing correctly -- same reasoning as serial-getty@ttyGS0 in the
-# shared preset.
+# terminal). `enable` on a template instance like this one is NOT
+# sufficient by itself -- `systemctl preset-all --root=...` (what
+# Buildroot runs at build time) only sees unit files already on disk, and
+# there's no serial-getty@ttyS0.service file, only the bare template --
+# confirmed silently no-oping on real hardware for the ttyGS0 equivalent
+# in the shared preset (see that file's own comment). Actual enablement
+# is the baked symlink at
+# etc/systemd/system/getty.target.wants/serial-getty@ttyS0.service in
+# this same rootfs-overlay-dev. Left here too as a no-cost second attempt
+# in case `systemctl preset-all` is ever re-run against an installed
+# system.
 enable serial-getty@ttyS0.service
