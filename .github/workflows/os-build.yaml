@@ -53,6 +53,9 @@ jobs:
         id: in
         run: |
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "event=${{ github.event.client_payload.event }}" >> "$GITHUB_OUTPUT"
+            echo "ref=${{ github.event.client_payload.ref }}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ github.event.client_payload.sha }}" >> "$GITHUB_OUTPUT"
             echo "image=${{ github.event.client_payload.image }}" >> "$GITHUB_OUTPUT"
             # String-compare after GH's own stringification, not a GH-expression
             # `== true`: GH coerces mismatched types by converting to number,
@@ -63,6 +66,9 @@ jobs:
             echo "tag_name=${{ github.event.client_payload.tag_name }}" >> "$GITHUB_OUTPUT"
             echo "build_sdcard=$([ '${{ github.event.client_payload.is_release }}' = 'true' ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
           else
+            echo "event=manual" >> "$GITHUB_OUTPUT"
+            echo "ref=${{ github.event.inputs.ref }}" >> "$GITHUB_OUTPUT"
+            echo "sha=" >> "$GITHUB_OUTPUT"
             echo "image=${{ github.event.inputs.image }}" >> "$GITHUB_OUTPUT"
             echo "is_release=${{ github.event.inputs.is_release }}" >> "$GITHUB_OUTPUT"
             echo "tag_name=${{ github.event.inputs.tag_name }}" >> "$GITHUB_OUTPUT"
@@ -139,6 +145,18 @@ jobs:
           OPENMOWER_BUILD_SDCARD: ${{ steps.in.outputs.build_sdcard }}
         run: ./build.sh image
 
+      # Filename is openmower-<version>.raucb, version = the UTC timestamp
+      # build.sh stamped this build with (see post-image.sh) -- pull it back
+      # out for the notify payload below rather than recomputing a new one,
+      # since a recomputed value wouldn't actually match what's in the bundle.
+      - name: Extract build version
+        id: version
+        run: |
+          RAUCB="$(basename os/output/images/openmower-*.raucb)"
+          VERSION="${RAUCB#openmower-}"
+          VERSION="${VERSION%.raucb}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       # if: always() so this still runs when Build fails or the job gets
       # cancelled mid-Build -- a failed/cancelled build has still done most
       # of the slow work (downloads, ccache, output/build|host), which is
@@ -189,3 +207,42 @@ jobs:
           files: |
             os/output/images/openmower-*.raucb
             os/output/images/sdcard.img
+
+      # Push-notify api.openmower.de instead of it having to poll/scrape
+      # Actions runs to find "the latest build for ref X". Branch/PR builds
+      # only exist as a GH Actions artifact (14-day retention, same as
+      # open_mower_ros always did this) -- api.openmower.de already knows
+      # how to proxy those so openmower-cli never needs a GitHub account.
+      # Tag builds are a proper public Release instead (created above), so
+      # the asset is directly downloadable with no proxying needed.
+      # Skipped (not failed) if the secret isn't set yet -- lets this land
+      # before the backend endpoint exists.
+      - name: Notify api.openmower.de
+        env:
+          TOKEN: ${{ secrets.OPENMOWER_API_TOKEN }}
+          EVENT: ${{ steps.in.outputs.event }}
+          REF: ${{ steps.in.outputs.ref }}
+          SHA: ${{ steps.in.outputs.sha }}
+          VERSION: ${{ steps.version.outputs.version }}
+          IS_RELEASE: ${{ steps.in.outputs.is_release }}
+          TAG_NAME: ${{ steps.in.outputs.tag_name }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "No OPENMOWER_API_TOKEN secret set, skipping api.openmower.de notify"
+            exit 0
+          fi
+          PAYLOAD=$(jq -n \
+            --arg event "$EVENT" --arg ref "$REF" --arg sha "$SHA" \
+            --arg version "$VERSION" --argjson is_release "$IS_RELEASE" \
+            --arg tag_name "$TAG_NAME" --arg repo "$REPO" \
+            --argjson run_id "$RUN_ID" --arg artifact_name "openmower-os-raucb" \
+            '{event: $event, ref: $ref, sha: $sha, version: $version,
+              is_release: $is_release, tag_name: $tag_name, repo: $repo,
+              run_id: $run_id, artifact_name: $artifact_name}')
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            https://api.openmower.de/os-builds
