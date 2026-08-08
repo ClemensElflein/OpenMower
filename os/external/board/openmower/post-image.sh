@@ -11,13 +11,18 @@ OPENMOWER_VERSION="${OPENMOWER_VERSION:-$(date -u +%Y%m%d%H%M%S)}"
 # the env var Buildroot also exports).
 OPENMOWER_VARIANT="${2:-prod}"
 
-# --- Stage both boards' kernels/DTBs under their auto-detect filenames -------
+# --- Stage both boards' kernels/DTBs -----------------------------------------
 # No kernel built in this tree (see post-build.sh) -- both come from the
-# kernel-cm4/kernel-cm5 satellite builds. Filenames matter here: with
-# kernel=/device_tree= left unset in config.txt.default, the Pi firmware
-# itself picks kernel8.img on bcm2711-class boards and kernel_2712.img on
-# bcm2712-class boards (CM5), and auto-selects the matching DTB by board
-# revision -- same mechanism stock multi-board Raspberry Pi OS images use.
+# kernel-cm4/kernel-cm5 satellite builds. Filenames matter here: kernel8.img/
+# kernel_2712.img and each board's *.dtb must exactly match what
+# config.txt.default's per-board [cm4]/[pi4]/[cm5] sections name explicitly
+# (kernel=/device_tree=) -- NOT relying on Pi firmware auto-detecting by
+# omission. Auto-detect is real, documented firmware behavior, but depends
+# on the specific pinned firmware blob version (rpi-firmware.mk) actually
+# supporting it -- an earlier version of this file left kernel=/device_tree=
+# unset entirely and that shipped a CM4 build that didn't boot on real
+# hardware. Explicit per-board directives sidestep the question rather than
+# depend on it.
 KERNEL_CM4_DIR="$OS_DIR/output-kernel-cm4"
 KERNEL_CM5_DIR="$OS_DIR/output-kernel-cm5"
 install -m 0644 "$KERNEL_CM4_DIR/images/Image" "$BINARIES_DIR/rpi-firmware/kernel8.img"

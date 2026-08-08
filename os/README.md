@@ -25,10 +25,17 @@ rootfs/userland build (`openmower_defconfig` → `output/`, `BR2_LINUX_KERNEL=n`
 — no kernel of its own). The main build's `post-build.sh`/`post-image.sh`
 splice both satellites' `Image`/DTBs/`lib/modules/` output in directly, and
 ship `kernel8.img` + `kernel_2712.img` + both boards' DTBs side by side in
-the one boot partition, with `kernel=`/`device_tree=` left **unset** in
-`config.txt.default` — the Pi firmware itself picks the right kernel file
-and DTB by detected SoC/board revision at boot, same auto-detect mechanism
-stock multi-board Raspberry Pi OS images rely on.
+the one boot partition. `config.txt.default` picks the right kernel file and
+DTB per board **explicitly**, via `[cm4]`/`[pi4]`/`[cm5]` model-filter
+sections (the same mechanism `usercfg.txt.default` already uses for
+antenna/fan) — **not** by leaving `kernel=`/`device_tree=` unset for Pi
+firmware auto-detect. Auto-detect-by-omission is real, documented firmware
+behavior and was the original design here, but it depends on the specific
+pinned firmware blob version (`buildroot/package/rpi-firmware/rpi-firmware.mk`)
+actually supporting it — confirmed the hard way: an early build of this
+unified image left `kernel=`/`device_tree=`/`start_file=`/`fixup_file=`
+unset and didn't boot on real CM4 hardware at all. Explicit per-board
+directives sidestep that dependency entirely instead of relying on it.
 
 Why two extra builds instead of a `openmower_cm5_defconfig` alongside the
 existing one: Buildroot only ever builds one kernel per output tree, and
@@ -313,12 +320,16 @@ No serial console on **prod** — GPIO14/15 is a plain UART wired to real
 mower hardware (see "Local boot-config overrides" below), and
 `cmdline-{a,b}.txt` deliberately carries no `console=` for that port. The
 **dev image** trades that away for a debug console instead
-(`cmdline-{a,b}-dev.txt`: `console=serial0,115200`, picked by post-image.sh
+(`cmdline-{a,b}-dev.txt`: `console=ttyS0,115200`, picked by post-image.sh
 via the `DEFCONFIG` build.sh already knows — systemd's own
 `systemd-getty-generator` auto-spawns `serial-getty@` on whatever `console=`
-names, no separate unit to enable) — 115200 8N1 on GPIO14 (TX)/GPIO15 (RX),
-same as stock Raspberry Pi OS's `serial0`. Don't wire real mower hardware to
-that UART on a dev build.
+names, no separate unit to enable) — 115200 8N1 on GPIO14 (TX)/GPIO15 (RX).
+`ttyS0` (the mini-UART's real kernel device name), not the `serial0` alias
+stock Raspberry Pi OS uses — that alias is itself a firmware-level
+substitution, and this project doesn't rely on firmware behavior it hasn't
+confirmed on real hardware (see "Unified CM4+CM5 image" above for why that
+caution exists). Don't wire real mower hardware to that UART on a dev
+build.
 
 Login over SSH/`openmower-shell`:
 `root` / `openmower` (**development image only** — production must switch
