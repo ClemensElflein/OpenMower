@@ -10,6 +10,7 @@ disable wpa_supplicant-nl80211@.service
 disable wpa_supplicant-wired@.service
 enable openmower-etc-overlay.service
 enable openmower-detect-hardware.service
+enable openmower-expand-data.service
 enable improv-ble.service
 enable openmower-machine-id.service
 enable openmower-hostname.service

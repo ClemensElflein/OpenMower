@@ -1,0 +1,50 @@
+#!/bin/sh
+# Grow the data partition (p7, MUST be the last partition -- see
+# genimage.cfg) and its ext4 filesystem to fill whatever's actually left on
+# the real disk this image was flashed to. The built sdcard.img only
+# reserves a small build-time floor there (genimage.cfg's own comment), so
+# on any eMMC/SD bigger than that floor, real capacity sits unused past the
+# end of the data partition until this runs.
+set -eu
+
+DISK=/dev/mmcblk0
+PART_NUM=7
+PART_DEV="${DISK}p${PART_NUM}"
+
+# Idempotent by measurement, not a marker file -- same self-healing
+# philosophy as openmower-sync-bootcfg (runs every boot regardless).
+# Correctly handles a device later imaged onto different/bigger media with
+# no stale state to go wrong, and -- more importantly -- means a no-op run
+# (the common case, every boot after the first) skips the sfdisk/partx/
+# resize2fs dance entirely instead of rewriting the partition table on
+# every single boot for no reason.
+DISK_SECTORS="$(blockdev --getsz "$DISK")"
+PART_START="$(cat "/sys/class/block/mmcblk0p${PART_NUM}/start")"
+PART_SIZE="$(cat "/sys/class/block/mmcblk0p${PART_NUM}/size")"
+PART_END="$((PART_START + PART_SIZE))"
+
+# Within one 4M alignment unit (8192 512B sectors, matching genimage.cfg's
+# own align=4M) of the disk end -- already fully grown, or the underlying
+# media is at/below the build-time floor already (e.g. a device flashed
+# with dd onto media no bigger than the built image itself). Either way,
+# nothing to do.
+if [ $(( DISK_SECTORS - PART_END )) -lt 8192 ]; then
+    exit 0
+fi
+
+echo "openmower-expand-data: growing $PART_DEV to fill $DISK ($(( (DISK_SECTORS - PART_END) / 2048 ))MiB available) ..."
+
+# ", +" is sfdisk's own idiom for "extend this partition to consume all
+# remaining space" -- rewrites only partition PART_NUM's table entry,
+# --no-reread defers telling the kernel (data is mounted; a full re-read
+# would fail/be refused while any of its partitions are busy).
+echo ", +" | sfdisk -N "$PART_NUM" --no-reread "$DISK"
+
+# partx -u updates the kernel's view of PART_DEV's size in place -- unlike
+# blockdev --rereadpt/BLKRRPART, this works while the partition is actively
+# mounted, which it always is here (this runs late enough in boot that
+# /data is already up).
+partx -u "$PART_DEV"
+
+# online resize -- ext4 supports growing a mounted filesystem.
+resize2fs "$PART_DEV"

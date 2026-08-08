@@ -132,6 +132,16 @@ BR2_PACKAGE_BASH=y
 # Filesystem tools
 BR2_PACKAGE_E2FSPROGS=y
 BR2_PACKAGE_E2FSPROGS_FSCK=y
+# resize2fs -- openmower-expand-data grows /data's filesystem to fill the
+# real disk on first boot (see rootfs-overlay/usr/bin/openmower-expand-data).
+BR2_PACKAGE_E2FSPROGS_RESIZE2FS=y
+
+# sfdisk + partx -- same first-boot data-partition grow: sfdisk rewrites
+# the partition table entry, partx updates the running kernel's view of it
+# while /data stays mounted (unlike a full blockdev --rereadpt).
+BR2_PACKAGE_UTIL_LINUX=y
+BR2_PACKAGE_UTIL_LINUX_BINARIES=y
+BR2_PACKAGE_UTIL_LINUX_PARTX=y
 
 # Diagnostics tools (buildroot subset).
 # mc dropped: 4.8.33's build hits an ncursesw wide-char detection issue

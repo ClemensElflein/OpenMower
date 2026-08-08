@@ -422,16 +422,37 @@ irreversible happens until the reboot after that prompt.
 
 ## Disk layout
 
-| Part | Content |
-|---|---|
-| p1 | `autoboot.txt` — tryboot A/B control (which slot is primary) |
-| p2/p3 | boot A/B: Pi firmware, kernel, DTBs, per-slot `cmdline.txt` |
-| p5/p6 | rootfs A/B (read-only squashfs, includes the vendored ROS tree) |
-| p7 | `/data` — wifi credentials, ssh host keys, RAUC state, OpenMower config/params, update downloads |
+| Part | Size | Content |
+|---|---|---|
+| p1 | 16M | `autoboot.txt` — tryboot A/B control (which slot is primary) |
+| p2/p3 | 192M each | boot A/B: Pi firmware, both kernels, both boards' DTBs, per-slot `cmdline.txt` |
+| p5/p6 | 3072M each | rootfs A/B (read-only squashfs, includes the vendored ROS tree). Measured squashfs on a real build: 936MiB — ~3.3x headroom for growth. |
+| p7 | 64M **build-time floor** | `/data` — wifi credentials, ssh host keys, RAUC state, OpenMower config/params, update downloads, Docker's data-root |
 
-Rootfs (p5/p6) and `/data` (p7) are sized generously (see `genimage.cfg`) to
-fit the vendored ROS/Ubuntu payload and multi-GB OTA bundle downloads —
-these are starting budgets, re-tune after measuring a real build.
+Built `sdcard.img` is ~6.5GiB (down from an earlier, unmeasured 12GB
+budget — p5/p6 used to reserve 3584M each purely as a guess, p7 4096M).
+
+**`/data` auto-expands on first boot** (`openmower-expand-data`, a systemd
+oneshot: `sfdisk ", +"` to grow p7's partition-table entry to consume
+whatever's left on the real disk, `partx -u` to make the running kernel see
+it without unmounting, `resize2fs` to grow the filesystem) — the 64M
+build-time floor is not the real budget on any actual device, just enough
+for the pre-expand window (a few KB of keys/config). p7 **must stay the
+last partition** for this to work — it only ever extends into
+already-unpartitioned space past the last partition-table entry, never
+moves/shrinks anything before it.
+
+**Known limitation, accepted deliberately, not an oversight:** p5/p6's
+3072M budget is sized for headroom, not for what any given device's `/data`
+can necessarily match. On an 8GB eMMC (~7.4GiB real usable), `/data` after
+full expand settles at only ~1GiB — comfortably enough for today's ~955MiB
+bundles, but if actual rootfs usage ever grows to fill the full 3072M
+budget, an 8GB device won't have room to stage a same-size update and stops
+being updatable. No `/data` floor size changes this — it's a function of
+total media size vs. the rootfs budget, not of anything picked at build
+time. 8GB eMMC is treated as a bounded/legacy tier that may eventually
+reach end-of-updates as the OS grows; 16GB+ media keep full update headroom
+throughout (16GB → ~8.5GiB `/data`, 32GB → ~23GiB).
 
 ## Update flow
 
@@ -536,6 +557,9 @@ keys/             dev signing keys (gitignored, auto-generated)
 
 ## Known trade-offs (current state)
 
+- 8GB eMMC devices have a bounded update lifetime — see [Disk
+  layout](#disk-layout)'s last paragraph. Not fixable by any `/data`
+  build-time floor size; a function of total media vs. the rootfs budget.
 - `machine-id` is persisted on `/data`. Journal is in RAM.
 - mark-good only requires reaching `multi-user.target`; it does not yet
   require network/streaming health, nor does it check that
