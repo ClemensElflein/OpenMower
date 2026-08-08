@@ -32,7 +32,7 @@ enable webterminal.service
 enable dockge.service
 
 # USB0 composite gadget (console + Improv WiFi + ethernet) -- see
-# board/openmower-cm4/rootfs-overlay's openmower-usb-gadget-init. Host vs.
+# board/openmower/rootfs-overlay's openmower-usb-gadget-init. Host vs.
 # device switching itself is automatic in dwc2 (native USB_OTG_ID pin),
 # nothing to enable for that separately.
 enable openmower-usb-gadget-init.service

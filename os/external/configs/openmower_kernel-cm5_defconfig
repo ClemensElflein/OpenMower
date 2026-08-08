@@ -41,3 +41,9 @@ BR2_LINUX_KERNEL_DTB_OVERLAY_SUPPORT=y
 # IO Board ones (bcm2712-rpi-cm5-cm5io).
 BR2_LINUX_KERNEL_INTREE_DTS_NAME="broadcom/bcm2712-rpi-cm5-cm4io broadcom/bcm2712-rpi-cm5l-cm4io"
 BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
+
+# No rootfs of any kind -- kernel-only, see openmower_kernel-cm4_defconfig's
+# matching comment for why this must be explicit (Buildroot's own default
+# is "y", not off, and silently building one here wiped this satellite's
+# own kernel modules output before the main build could copy it).
+# BR2_TARGET_ROOTFS_TAR is not set

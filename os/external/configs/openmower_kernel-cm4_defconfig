@@ -44,3 +44,13 @@ BR2_LINUX_KERNEL_DTS_SUPPORT=y
 BR2_LINUX_KERNEL_DTB_OVERLAY_SUPPORT=y
 BR2_LINUX_KERNEL_INTREE_DTS_NAME="broadcom/bcm2711-rpi-4-b broadcom/bcm2711-rpi-cm4"
 BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
+
+# No rootfs of any kind -- kernel-only, see the header comment. Buildroot's
+# own default (BR2_TARGET_ROOTFS_TAR, fs/tar/Config.in) is "y" when nothing
+# else is selected, NOT off -- confirmed the hard way: leaving this unset
+# silently built a full tar of this satellite's (mostly empty) target/, and
+# Buildroot's own rootfs-packaging cleanup (fs/common.mk, `rm -rf
+# $(TARGET_DIR)` after packaging) then wiped the kernel modules directory
+# this satellite exists to produce, right before the main build's
+# post-build.sh tried to copy it. Must be explicit.
+# BR2_TARGET_ROOTFS_TAR is not set
