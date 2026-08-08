@@ -8,13 +8,59 @@ OS_DIR="$(cd "$BOARD_DIR/../../.." && pwd)"   # .../os (external tree parent)
 OPENMOWER_VERSION="${OPENMOWER_VERSION:-$(date -u +%Y%m%d%H%M%S)}"
 OPENMOWER_GIT_REV="${OPENMOWER_GIT_REV:-unknown}"
 
-# Own os-release: VERSION_ID is the numeric build version the OTA poller compares.
+# --- Merge in the two kernel-only satellite builds ---------------------------
+# This build has BR2_LINUX_KERNEL=n (see openmower_defconfig's header
+# comment): Buildroot only ever builds one kernel per output tree, and one
+# unified image needs two (CM4/bcm2711 + CM5/bcm2712), so each comes from
+# its own satellite Buildroot build instead (openmower_kernel-cm4_defconfig
+# / openmower_kernel-cm5_defconfig, see build.sh) and gets spliced in here.
+KERNEL_CM4_DIR="$OS_DIR/output-kernel-cm4"
+KERNEL_CM5_DIR="$OS_DIR/output-kernel-cm5"
+for d in "$KERNEL_CM4_DIR" "$KERNEL_CM5_DIR"; do
+    [ -f "$d/images/Image" ] || {
+        echo ">> ERROR: $d/images/Image missing -- run the kernel-cm4/kernel-cm5 satellite builds before the main image build" >&2
+        exit 1
+    }
+done
+
+# Each satellite already ran its own depmod (LINUX_RUN_DEPMOD, part of that
+# build's own target-finalize since it has BR2_LINUX_KERNEL=y) -- its
+# lib/modules/<release>/ tree is self-contained (modules.dep/modules.alias
+# use paths relative to that same directory), so copying it wholesale is a
+# complete, ready-to-use module index. No need to re-run depmod here, no
+# host-kmod dependency in this (kernel-less) build at all.
+mkdir -p "$TARGET_DIR/lib/modules"
+cp -a "$KERNEL_CM4_DIR/target/lib/modules/"* "$TARGET_DIR/lib/modules/"
+cp -a "$KERNEL_CM5_DIR/target/lib/modules/"* "$TARGET_DIR/lib/modules/"
+
+# CONFIG_LOCALVERSION ("-cm4"/"-cm5", see external/board/openmower-kernel/
+# kernel-fragment-{cm4,cm5}.config) must have actually taken effect on both
+# sides -- otherwise the two release dirs collide and one board's modules
+# silently clobber the other's above.
+CM4_RELEASES="$(ls "$KERNEL_CM4_DIR/target/lib/modules/")"
+CM5_RELEASES="$(ls "$KERNEL_CM5_DIR/target/lib/modules/")"
+if [ "$CM4_RELEASES" = "$CM5_RELEASES" ]; then
+    echo ">> ERROR: cm4/cm5 kernel module release dirs collide ('$CM4_RELEASES') -- CONFIG_LOCALVERSION didn't take effect on one or both satellite builds" >&2
+    exit 1
+fi
+
+# rpi-firmware's own INSTALL_DTBS=y (required to satisfy its
+# INSTALL_DTB_OVERLAYS dependency in a BR2_LINUX_KERNEL=n build, see
+# openmower_defconfig's comment on that option) just installed DTBs from
+# the separate pinned firmware-blob repo -- wrong kernel version for our
+# fork. post-image.sh installs the real ones from both satellite builds;
+# purge these stale ones first so nothing accidentally ships them.
+rm -f "$BINARIES_DIR/rpi-firmware"/*.dtb
+
+# Own os-release: VERSION_ID is the numeric build version the OTA poller
+# compares. No VARIANT= line -- one rootfs now boots on either board, so
+# hardware identity is resolved at boot (openmower-detect-hardware, writes
+# /run/openmower/hardware), not baked in here.
 cat > "$TARGET_DIR/usr/lib/os-release" <<EOF
 NAME="OpenMower OS"
 ID=openmower-os
 VERSION_ID=$OPENMOWER_VERSION
 PRETTY_NAME="OpenMower OS $OPENMOWER_VERSION ($OPENMOWER_GIT_REV)"
-VARIANT=cm4
 EOF
 ln -sf ../usr/lib/os-release "$TARGET_DIR/etc/os-release"
 

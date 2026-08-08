@@ -13,7 +13,7 @@
 # The actual OS this installs -- sdcard.img, easily 1GB+ compressed -- is
 # deliberately NOT part of that embedded payload. It's fetched fresh over
 # the network at run time instead, from a single static HTTPS URL (a
-# GitHub Releases asset, see external/board/openmower-cm4/post-image.sh for
+# GitHub Releases asset, see external/board/openmower/post-image.sh for
 # how it's built and named -- no manifest, no update server of our own),
 # which is what lets this small installer stay usable across every future
 # OS release without itself needing to be rebuilt/redistributed each time
@@ -257,7 +257,7 @@ log "embedded migration-loader payload extracted and verified."
 # requested URL. Nothing to compare against, so nothing to look up first.
 #
 # Checksum comes from a plain-text "<url>.sha256" sidecar (just the hex
-# digest, see external/board/openmower-cm4/post-image.sh) rather than a
+# digest, see external/board/openmower/post-image.sh) rather than a
 # signature: fetched over the same HTTPS connection as the image itself, so
 # it guards against a corrupted/truncated download, not a compromised host.
 log "fetching checksum from $IMAGE_URL.sha256..."

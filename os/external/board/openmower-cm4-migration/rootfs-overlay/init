@@ -9,7 +9,7 @@
 # to a shell (old install is untouched at that point).
 #
 # Writes the disk by `dd`ing the full sdcard.img (see
-# board/openmower-cm4/genimage.cfg) staged by migrate-to-openmower.sh
+# board/openmower/genimage.cfg) staged by migrate-to-openmower.sh
 # straight onto $DISK -- partition table included, so nothing about the
 # layout is duplicated or needs keeping in sync here; genimage.cfg is the
 # only place that defines it.
@@ -112,7 +112,7 @@ DIRTY=1
 wipefs -a "$DISK" >/dev/null || fail "wipefs $DISK failed"
 
 # One dd writes the whole disk, partition table included, straight from the
-# downloaded sdcard.img (see board/openmower-cm4/genimage.cfg for the
+# downloaded sdcard.img (see board/openmower/genimage.cfg for the
 # layout it bakes in: config, boot-a/b, rootfs-a/b and a freshly-formatted
 # empty data partition) -- no separate sfdisk/mkfs needed here, this file
 # no longer has its own copy of the partition layout to keep in sync.

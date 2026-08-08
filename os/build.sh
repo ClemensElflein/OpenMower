@@ -2,9 +2,11 @@
 # Run Buildroot inside the toolchain container.
 #
 # Usage:
-#   ./build.sh                    # full image build
+#   ./build.sh                    # full image build (CM4+CM5 kernels + main rootfs, see below)
 #   ./build.sh image-migration    # migration installer, see external/configs/openmower_cm4_migration_defconfig
-#   ./build.sh menuconfig         # any Buildroot make target -- auto-persists to the checked-in defconfig on exit, see below
+#   ./build.sh menuconfig         # any Buildroot make target, against the MAIN (rootfs) build -- auto-persists to the checked-in defconfig on exit, see below
+#   ./build.sh menuconfig-kernel-cm4   # same, against the cm4 kernel-only satellite build
+#   ./build.sh menuconfig-kernel-cm5   # same, against the cm5 kernel-only satellite build
 #   ./build.sh savedefconfig      # persist output/.config by hand (e.g. after editing it some other way)
 #   ./build.sh shell              # interactive shell in the container
 set -euo pipefail
@@ -16,8 +18,21 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # (also here).
 REPO_ROOT="$(cd "$HERE/.." && pwd)"
 IMAGE_TAG=openmower-buildroot
-DEFCONFIG="${DEFCONFIG:-openmower_cm4_defconfig}"
+DEFCONFIG="${DEFCONFIG:-openmower_defconfig}"
 SUBCOMMAND="${1:-image}"
+
+# The main build (openmower_defconfig/openmower_dev_defconfig) has no
+# kernel of its own (BR2_LINUX_KERNEL=n) -- one unified image needs both
+# CM4/bcm2711 and CM5/bcm2712 kernels, and Buildroot only ever builds one
+# kernel per output tree, so each comes from its own tiny satellite build
+# instead, in its own output dir, merged into the main rootfs by
+# external/board/openmower/post-build.sh + post-image.sh. See
+# openmower_kernel-cm4_defconfig/openmower_kernel-cm5_defconfig and
+# os/README.md for the full why.
+KERNEL_CM4_OUTPUT_DIR=/work/os/output-kernel-cm4
+KERNEL_CM5_OUTPUT_DIR=/work/os/output-kernel-cm5
+KERNEL_CM4_HOST_OUTPUT_DIR="$HERE/output-kernel-cm4"
+KERNEL_CM5_HOST_OUTPUT_DIR="$HERE/output-kernel-cm5"
 
 # Monotonic, numerically comparable version; git sha for traceability.
 OPENMOWER_VERSION="$(date -u +%Y%m%d%H%M%S)"
@@ -35,11 +50,18 @@ OPENMOWER_GIT_REV="$(git -C "$HERE" describe --always --dirty 2>/dev/null || ech
 if [ "$SUBCOMMAND" = "image-migration" ] || [ "$SUBCOMMAND" = "menuconfig-migration" ] || [ "$SUBCOMMAND" = "savedefconfig-migration" ]; then
     OUTPUT_DIR=/work/os/output-migration
     DEFCONFIG=openmower_cm4_migration_defconfig
+elif [ "$SUBCOMMAND" = "menuconfig-kernel-cm4" ] || [ "$SUBCOMMAND" = "savedefconfig-kernel-cm4" ]; then
+    OUTPUT_DIR="$KERNEL_CM4_OUTPUT_DIR"
+    DEFCONFIG=openmower_kernel-cm4_defconfig
+elif [ "$SUBCOMMAND" = "menuconfig-kernel-cm5" ] || [ "$SUBCOMMAND" = "savedefconfig-kernel-cm5" ]; then
+    OUTPUT_DIR="$KERNEL_CM5_OUTPUT_DIR"
+    DEFCONFIG=openmower_kernel-cm5_defconfig
 else
     OUTPUT_DIR=/work/os/output
 fi
 
-mkdir -p "$HERE/.cache/dl" "$HERE/.cache/ccache" "$HERE/output" "$HERE/output-migration"
+mkdir -p "$HERE/.cache/dl" "$HERE/.cache/ccache" "$HERE/output" "$HERE/output-migration" \
+    "$KERNEL_CM4_HOST_OUTPUT_DIR" "$KERNEL_CM5_HOST_OUTPUT_DIR"
 
 # Every image/image-migration build forces a fresh target/ + staging/ --
 # Buildroot's own incremental build never deletes a target-dir file whose
@@ -70,24 +92,37 @@ mkdir -p "$HERE/.cache/dl" "$HERE/.cache/ccache" "$HERE/output" "$HERE/output-mi
 # scripts/rebuild-changed-local-packages.sh (below) exists specifically for
 # that.
 HOST_OUTPUT_DIR="$HERE${OUTPUT_DIR#/work/os}"
-if [ "$SUBCOMMAND" = "image" ] || [ "$SUBCOMMAND" = "image-migration" ]; then
-    rm -rf "$HOST_OUTPUT_DIR/target" "$HOST_OUTPUT_DIR/staging" "$HOST_OUTPUT_DIR/images"
-    mkdir -p "$HOST_OUTPUT_DIR/target" "$HOST_OUTPUT_DIR/staging" "$HOST_OUTPUT_DIR/images"
-    if [ -d "$HOST_OUTPUT_DIR/build" ]; then
-        # Found by testing, not by inspection: a package can also install
-        # straight into images/ (.stamp_images_installed, pkg-generic.mk's
-        # TARGET_INSTALL_IMAGES -- e.g. rpi-firmware) as a THIRD install
-        # stage distinct from target/staging. Missing it here didn't corrupt
-        # anything silently -- Buildroot considered rpi-firmware already
-        # "installed" (stamp present) while its actual output sat in the
-        # images/ dir this script had just deleted, so post-image.sh failed
-        # loudly and immediately on the missing files. Loud-and-immediate is
-        # exactly the failure mode this whole approach depends on staying in
-        # -- but still worth getting right rather than relying on it.
-        find "$HOST_OUTPUT_DIR/build" -maxdepth 2 \
+
+# Found by testing, not by inspection: a package can also install straight
+# into images/ (.stamp_images_installed, pkg-generic.mk's
+# TARGET_INSTALL_IMAGES -- e.g. rpi-firmware) as a THIRD install stage
+# distinct from target/staging. Missing it here didn't corrupt anything
+# silently -- Buildroot considered rpi-firmware already "installed" (stamp
+# present) while its actual output sat in the images/ dir this script had
+# just deleted, so post-image.sh failed loudly and immediately on the
+# missing files. Loud-and-immediate is exactly the failure mode this whole
+# approach depends on staying in -- but still worth getting right rather
+# than relying on it.
+wipe_output_dir() {
+    local dir="$1"
+    rm -rf "$dir/target" "$dir/staging" "$dir/images"
+    mkdir -p "$dir/target" "$dir/staging" "$dir/images"
+    if [ -d "$dir/build" ]; then
+        find "$dir/build" -maxdepth 2 \
             \( -name '.stamp_target_installed' -o -name '.stamp_staging_installed' -o -name '.stamp_images_installed' \) \
             -delete
     fi
+}
+
+if [ "$SUBCOMMAND" = "image" ]; then
+    # All three builds (both kernel satellites + the main rootfs build) --
+    # same staleness reasoning applies to each; the satellites are cheap
+    # relative to the main build but not exempt from the same class of bug.
+    wipe_output_dir "$KERNEL_CM4_HOST_OUTPUT_DIR"
+    wipe_output_dir "$KERNEL_CM5_HOST_OUTPUT_DIR"
+    wipe_output_dir "$HOST_OUTPUT_DIR"
+elif [ "$SUBCOMMAND" = "image-migration" ]; then
+    wipe_output_dir "$HOST_OUTPUT_DIR"
 fi
 
 # Keep submodules (os/buildroot, src/lib/xbot_driver_gps, ...) in sync; an
@@ -132,10 +167,13 @@ fi
 # ./build.sh doesn't pay for a re-pull/rebuild every time — only when the
 # resolved image (ghcr) or this repo's HEAD (local) changed.
 #
-# Skipped entirely for image-migration/menuconfig-migration/savedefconfig-migration:
-# that's a tiny busybox initramfs with no openmower-ros package in it, so
-# pulling multi-GB of ROS/Ubuntu here would be pure waste.
-if [ "$OUTPUT_DIR" != "/work/os/output-migration" ]; then
+# Skipped entirely for the migration and kernel-satellite build variants:
+# the migration initramfs is a tiny busybox image with no openmower-ros
+# package in it, and the kernel-cm4/kernel-cm5 satellites build no rootfs
+# at all (BR2_LINUX_KERNEL=y and nothing else) -- pulling multi-GB of
+# ROS/Ubuntu for either would be pure waste. Only the main build (output/)
+# actually vendors this.
+if [ "$OUTPUT_DIR" = "/work/os/output" ]; then
     OMR_SOURCE="${OMR_SOURCE:-ghcr}"
     OMR_IMAGE="${OMR_IMAGE:-ghcr.io/clemenselflein/open_mower_ros:edge}"
     # os/ lives inside the open_mower_ros checkout itself now (no separate
@@ -264,21 +302,35 @@ fi
 [ -t 0 ] && DOCKER_ARGS+=(-it)
 
 BR_MAKE=(make O="$OUTPUT_DIR" "BR2_EXTERNAL=/work/os/external")
+KERNEL_BR_MAKE_CM4=(make O="$KERNEL_CM4_OUTPUT_DIR" "BR2_EXTERNAL=/work/os/external")
+KERNEL_BR_MAKE_CM5=(make O="$KERNEL_CM5_OUTPUT_DIR" "BR2_EXTERNAL=/work/os/external")
 
 case "$SUBCOMMAND" in
     shell)
         exec docker run "${DOCKER_ARGS[@]}" "$IMAGE_TAG" bash
         ;;
     image)
+        # Sequential, not parallel: Buildroot's shared BR2_DL_DIR/ccache
+        # usage here is only relied upon for sequential invocations
+        # elsewhere in this script, not simultaneous ones. The cm5 kernel
+        # build is genuinely new added cost (the cm4 one was already
+        # happening today, just as part of the single combined build) --
+        # see os/README.md.
         exec docker run "${DOCKER_ARGS[@]}" "$IMAGE_TAG" \
-            bash -c "${BR_MAKE[*]} $DEFCONFIG && /work/os/scripts/rebuild-changed-local-packages.sh /work/os/buildroot $OUTPUT_DIR /work/os/external && ${BR_MAKE[*]}"
+            bash -c "
+                ${KERNEL_BR_MAKE_CM4[*]} openmower_kernel-cm4_defconfig && ${KERNEL_BR_MAKE_CM4[*]} &&
+                ${KERNEL_BR_MAKE_CM5[*]} openmower_kernel-cm5_defconfig && ${KERNEL_BR_MAKE_CM5[*]} &&
+                ${BR_MAKE[*]} $DEFCONFIG &&
+                /work/os/scripts/rebuild-changed-local-packages.sh /work/os/buildroot $OUTPUT_DIR /work/os/external &&
+                ${BR_MAKE[*]}
+            "
         ;;
     image-migration)
         # No local-package rebuild step -- the migration defconfig enables none.
         exec docker run "${DOCKER_ARGS[@]}" "$IMAGE_TAG" \
             bash -c "${BR_MAKE[*]} $DEFCONFIG && ${BR_MAKE[*]}"
         ;;
-    menuconfig | menuconfig-migration)
+    menuconfig | menuconfig-migration | menuconfig-kernel-cm4 | menuconfig-kernel-cm5)
         # A fresh output directory has no .config, so Buildroot would otherwise
         # open menuconfig with its generic (x86) defaults.
         if [ ! -f "$HERE${OUTPUT_DIR#/work/os}/.config" ]; then
@@ -292,9 +344,10 @@ case "$SUBCOMMAND" in
         # the checked-in file below -- silently wiping whatever menuconfig
         # just set there instead. Harmless no-op diff if nothing changed
         # (exited menuconfig without saving, or saved back the same values).
-        # DEFCONFIG already resolves to the migration one too when
-        # SUBCOMMAND=menuconfig-migration (set above), so this needs no
-        # separate case for that.
+        # DEFCONFIG already resolves to the right variant for whichever of
+        # these four SUBCOMMAND values was used (set in the OUTPUT_DIR/
+        # DEFCONFIG selection above), so this needs no separate case per
+        # variant.
         exec docker run "${DOCKER_ARGS[@]}" "$IMAGE_TAG" "${BR_MAKE[@]}" \
             savedefconfig BR2_DEFCONFIG=/work/os/external/configs/$DEFCONFIG
         ;;
@@ -302,15 +355,17 @@ case "$SUBCOMMAND" in
         exec docker run "${DOCKER_ARGS[@]}" "$IMAGE_TAG" "${BR_MAKE[@]}" \
             savedefconfig BR2_DEFCONFIG=/work/os/external/configs/openmower_cm4_migration_defconfig
         ;;
-    savedefconfig)
+    savedefconfig | savedefconfig-kernel-cm4 | savedefconfig-kernel-cm5)
         # Writes the CURRENT output/.config (whatever menuconfig left behind)
         # back out to the checked-in $DEFCONFIG file -- needed because
         # `./build.sh image` always starts with `make $DEFCONFIG`, which
         # wholesale-regenerates output/.config FROM that checked-in file. A
         # menuconfig change that's only ever been saved to output/.config
         # (not back to here) is silently gone the next time you build.
-        # DEFCONFIG=openmower_cm4_dev_defconfig ./build.sh savedefconfig to
-        # target the dev variant instead of the default.
+        # DEFCONFIG=openmower_dev_defconfig ./build.sh savedefconfig to
+        # target the dev variant instead of the default; the -kernel-cm4/
+        # -kernel-cm5 suffixes target those satellite builds instead (their
+        # own OUTPUT_DIR/DEFCONFIG resolved above, same as menuconfig-*).
         exec docker run "${DOCKER_ARGS[@]}" "$IMAGE_TAG" "${BR_MAKE[@]}" \
             savedefconfig BR2_DEFCONFIG=/work/os/external/configs/$DEFCONFIG
         ;;

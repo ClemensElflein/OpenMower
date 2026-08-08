@@ -1,0 +1,43 @@
+# OpenMower OS — CM5/bcm2712 kernel-only satellite build.
+#
+# See openmower_kernel-cm4_defconfig's header comment for the why/how of
+# this satellite-build split -- this is its CM5 counterpart, same shape,
+# different SoC.
+
+BR2_aarch64=y
+BR2_cortex_a76=y
+BR2_TOOLCHAIN_EXTERNAL=y
+BR2_TOOLCHAIN_EXTERNAL_BOOTLIN=y
+BR2_TOOLCHAIN_EXTERNAL_BOOTLIN_AARCH64_GLIBC_STABLE=y
+BR2_CCACHE=y
+BR2_CCACHE_DIR="/work/os/.cache/ccache"
+# Needed for the custom GitHub kernel tarball's hash override (it's not the
+# official kernel.org release tarball upstream's own hash file expects).
+BR2_GLOBAL_PATCH_DIR="board/raspberrypi/patches"
+BR2_DOWNLOAD_FORCE_CHECK_HASHES=y
+
+# Kernel — same raspberrypi fork/commit as the cm4 satellite, different
+# per-SoC defconfig + page-size fragment.
+BR2_LINUX_KERNEL=y
+BR2_LINUX_KERNEL_CUSTOM_TARBALL=y
+BR2_LINUX_KERNEL_CUSTOM_TARBALL_LOCATION="$(call github,raspberrypi,linux,21b410140c47ffab5668399f6f143c7d7b935c8b)/linux-21b410140c47ffab5668399f6f143c7d7b935c8b.tar.gz"
+BR2_LINUX_KERNEL_DEFCONFIG="bcm2712"
+# bcm2712 defaults to 16K pages; force 4K to match the cm4 satellite (and
+# the shared userland, built once for both boards) -- upstream's own
+# raspberrypicm5io_defconfig/raspberrypi5_defconfig make the same override
+# for the same reason. Referenced straight from the buildroot submodule,
+# not duplicated into external/ -- it's not OpenMower-specific.
+BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="board/raspberrypi/linux-4k-page-size.fragment $(BR2_EXTERNAL_OPENMOWER_PATH)/board/openmower-kernel/kernel-fragment-common.config $(BR2_EXTERNAL_OPENMOWER_PATH)/board/openmower-kernel/kernel-fragment-cm5.config"
+BR2_LINUX_KERNEL_DTS_SUPPORT=y
+# Required explicitly here (not implied by anything else in this minimal
+# build) -- without it every dtoverlay= in usercfg.txt.default (uart2-5,
+# pwm-gpio-fan) silently fails to apply at boot. See DTC_FLAGS=-@ in
+# buildroot/linux/linux.mk.
+BR2_LINUX_KERNEL_DTB_OVERLAY_SUPPORT=y
+# CM5 module on OpenMower's own carrier, which is pin/GPIO-compatible with
+# Raspberry Pi's official CM4 IO Board (same fan GPIO18, same ant1/ant2
+# antenna params -- see usercfg.txt.default's [cm4]/[cm5] sections) -- so
+# this uses the CM5-module-on-CM4-IO-board device trees, not RPi's own CM5
+# IO Board ones (bcm2712-rpi-cm5-cm5io).
+BR2_LINUX_KERNEL_INTREE_DTS_NAME="broadcom/bcm2712-rpi-cm5-cm4io broadcom/bcm2712-rpi-cm5l-cm4io"
+BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y

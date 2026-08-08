@@ -1,13 +1,17 @@
-# OpenMower OS boot config -- Raspberry Pi 4 / CM4 (BCM2711), headless.
+# OpenMower OS boot config -- unified image, Raspberry Pi CM4 (BCM2711) +
+# CM5 (BCM2712), headless.
 #
 # Don't edit this file -- it's overwritten wholesale on every OS update. To
 # change a setting (antenna, UART, fan, ...), edit /data/boot/usercfg.txt
 # instead (see its own comments); anything set there overrides this file.
-
-start_file=start4.elf
-fixup_file=fixup4.dat
-
-kernel=Image
+#
+# No kernel=/device_tree= here on purpose: leaving both unset lets the Pi
+# firmware auto-select by board -- kernel8.img + a matching bcm2711-rpi-*
+# DTB on CM4, kernel_2712.img + a matching bcm2712-rpi-* DTB on CM5 (see
+# post-image.sh) -- same mechanism stock multi-board Raspberry Pi OS images
+# rely on. Likewise no start_file=/fixup_file=: those only ever mattered for
+# CM4's VideoCore boot stage (CM5 has none), and are found by the firmware's
+# own auto-detection the same way.
 arm_64bit=1
 
 # Headless: minimal GPU memory, no rainbow splash

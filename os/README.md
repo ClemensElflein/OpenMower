@@ -7,13 +7,76 @@ OS build system, living inside the `open_mower_ros` checkout itself (see
 [Layout](#layout)). Buildroot-based, A/B partitioned with automatic
 rollback, self-updating over the network, wifi-provisionable over BLE.
 
-- **Targets:** Raspberry Pi CM4 (product), Raspberry Pi 4 (bench) — one image
+- **Targets:** Raspberry Pi CM4 (product) and CM5 (product) — **one unified image** boots either, mirroring how stock Raspberry Pi OS ships a single SD image across Pi generations. See [Unified CM4+CM5 image](#unified-cm4cm5-image) below.
 - **Init:** systemd; root is read-only squashfs, persistent state on `/data`
 - **A/B boot:** Raspberry Pi firmware `tryboot` (no U-Boot)
 - **OTA:** RAUC signed bundles, pulled from a static HTTPS server
 - **Provisioning:** Improv Wi-Fi over BLE
 - **ROS stack:** vendored, run via `systemd-nspawn` (no image-store copy, no docker/podman for this part) — see [Running open_mower_ros](#running-open_mower_ros) below. Not started automatically; start explicitly (`systemctl start openmower.service`, eventually `openmower-cli`) once the mower is actually configured.
 - **Auxiliary stack:** Mosquitto, OpenMowerApp, Dockge, ttyd — Docker Compose, scoped to just these small third-party images — see [Manage the auxiliary stack](#manage-the-auxiliary-stack) below. Mosquitto+OpenMowerApp are not started automatically either (Dockge and ttyd are).
+
+## Unified CM4+CM5 image
+
+`make image` builds **three** Buildroot trees, sequentially: a CM4/bcm2711
+kernel-only satellite (`openmower_kernel-cm4_defconfig` →
+`output-kernel-cm4/`), a CM5/bcm2712 kernel-only satellite
+(`openmower_kernel-cm5_defconfig` → `output-kernel-cm5/`), then the real
+rootfs/userland build (`openmower_defconfig` → `output/`, `BR2_LINUX_KERNEL=n`
+— no kernel of its own). The main build's `post-build.sh`/`post-image.sh`
+splice both satellites' `Image`/DTBs/`lib/modules/` output in directly, and
+ship `kernel8.img` + `kernel_2712.img` + both boards' DTBs side by side in
+the one boot partition, with `kernel=`/`device_tree=` left **unset** in
+`config.txt.default` — the Pi firmware itself picks the right kernel file
+and DTB by detected SoC/board revision at boot, same auto-detect mechanism
+stock multi-board Raspberry Pi OS images rely on.
+
+Why two extra builds instead of a `openmower_cm5_defconfig` alongside the
+existing one: Buildroot only ever builds one kernel per output tree, and
+one image booting both boards needs two. The userland itself stays one
+build, tuned to `cortex-a53` (ARMv8.0-A baseline, same ISA level as CM4's
+cortex-a72) rather than CM5's cortex-a76 (ARMv8.2-A) specifically, so it
+runs correctly on either CPU — cortex-a76-tuned code can use ISA extensions
+(e.g. LSE atomics) that `SIGILL` on cortex-a72.
+
+Which physical board is actually running is resolved **at boot**, not at
+build time: `openmower-detect-hardware` (systemd oneshot, reads
+`/proc/device-tree/model`) writes `/run/openmower/hardware` and symlinks
+`/etc/openocd/xcore.cfg` to `xcore-cm4.cfg` or `xcore-cm5.cfg` — the SWD
+bitbang driver for flashing/debugging the xCore MCU differs per board
+(`bcm2835gpio`, direct register access, CM4 only; `linuxgpiod`, kernel
+gpiochip device, needed on CM5 since it dropped that direct register
+access) and can't be picked at build time the way everything else here is.
+
+CM5 uses the `bcm2712-rpi-cm5(l)-cm4io` device trees (CM5 module on the
+official Raspberry Pi CM4 IO Board pinout), not RPi's own CM5 IO Board
+ones — OpenMower's carrier board is pin/GPIO-compatible with the CM4 IO
+Board (same fan GPIO18, same `ant1`/`ant2` antenna params, see
+`usercfg.txt.default`'s `[cm4]`/`[cm5]` sections), and CM5 was designed for
+backward compatibility with that same carrier.
+
+**Trade-off, accepted explicitly:** RAUC's `compatible=` is now the generic
+`openmower` (no per-board suffix), since one bundle now legitimately
+installs on either board — it no longer acts as a hardware-mismatch flash
+interlock the way `openmower-cm4`/`openmower-cm5` per-board strings would
+have.
+
+**Unverified, real-hardware-only risk items** (can't be resolved by code
+review, flagging for whoever tests this on physical CM5 hardware first):
+
+- **tryboot/EEPROM parity** — `autoboot.txt`'s `tryboot_a_b=1` and RAUC's
+  whole rollback safety net assume CM5's EEPROM bootloader supports
+  `tryboot` identically to CM4's. Treat "OTA update + simulated boot
+  failure + confirmed rollback" on a real CM5 board as a hard gate, not
+  just "it boots once."
+- **`dtoverlay=` actually applying** — verify `uart2`-`uart5` produce real
+  `/dev/ttyAMA*` devices and the fan overlay works on a real CM5 board.
+- **`/dev/mmcblk0` numbering** — `rauc/system.conf` and `cmdline-{a,b}.txt`
+  hardcode `mmcblk0pN`; unconfirmed whether CM5's carrier/boot-media
+  enumerates the same way on real hardware.
+
+The migration installer (see [Migrating from stock Raspberry Pi
+OS](#migrating-from-stock-raspberry-pi-os)) stays **CM4-only** for now —
+not unified as part of this change.
 
 ## Building
 
@@ -41,7 +104,7 @@ sdcard.img too, attached to a GitHub Release.
 Dev signing keys are generated into `keys/` (gitignored) on first build.
 All team members' dev builds are only installable on devices flashed with
 the same `keys/dev-cert.pem`. Production: sign with an offline CA and put
-its certificate into the image instead (`external/board/openmower-cm4/post-build.sh`).
+its certificate into the image instead (`external/board/openmower/post-build.sh`).
 
 `make image` automatically detects changes to enabled external packages that
 use `SITE_METHOD = local` and runs Buildroot's corresponding `*-rebuild`
@@ -148,12 +211,12 @@ for service-level health — note `ROSCONSOLE_CONFIG_FILE` defaults to
 `log4j.threshold=WARN`, so INFO-level node startup chatter is normal to not
 see there.
 
-### Internal LAN (CM4 ↔ xCore)
+### Internal LAN (CM4/CM5 ↔ xCore)
 
 On v2 hardware (`HARDWARE_PLATFORM=2`, the documented default), the LL
-board/xCore talks to `open_mower_ros` over IP, not serial — the CM4's
-onboard ethernet is wired to the carrier board's internal switch (bridging
-the xCore link and the external RJ45 jack on the same physical `eth0`).
+board/xCore talks to `open_mower_ros` over IP, not serial — the compute
+module's onboard ethernet is wired to the carrier board's internal switch
+(bridging the xCore link and the external RJ45 jack on the same physical `eth0`).
 `eth0` gets a static `172.16.78.1/24` address (`rootfs-overlay/etc/systemd/network/20-ethernet.network`,
 coexists with whatever DHCP hands out if also plugged into a home network)
 and `dnsmasq.service` serves DHCP to the xCore on that subnet
@@ -162,20 +225,24 @@ systemd-resolved (`port=0` in the dnsmasq config).
 
 `10-classic-names.link` forces classic kernel interface naming
 (`NamePolicy=kernel`), overriding systemd's default `onboard` naming policy
-which otherwise renames the CM4's onboard ethernet away from `eth0`
+which otherwise renames the onboard ethernet away from `eth0`
 (observed: `end0`) — every `eth0`-hardcoded file above would silently stop
 matching anything without it. `wlan0` is unaffected either way (the
 onboard-index heuristic only targets platform/PCI-bus devices with a
 slot/index, not the SDIO wifi chip).
 
-### Debug hardware access (dev image)
+### Debug hardware access
 
-`openocd` (`/etc/openocd/xcore.cfg`, dev image only) flashes/debugges the
-xCore MCU via SWD using the CM4's own GPIO as a bitbang adapter
-(`swclk`=GPIO27, `swdio`=GPIO22) — `openocd -f /etc/openocd/xcore.cfg`.
-Targets CM4/BCM2711 specifically: buildroot only builds the `bcm2835gpio`
-driver for this SoC (`linuxgpiod` needs a Pi 5). Not verified against real
-hardware yet — double check the pin mapping before relying on it.
+`openocd` (`/etc/openocd/xcore.cfg`) flashes/debugs the xCore MCU via SWD
+using the compute module's own GPIO as a bitbang adapter (`swclk`=GPIO27,
+`swdio`=GPIO22) — `openocd -f /etc/openocd/xcore.cfg`. `/etc/openocd/xcore.cfg`
+is a boot-time symlink (`openmower-detect-hardware`) to whichever of
+`xcore-cm4.cfg` (`bcm2835gpio` driver, direct BCM2711 register access) or
+`xcore-cm5.cfg` (`linuxgpiod` driver, kernel gpiochip device — CM5/BCM2712
+dropped that direct register access) matches the board actually running —
+see [Unified CM4+CM5 image](#unified-cm4cm5-image) above. Not verified
+against real hardware yet — double check the pin mapping before relying on
+it.
 
 ### open_mower_ros source
 
@@ -234,8 +301,11 @@ once started, no systemd unit involved.
 
 ## Flashing
 
-- **Pi 4 / CM4 Lite (SD):** `dd if=output/images/sdcard.img of=/dev/sdX bs=4M conv=fsync`
-- **CM4 eMMC:** put the IO board jumper into rpiboot mode, run `rpiboot`
+The same `sdcard.img` flashes either board — see [Unified CM4+CM5
+image](#unified-cm4cm5-image).
+
+- **CM4/CM5 Lite (SD):** `dd if=output/images/sdcard.img of=/dev/sdX bs=4M conv=fsync`
+- **CM4/CM5 eMMC:** put the IO board jumper into rpiboot mode, run `rpiboot`
   ([usbboot](https://github.com/raspberrypi/usbboot)), then `dd` to the
   exposed block device.
 
@@ -258,17 +328,18 @@ persists too, not just `passwd`.
 
 Devices already in the field running stock Raspberry Pi OS can move onto
 this A/B/RAUC-managed OS entirely over the network — no SD card removal.
+CM4-only for now (see [Unified CM4+CM5 image](#unified-cm4cm5-image) above).
 
 ```sh
-make image            # -> Image, *.dtb, config.vfat, boot-a.vfat, boot-b.vfat, rootfs.squashfs, sdcard.img
+make image            # -> kernel8.img, kernel_2712.img, both boards' *.dtb (under images/rpi-firmware/), config.vfat, boot-a.vfat, boot-b.vfat, rootfs.squashfs, sdcard.img
 make image-migration  # -> output-migration/images/openmower-migrate-<version>.sh
 ```
 
 `image-migration` produces a single self-extracting installer script -- but
-deliberately a *small* one: just the kernel, both dtbs, and the migration
-initramfs embedded and checksummed (a few tens of MB, rarely changes). The
-actual OS -- `openmower-<version>.img.gz`, easily 1GB+ -- is `make image`'s
-own output (`external/board/openmower-cm4/post-image.sh` gzips `sdcard.img`
+deliberately a *small* one: just the CM4 kernel, both CM4 dtbs, and the
+migration initramfs embedded and checksummed (a few tens of MB, rarely
+changes). The actual OS -- `openmower-<version>.img.gz`, easily 1GB+ -- is
+`make image`'s own output (`external/board/openmower/post-image.sh` gzips `sdcard.img`
 and writes a matching `.sha256` sidecar next to it), meant to be uploaded as
 a GitHub Releases asset. The installer downloads it straight from that
 static URL over HTTPS at run time -- no manifest, no update server of our
@@ -403,7 +474,7 @@ boot-config overrides" below), so there's no serial fallback either.
 
 ## Local boot-config overrides
 
-`config.txt` (Pi firmware config, see `external/board/openmower-cm4/rootfs-overlay/etc/openmower/config.txt.default`)
+`config.txt` (Pi firmware config, see `external/board/openmower/rootfs-overlay/etc/openmower/config.txt.default`)
 is baked into every image and OTA bundle, overwritten wholesale on each
 update -- there is no runtime mount of it at all otherwise (root is
 squashfs; the boot partitions aren't mounted anywhere in the running OS).
@@ -448,8 +519,15 @@ This directory (`os/`) lives inside the `open_mower_ros` repo, alongside
 ```
 docker/           build container (Buildroot toolchain only)
 buildroot/        Buildroot submodule (2026.02 LTS)
-external/         BR2_EXTERNAL tree: defconfig, board files, own packages
-  board/openmower-cm4/       partition layout, tryboot + RAUC integration, overlay
+external/         BR2_EXTERNAL tree: defconfigs, board files, own packages
+  configs/openmower_defconfig            main build (rootfs/userland, no kernel)
+  configs/openmower_dev_defconfig        same, + CLion remote-debug tooling
+  configs/openmower_kernel-cm4_defconfig kernel-only satellite, CM4/bcm2711
+  configs/openmower_kernel-cm5_defconfig kernel-only satellite, CM5/bcm2712
+  configs/openmower_cm4_migration_defconfig  CM4-only migration installer, see "Migrating..."
+  board/openmower/            partition layout, tryboot + RAUC integration, overlay
+  board/openmower-kernel/     kernel config fragments shared by both kernel satellites
+  board/openmower-cm4-migration/  migration installer initramfs (CM4-only)
   package/improv-ble/        BLE provisioning daemon
   package/openmower-ros/     vendors the docker-buildx-built ROS tree + runtime unit
   package/openmower-cli/     fetches the openmower-cli zipapp release (see "Manage the auxiliary stack")

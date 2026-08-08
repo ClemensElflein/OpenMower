@@ -11,9 +11,26 @@ OPENMOWER_VERSION="${OPENMOWER_VERSION:-$(date -u +%Y%m%d%H%M%S)}"
 # the env var Buildroot also exports).
 OPENMOWER_VARIANT="${2:-prod}"
 
+# --- Stage both boards' kernels/DTBs under their auto-detect filenames -------
+# No kernel built in this tree (see post-build.sh) -- both come from the
+# kernel-cm4/kernel-cm5 satellite builds. Filenames matter here: with
+# kernel=/device_tree= left unset in config.txt.default, the Pi firmware
+# itself picks kernel8.img on bcm2711-class boards and kernel_2712.img on
+# bcm2712-class boards (CM5), and auto-selects the matching DTB by board
+# revision -- same mechanism stock multi-board Raspberry Pi OS images use.
+KERNEL_CM4_DIR="$OS_DIR/output-kernel-cm4"
+KERNEL_CM5_DIR="$OS_DIR/output-kernel-cm5"
+install -m 0644 "$KERNEL_CM4_DIR/images/Image" "$BINARIES_DIR/rpi-firmware/kernel8.img"
+install -m 0644 "$KERNEL_CM5_DIR/images/Image" "$BINARIES_DIR/rpi-firmware/kernel_2712.img"
+cp -f "$KERNEL_CM4_DIR/images/"*.dtb "$KERNEL_CM5_DIR/images/"*.dtb "$BINARIES_DIR/rpi-firmware/"
+
 # --- Build boot filesystem images (differ only in cmdline.txt) ---------------
-# Contents: Pi firmware (incl. our config.txt), kernel, DTBs.
-BOOT_FILES=("$BINARIES_DIR"/rpi-firmware/* "$BINARIES_DIR"/Image "$BINARIES_DIR"/*.dtb)
+# Contents: Pi firmware (incl. our config.txt), both kernels, both boards'
+# DTBs -- everything now lives under rpi-firmware/ (post-build.sh purged the
+# stale top-level DTBs rpi-firmware's own INSTALL_DTBS produced; this build
+# has no kernel package of its own, so there's no separate top-level
+# Image/*.dtb to glob the way a combined single-kernel build would have).
+BOOT_FILES=("$BINARIES_DIR"/rpi-firmware/*)
 
 # Dev image only: show a console on the default UART hardware pins (GPIO14/
 # 15, the mini-UART -- ttyS0/serial0, already clocked correctly via config.
@@ -34,7 +51,11 @@ fi
 make_boot_vfat() {
     local out="$1" cmdline="$2"
     rm -f "$out"
-    mkfs.vfat -C -n "$3" "$out" $((128 * 1024))   # size in 1K blocks
+    # Bumped from 128M: this partition now carries TWO kernels + both
+    # boards' DTBs instead of one (see the kernel-cm4/kernel-cm5 staging
+    # above). Starting budget, not measured yet -- re-tune (`mdir -i
+    # boot-a.vfat -/` or similar) after the first real build.
+    mkfs.vfat -C -n "$3" "$out" $((192 * 1024))   # size in 1K blocks
     mcopy -i "$out" -s -Q "${BOOT_FILES[@]}" ::/
     mcopy -i "$out" -o -Q "$cmdline" ::/cmdline.txt
     # config.txt's `include usercfg.txt` tolerates a missing target, but bake
@@ -98,7 +119,12 @@ chmod +x "$BUNDLE_DIR/hook.sh"
 
 cat > "$BUNDLE_DIR/manifest.raucm" <<EOF
 [update]
-compatible=openmower-cm4
+# No per-board suffix -- one bundle now legitimately installs on either
+# CM4 or CM5 (see openmower-detect-hardware), matching
+# rootfs-overlay/etc/rauc/system.conf's own compatible=. Trade-off: RAUC no
+# longer acts as a hardware-mismatch flash interlock (accepted, see
+# os/README.md).
+compatible=openmower
 version=$OPENMOWER_VERSION
 
 [bundle]

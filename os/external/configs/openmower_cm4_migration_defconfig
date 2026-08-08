@@ -2,24 +2,27 @@
 #
 # Not a bootable system image and not part of the normal A/B RAUC flow. This
 # is a tiny busybox + util-linux initramfs, tryboot'd from a running stock
-# Raspberry Pi OS install (see scripts/migrate-to-openmower.sh) to `dd` a
-# full openmower-cm4 sdcard.img onto the disk and write the first A/B slot
-# -- a one-time bootstrap so a fleet already in the field can move onto this
-# RAUC-managed OS entirely over the network, with no SD card removal. The
-# sdcard.img itself is fetched by migrate-to-openmower.sh over the network
-# at run time, not embedded here (see that script's own header) -- this
-# initramfs only ever handles the small, rarely-changing kernel/dtbs/migration
-# bits.
+# Raspberry Pi OS install (see scripts/migrate-to-openmower.sh) to `dd` the
+# built sdcard.img onto the disk and write the first A/B slot -- a one-time
+# bootstrap so a fleet already in the field can move onto this RAUC-managed
+# OS entirely over the network, with no SD card removal. The sdcard.img
+# itself is fetched by migrate-to-openmower.sh over the network at run time,
+# not embedded here (see that script's own header) -- this initramfs only
+# ever handles the small, rarely-changing kernel/dtbs/migration bits.
 #
-# Reuses the SAME kernel/dtbs as openmower_cm4_defconfig: mmc, ext4, vfat and
-# squashfs are all built into that kernel (see
-# board/openmower-cm4/kernel-fragment.config -- "no initrd, must be built
-# in"), so this defconfig builds no kernel at all, just rootfs.cpio.gz. Its
-# post-image.sh (BR2_ROOTFS_POST_IMAGE_SCRIPT below) pulls the kernel/dtbs
-# from a *prior* openmower_cm4_defconfig build's output/images/ and
-# assembles them, plus this initramfs, into a single self-extracting
-# installer script -- see that file and scripts/migrate-to-openmower.sh for
-# the rest of the mechanism.
+# CM4-only, deliberately not updated for the unified CM4+CM5 image -- see
+# os/README.md. Reuses the SAME kernel/dtbs as the CM4 kernel satellite
+# build (openmower_kernel-cm4_defconfig): mmc, ext4, vfat and squashfs are
+# all built into that kernel (see
+# board/openmower-kernel/kernel-fragment-common.config -- "no initrd, must
+# be built in"), so this defconfig builds no kernel at all, just
+# rootfs.cpio.gz. Its post-image.sh (BR2_ROOTFS_POST_IMAGE_SCRIPT below)
+# pulls the kernel/dtbs from a *prior* main (openmower_defconfig) build's
+# output/images/rpi-firmware/ (itself merged in from the kernel-cm4
+# satellite, see external/board/openmower/post-image.sh) and assembles
+# them, plus this initramfs, into a single self-extracting installer script
+# -- see that file and scripts/migrate-to-openmower.sh for the rest of the
+# mechanism.
 #
 # Own output dir (output-migration/, see build.sh) -- Buildroot has no way to
 # prune a disabled package's files back out of target/, so this can't safely
@@ -29,8 +32,11 @@
 # Usage: make image-migration   (needs a prior `make image`)
 #   -> output-migration/images/openmower-migrate-<version>.sh
 
-# Architecture / toolchain (must match openmower_cm4_defconfig -- this
-# initramfs runs on the same board under the same kernel)
+# Architecture / toolchain (must match openmower_kernel-cm4_defconfig --
+# this initramfs runs on the same board under that same CM4 kernel, NOT the
+# main openmower_defconfig, which targets a generic cortex-a53 baseline
+# shared with CM5 and has no kernel of its own at all -- see its header
+# comment)
 BR2_aarch64=y
 BR2_cortex_a72=y
 BR2_ARM_FPU_VFPV4=y

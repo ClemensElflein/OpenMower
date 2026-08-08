@@ -1,0 +1,28 @@
+#!/bin/sh
+# Identify which board this (unified CM4+CM5) image is actually running on,
+# so the handful of things that still differ at RUNTIME (not build time --
+# see the openocd config selection below) can pick the right variant.
+# Boot-time only: rerun on every boot instead of baking a value into the
+# image, since the same rootfs now boots on either board.
+set -eu
+
+MODEL="$(tr -d '\0' < /proc/device-tree/model)"
+
+case "$MODEL" in
+    *"Compute Module 4"*|*"Raspberry Pi 4"*) HW=cm4 ;;
+    *"Compute Module 5"*|*"Raspberry Pi 5"*) HW=cm5 ;;
+    *)
+        echo "openmower-detect-hardware: unrecognized /proc/device-tree/model '$MODEL'" >&2
+        exit 1
+        ;;
+esac
+
+mkdir -p /run/openmower
+echo "$HW" > /run/openmower/hardware
+
+# SWD bitbang driver for flashing/debugging the xCore differs per board
+# (bcm2835gpio on CM4, linuxgpiod on CM5 -- see xcore-cm4.cfg/xcore-cm5.cfg's
+# own comments for why). /etc is the persistent, writable-at-boot overlay
+# (openmower-etc-overlay.service), so this symlink survives like any other
+# runtime /etc write.
+ln -sf "xcore-$HW.cfg" /etc/openocd/xcore.cfg
