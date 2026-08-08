@@ -12,6 +12,24 @@ if [ ! -s "$MACHINE_ID" ]; then
     chmod 0444 "$MACHINE_ID"
 fi
 
+# PID 1 itself stacks a transient tmpfs over /etc/machine-id very early in
+# boot whenever the baked file starts out empty and /etc is still read-only
+# (unconditional systemd behavior -- see systemd-machine-id-commit.service(8)
+# -- and our baked /etc/machine-id is deliberately empty, see post-build.sh).
+# Bind-mounting ours on top without clearing that first just stacks on top of
+# it, leaving the old tmpfs mount orphaned-but-still-listed in the mount
+# table for the rest of boot. Harmless on its own, but busybox df's
+# find_mount_point() re-stat()s each mount table entry's path live rather
+# than trusting its recorded fields, so once our bind-mount is up it matches
+# that stale early entry's device (now indistinguishable from /data's) for
+# completely unrelated queries like `df /data` -- confirmed against busybox's
+# own source. No-ops harmlessly on this script's second invocation (from
+# openmower-etc-overlay.service, re-asserting after the /etc overlay mount
+# shadows this one): nothing else is stacked here at that point.
+if mountpoint -q /etc/machine-id; then
+    umount /etc/machine-id
+fi
+
 # Make the persistent ID the one exposed to services started after this unit,
 # including systemd-networkd.
 mount --bind "$MACHINE_ID" /etc/machine-id
