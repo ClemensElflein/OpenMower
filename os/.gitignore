@@ -1,6 +1,8 @@
 .cache/
 output/
 output-migration/
+output-kernel-cm4/
+output-kernel-cm5/
 keys/
 *.img
 *.raucb

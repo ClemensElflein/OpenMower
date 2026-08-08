@@ -1,0 +1,46 @@
+# OpenMower OS — CM4/bcm2711 kernel-only satellite build.
+#
+# Produces just Image + DTBs + a depmod'd lib/modules/ tree in its own
+# output dir (output-kernel-cm4/, see build.sh) -- no rootfs format, no init
+# system, nothing else. The main build (openmower_defconfig) has
+# BR2_LINUX_KERNEL=n and splices this satellite's output in at
+# post-build/post-image time (see external/board/openmower/post-build.sh
+# and post-image.sh), alongside the CM5 satellite
+# (openmower_kernel-cm5_defconfig) -- see os/README.md for why: one unified
+# image boots both boards, and Buildroot only ever builds one kernel per
+# output tree, so two boards means two of these satellite builds merged
+# into one rootfs.
+#
+# A minimal defconfig like this (toolchain + BR2_LINUX_KERNEL=y, nothing
+# else) is a fully supported Buildroot configuration: linux.mk's install
+# rules populate $(BINARIES_DIR) and $(TARGET_DIR)/lib/modules/
+# unconditionally, with no BR2_TARGET_ROOTFS_* required at all.
+
+BR2_aarch64=y
+BR2_cortex_a72=y
+BR2_ARM_FPU_VFPV4=y
+BR2_TOOLCHAIN_EXTERNAL=y
+BR2_TOOLCHAIN_EXTERNAL_BOOTLIN=y
+BR2_TOOLCHAIN_EXTERNAL_BOOTLIN_AARCH64_GLIBC_STABLE=y
+BR2_CCACHE=y
+BR2_CCACHE_DIR="/work/os/.cache/ccache"
+# Needed for the custom GitHub kernel tarball's hash override (it's not the
+# official kernel.org release tarball upstream's own hash file expects).
+BR2_GLOBAL_PATCH_DIR="board/raspberrypi/patches"
+BR2_DOWNLOAD_FORCE_CHECK_HASHES=y
+
+# Kernel — raspberrypi fork, pinned (shared commit with the cm5 satellite
+# and, historically, the old single-image openmower_cm4_defconfig).
+BR2_LINUX_KERNEL=y
+BR2_LINUX_KERNEL_CUSTOM_TARBALL=y
+BR2_LINUX_KERNEL_CUSTOM_TARBALL_LOCATION="$(call github,raspberrypi,linux,21b410140c47ffab5668399f6f143c7d7b935c8b)/linux-21b410140c47ffab5668399f6f143c7d7b935c8b.tar.gz"
+BR2_LINUX_KERNEL_DEFCONFIG="bcm2711"
+BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_OPENMOWER_PATH)/board/openmower-kernel/kernel-fragment-common.config $(BR2_EXTERNAL_OPENMOWER_PATH)/board/openmower-kernel/kernel-fragment-cm4.config"
+BR2_LINUX_KERNEL_DTS_SUPPORT=y
+# Required explicitly here (not implied by anything else in this minimal
+# build) -- without it every dtoverlay= in usercfg.txt.default (uart2-5,
+# pwm-gpio-fan) silently fails to apply at boot. See DTC_FLAGS=-@ in
+# buildroot/linux/linux.mk.
+BR2_LINUX_KERNEL_DTB_OVERLAY_SUPPORT=y
+BR2_LINUX_KERNEL_INTREE_DTS_NAME="broadcom/bcm2711-rpi-4-b broadcom/bcm2711-rpi-cm4"
+BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y

@@ -1,0 +1,16 @@
+[Unit]
+Description=Detect which board (CM4/CM5) this image is running on
+# Writes into /etc/openocd/ -- needs the writable /etc overlay mounted first,
+# same ordering requirement openmower-etc-overlay.service's own post-build.sh
+# comment already documents getting bitten by once (for /etc/shadow).
+After=openmower-etc-overlay.service
+Requires=openmower-etc-overlay.service
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/openmower-detect-hardware
+
+[Install]
+WantedBy=multi-user.target
