@@ -54,6 +54,7 @@ concurrency:
 
 permissions:
   contents: write   # only actually used by the release step, tag builds only
+  actions: write    # deleting the stale Buildroot cache entry below (write) so it can be re-saved
 
 jobs:
   build:
