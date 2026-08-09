@@ -101,28 +101,29 @@ echo "OpenMower OS $OPENMOWER_VERSION ($OPENMOWER_GIT_REV)" > "$TARGET_DIR/etc/i
 # comfort, see rootfs-overlay/etc/skel/.bashrc for the Raspberry-Pi-OS-style
 # prompt/aliases that go with it.
 #
-# Same sed also repoints root's HOME field from /root to /data/root, so
-# $HOME persists on /data (anything writing under it -- bash history, ssh
-# known_hosts, openmower-cli's shiv cache/config -- would otherwise vanish
-# every reboot, /root being read-only squashfs). NOT a /root -> /data/root
-# symlink (tried first): buildroot's own generic system/device_table.txt
+# Same sed also repoints root's HOME field from /root to
+# /data/.openmower-os/root, so $HOME persists on /data (anything writing
+# under it -- bash history, ssh known_hosts, openmower-cli's shiv
+# cache/config -- would otherwise vanish every reboot, /root being
+# read-only squashfs). NOT a /root -> /data/.openmower-os/root symlink
+# (tried first): buildroot's own generic system/device_table.txt
 # unconditionally makedevs's a real directory at /root on every build
 # (unlike /etc/dropbear below, which has no such generic entry) -- that
 # runs AFTER this script, so a symlink here just gets clobbered/fails.
 # Repointing passwd's pw_dir instead sidesteps the collision entirely: standard
 # login behavior (bash, sshd, dropbear, all of them) already sets $HOME and
 # the initial cwd from this field, no code anywhere hardcodes "/root".
-# tmpfiles.d (home-root.conf) creates /data/root itself and seeds
-# .bashrc/.profile from /etc/skel on first boot -- not done here, since
-# /data doesn't exist yet at build time.
-sed -i 's#^root:x:0:0:root:/root:/bin/sh$#root:x:0:0:root:/data/root:/bin/bash#' "$TARGET_DIR/etc/passwd"
+# tmpfiles.d (home-root.conf) creates /data/.openmower-os/root itself and
+# seeds .bashrc/.profile from /etc/skel on first boot -- not done here,
+# since /data doesn't exist yet at build time.
+sed -i 's#^root:x:0:0:root:/root:/bin/sh$#root:x:0:0:root:/data/.openmower-os/root:/bin/bash#' "$TARGET_DIR/etc/passwd"
 
 # RAUC keyring = dev signing cert (production: real CA cert here instead).
 install -D -m 0644 "$OS_DIR/keys/dev-cert.pem" "$TARGET_DIR/etc/rauc/keyring.pem"
 
 # Dropbear host keys must survive updates and reboots -> /data.
 rm -rf "$TARGET_DIR/etc/dropbear"
-ln -s /data/dropbear "$TARGET_DIR/etc/dropbear"
+ln -s /data/.openmower-os/dropbear "$TARGET_DIR/etc/dropbear"
 
 # Dev image's openssh host key: generated per-device at runtime instead
 # (see openmower-ssh-hostkeys.service/openmower-gen-ssh-hostkeys), same
@@ -172,10 +173,11 @@ ln -s /data/dockge "$TARGET_DIR/opt/dockge"
 # (see its own comments), which also ships as-is to /data/boot/usercfg.txt
 # as the live editable copy of those same defaults. Applied to both the
 # real boot-partition config.txt (already installed by the rpi-firmware
-# package, from config.txt.default) and the /data reference copy in
-# TARGET_DIR (tmpfiles seeds /data/boot/config.txt from it, see
-# rootfs-overlay/etc/tmpfiles.d/openmower.conf) so the two never drift
-# apart. `include usercfg.txt` must come LAST, after the baked-in defaults
+# package, from config.txt.default) and TARGET_DIR's own
+# /etc/openmower/config.txt.default (the rootfs copy a user can read to see
+# the effective baked-in defaults, since config.txt itself is never synced
+# to /data -- see tmpfiles.d/openmower.conf) so the two never drift apart.
+# `include usercfg.txt` must come LAST, after the baked-in defaults
 # it's appended alongside -- config.txt semantics are "later directives
 # win", so an actual on-device edit to usercfg.txt (included at that same
 # point once synced) overrides the baked default for the same setting

@@ -340,7 +340,7 @@ Login over SSH/`openmower-shell`:
 to key-only auth).
 `passwd` persists across reboots and RAUC A/B updates: `openmower-etc-overlay.service`
 overlays the whole of `/etc` with a writable layer on `/data` at boot (`mkdir
--p`/`mount -t overlay`, `/data/etc-overlay/{upper,work}`), so `passwd`
+-p`/`mount -t overlay`, `/data/.openmower-os/etc-overlay/{upper,work}`), so `passwd`
 rewriting `/etc/shadow` (via its usual create-`shadow+`-then-rename dance)
 actually persists instead of hitting `EROFS`. Not a build-time symlink or a
 single-file bind-mount, deliberately — both look simpler but don't
@@ -350,15 +350,18 @@ whole is now genuinely writable at runtime, so e.g. `systemctl enable`
 persists too, not just `passwd`.
 
 Root's `$HOME` persists too, differently: `/etc/passwd`'s root entry points
-`HOME` straight at `/data/root` (`post-build.sh`) rather than `/root` — a
-`/root` → `/data/root` symlink was the first attempt, but collides with a
-generic buildroot device-table entry that unconditionally expects a real
-directory there (`system/device_table.txt`, unlike `/etc/dropbear` above,
-which has no such entry). Standard login behavior (bash, sshd, dropbear)
-already sets `$HOME`/cwd from `pw_dir`, so nothing else needed to change.
-`/etc/tmpfiles.d/home-root.conf` creates `/data/root` and seeds
-`.bashrc`/`.profile` from `/etc/skel` on first boot only (on-device edits
-survive later boots/updates). Without this, anything writing under `$HOME`
+`HOME` straight at `/data/.openmower-os/root` (`post-build.sh`) rather than
+`/root` — a `/root` → `/data/.openmower-os/root` symlink was the first
+attempt, but collides with a generic buildroot device-table entry that
+unconditionally expects a real directory there (`system/device_table.txt`,
+unlike `/etc/dropbear` above, which has no such entry). Standard login
+behavior (bash, sshd, dropbear) already sets `$HOME`/cwd from `pw_dir`, so
+nothing else needed to change. `/etc/tmpfiles.d/home-root.conf` creates
+`/data/.openmower-os/root` and seeds `.bashrc`/`.profile` from `/etc/skel`
+on first boot only (on-device edits survive later boots/updates); it's
+tucked under the hidden `.openmower-os` dir (see "`/data` layout" below)
+rather than a bare `/data/root`, so it doesn't also show up as its own
+entry in `ls /data` next to root's own `~`. Without this, anything writing under `$HOME`
 — shell history, `ssh` `known_hosts`, and `openmower-cli`'s own shiv
 extraction cache — silently
 vanished every reboot, since `/root` used to be a plain directory on the
@@ -469,7 +472,7 @@ irreversible happens until the reboot after that prompt.
 | p1 | 16M | `autoboot.txt` — tryboot A/B control (which slot is primary) |
 | p2/p3 | 192M each | boot A/B: Pi firmware, both kernels, both boards' DTBs, per-slot `cmdline.txt` |
 | p5/p6 | 3072M each | rootfs A/B (read-only squashfs, includes the vendored ROS tree). Measured squashfs on a real build: 936MiB — ~3.3x headroom for growth. |
-| p7 | 64M **build-time floor** | `/data` — wifi credentials, ssh host keys, RAUC state, OpenMower config/params, update downloads, Docker's data-root |
+| p7 | 64M **build-time floor** | `/data` — wifi credentials, OpenMower config/params, Docker stack files, plus OS-internal state (RAUC, dropbear, Docker's data-root, ...) — see "`/data` layout" below |
 
 Built `sdcard.img` is ~6.5GiB (down from an earlier, unmeasured 12GB
 budget — p5/p6 used to reserve 3584M each purely as a guess, p7 4096M).
@@ -495,6 +498,32 @@ total media size vs. the rootfs budget, not of anything picked at build
 time. 8GB eMMC is treated as a bounded/legacy tier that may eventually
 reach end-of-updates as the OS grows; 16GB+ media keep full update headroom
 throughout (16GB → ~8.5GiB `/data`, 32GB → ~23GiB).
+
+### `/data` layout
+
+`ls /data` on a running device shows only what you might actually want to
+look at:
+
+- `openmower/` — your config, params, and ROS's own recordings/logs (see
+  "Configuration" above)
+- `boot/usercfg.txt` — local Pi firmware overrides (see "Local boot-config
+  overrides" above)
+- `stacks/`, `dockge/` — the auxiliary Docker stack's compose files (see
+  "Manage OpenMower stack" above)
+- `wifi/` — the Wi-Fi credentials `wpa_supplicant` reads (see "Wi-Fi
+  provisioning" above)
+
+Everything else the OS itself needs to persist but a user never needs to
+browse or edit by hand -- RAUC's A/B state, dropbear's host keys, root's
+own `$HOME`, Docker's data-root (image/container storage, as opposed to
+the stacks/dockge compose files above), the Bluetooth pairing DB, the
+`/etc` overlay's upper/work dirs, pending-update staging -- lives under
+one hidden `.openmower-os/` directory instead of cluttering the top level.
+
+`lost+found/` is also still there, unavoidably: that's ext2/3/4's own
+`e2fsck` convention (a well-known filename `e2fsck` expects and recreates
+at the filesystem's root if missing, for orphaned-inode recovery after an
+unclean shutdown), not something this OS controls or can relocate/hide.
 
 ## Update flow
 
@@ -546,11 +575,12 @@ hardware config (antenna selection, UART setup, fan control) lives entirely
 in `usercfg.txt.default` instead, single-sourced from there -- `post-build.sh` appends that file's
 content onto config.txt at build time (plus a trailing `include usercfg.txt`
 it adds itself), so those defaults are baked in and active from the very
-first boot of a fresh flash. A read-only copy of the fully-assembled
-config.txt (base + baked defaults + include) is also seeded to
-`/data/boot/config.txt` on first boot, purely so it's browsable without
-mounting the boot partition -- editing it there does nothing, it's never
-read back.
+first boot of a fresh flash. config.txt itself is never copied onto
+`/data` -- the effective, fully-assembled config.txt (base + baked
+defaults + include) is readable straight from the rootfs at
+`/etc/openmower/config.txt.default`, identical to what's actually on the
+boot partition, so there's nothing to duplicate or accidentally edit
+without effect on `/data`.
 
 `/data/boot/usercfg.txt` is the actual escape hatch: it lives on `/data`
 instead of the boot partition, so unlike config.txt it survives updates.

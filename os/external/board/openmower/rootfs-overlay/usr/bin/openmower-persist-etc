@@ -37,10 +37,10 @@ set -eu
 
 modprobe overlay
 
-mkdir -p /data/etc-overlay/upper /data/etc-overlay/work /run/etc-lower
+mkdir -p /data/.openmower-os/etc-overlay/upper /data/.openmower-os/etc-overlay/work /run/etc-lower
 mount --bind /etc /run/etc-lower
 mount -t overlay overlay \
-    -o lowerdir=/run/etc-lower,upperdir=/data/etc-overlay/upper,workdir=/data/etc-overlay/work \
+    -o lowerdir=/run/etc-lower,upperdir=/data/.openmower-os/etc-overlay/upper,workdir=/data/.openmower-os/etc-overlay/work \
     /etc
 
 # The mount above lands on /etc itself, which shadows anything already
