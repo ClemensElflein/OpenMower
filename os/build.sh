@@ -37,6 +37,48 @@ KERNEL_CM5_HOST_OUTPUT_DIR="$HERE/output-kernel-cm5"
 # Monotonic, numerically comparable version; git sha for traceability.
 OPENMOWER_VERSION="$(date -u +%Y%m%d%H%M%S)"
 OPENMOWER_GIT_REV="$(git -C "$HERE" describe --always --dirty 2>/dev/null || echo unknown)"
+OPENMOWER_GIT_HASH_FULL="$(git -C "$HERE" rev-parse HEAD 2>/dev/null || echo unknown)"
+OPENMOWER_GIT_HASH="$(git -C "$HERE" rev-parse --short=8 HEAD 2>/dev/null || echo unknown)"
+
+# Branch name for /usr/share/openmoweros/version.* (see post-build.sh) --
+# best-effort only, CI builds commonly run on a detached HEAD where plain
+# rev-parse just says "HEAD". Checked in this order: CI-provided env vars
+# (covers GitHub Actions/GitLab/Azure DevOps/Jenkins, whichever actually
+# set the job up), then rev-parse (works for a genuine local branch
+# checkout), then a remote ref pointing at the same commit (covers a CI
+# checkout that left a detached HEAD but still fetched named refs), then
+# give up with a hash-labeled placeholder rather than a bare "unknown".
+detect_branch() {
+    local var val rp commit remote_head
+    for var in GITHUB_HEAD_REF GITHUB_REF_NAME GIT_BRANCH CI_COMMIT_REF_NAME CI_BUILD_REF_NAME BUILD_SOURCEBRANCHNAME; do
+        val="${!var:-}"
+        if [ -n "$val" ]; then
+            case "$val" in
+                refs/heads/*) val="${val#refs/heads/}" ;;
+                refs/tags/*) val="${val#refs/tags/}" ;;
+            esac
+            printf '%s' "$val"
+            return 0
+        fi
+    done
+    rp="$(git -C "$HERE" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+    if [ -n "$rp" ] && [ "$rp" != "HEAD" ]; then
+        printf '%s' "$rp"
+        return 0
+    fi
+    commit="$(git -C "$HERE" rev-parse HEAD 2>/dev/null || true)"
+    if [ -n "$commit" ]; then
+        remote_head="$(git -C "$HERE" for-each-ref --format='%(objectname) %(refname:short)' refs/remotes 2>/dev/null | awk -v c="$commit" '$1==c {print $2; exit}')"
+        if [ -n "$remote_head" ]; then
+            printf '%s' "${remote_head#origin/}"
+            return 0
+        fi
+        printf 'detached-%s' "${commit:0:8}"
+        return 0
+    fi
+    printf 'unknown'
+}
+OPENMOWER_GIT_BRANCH="$(detect_branch)"
 
 # The migration initramfs gets its OWN output dir (output-migration), not
 # output/. It shares no packages with the prod/dev rootfs (systemd vs.
@@ -290,6 +332,9 @@ DOCKER_ARGS=(
     -e BR2_DL_DIR=/work/os/.cache/dl
     -e OPENMOWER_VERSION="$OPENMOWER_VERSION"
     -e OPENMOWER_GIT_REV="$OPENMOWER_GIT_REV"
+    -e OPENMOWER_GIT_HASH="$OPENMOWER_GIT_HASH"
+    -e OPENMOWER_GIT_HASH_FULL="$OPENMOWER_GIT_HASH_FULL"
+    -e OPENMOWER_GIT_BRANCH="$OPENMOWER_GIT_BRANCH"
     -w /work/os/buildroot
 )
 # Forwarded only if set on the host -- post-image.sh's own default (build the
