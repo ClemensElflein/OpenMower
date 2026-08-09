@@ -144,18 +144,19 @@ BR2_PACKAGE_UTIL_LINUX_BINARIES=y
 BR2_PACKAGE_UTIL_LINUX_PARTX=y
 
 # Diagnostics tools (buildroot subset).
-# mc dropped: 4.8.33's build hits an ncursesw wide-char detection issue
-# under this cross setup (implicit decl of getcchar/setcchar/mvin_wchnstr
-# in tty-ncurses.c) despite BR2_PACKAGE_NCURSES_WCHAR=y being correctly
-# set. wavemon dropped: 0.9.5 hard-requires libnl-cli-3.0 (configure:
-# "need libnl-cli-3.0 >= 3.2"), which buildroot's libnl package has no
-# sub-option to build and wavemon.mk doesn't work around. Neither worth
-# chasing for optional tools.
 BR2_PACKAGE_SOCAT=y
 BR2_PACKAGE_PYTHON_SERIAL=y
 BR2_PACKAGE_HTOP=y
 BR2_PACKAGE_NANO=y
 BR2_PACKAGE_MC=y
+# wavemon selects BR2_PACKAGE_LIBNL_TOOLS itself (libnl's cli sub-lib,
+# needed for its wifi survey view).
+BR2_PACKAGE_WAVEMON=y
+# vcgencmd -- see external/package/vcgencmd -- SoC temp/voltage/clock/
+# throttling readout. Not the GL/EGL/OpenMAX/MMAL/raspicam side of
+# raspberrypi/userland (upstream's own CMakeLists skips all that on
+# aarch64), and not rpi-config or anything that rewrites config.txt.
+BR2_PACKAGE_VCGENCMD=y
 
 # Dev tools
 BR2_PACKAGE_STRACE=y

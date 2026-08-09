@@ -1,0 +1,19 @@
+config BR2_PACKAGE_VCGENCMD
+	bool "vcgencmd"
+	help
+	  Raspberry Pi VideoCore userspace tools, built from
+	  github.com/raspberrypi/userland: vcgencmd (SoC temperature,
+	  voltages, clocks, throttling status), plus vcmailbox, dtoverlay
+	  and dtmerge. Buildroot dropped its own rpi-userland package
+	  upstream (Config.in.legacy: "ancient and deprecated") -- this
+	  vendors just the small subset actually useful here directly,
+	  pinned to a single commit. Not named rpi-userland/RPI_USERLAND
+	  to avoid colliding with that removed package's reserved legacy
+	  Kconfig symbol.
+
+	  Deliberately not the GL/EGL/OpenMAX/MMAL/raspicam side of this
+	  tree -- upstream's own CMakeLists already skips all of that on
+	  aarch64 (ARM64 build), which is all this image ever targets, so
+	  there's nothing to trim by hand here.
+
+	  https://github.com/raspberrypi/userland
