@@ -34,11 +34,22 @@ on:
 
 run-name: >-
   OS build for
-  ${{ github.event.client_payload.ref || github.event.inputs.ref || 'manual' }}
+  ${{
+    github.event.client_payload.event == 'PR' && format('PR {0}', github.event.client_payload.ref) ||
+    github.event.client_payload.event == 'BRANCH' && format('branch {0}', github.event.client_payload.ref) ||
+    github.event.client_payload.event == 'TAG' && format('tag {0}', github.event.client_payload.ref) ||
+    github.event.inputs.ref || 'manual'
+  }}
   @ ${{ github.event.client_payload.sha || 'manual' }}
 
+# Keyed on event type + ref (PR number / branch / tag name), not sha: two
+# builds for the same PR/branch/tag supersede each other (new push cancels
+# the stale in-progress build for it), while different PRs, a PR and a
+# branch, etc. get distinct groups and run fully in parallel. Manual
+# dispatch has no client_payload at all, so it falls back to the image ref
+# instead, same as before.
 concurrency:
-  group: os-build-${{ github.event.client_payload.sha || github.event.inputs.image }}
+  group: os-build-${{ github.event.client_payload.event || 'manual' }}-${{ github.event.client_payload.ref || github.event.inputs.image }}
   cancel-in-progress: true
 
 permissions:
