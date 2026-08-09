@@ -14,6 +14,19 @@
 #                          so any reset before commit falls back automatically.
 #   set-state <new> good (from rauc-mark-good on the first successful boot of
 #                          the new slot) -> commit: [all]=<new>, [tryboot]=<old>.
+#
+# The commit decision in set-state deliberately does NOT rely on the
+# "pending" marker written by set-primary: set-primary runs pre-reboot under
+# the OLD slot's copy of this script, set-state runs post-reboot under the
+# NEW slot's copy, and an OTA update that changes STATE_DIR (as happened
+# once already) or the pending-file format silently breaks that handshake --
+# new slot boots fine via the firmware's one-shot [tryboot], but the commit
+# never happens, so the next plain reboot falls back to [all]. Instead,
+# set-state derives the same answer from state that's always read fresh by
+# whichever script version is currently running: we only ever boot a
+# non-primary slot via [tryboot], so booted-but-not-primary == commit-worthy,
+# no memory of a prior install step required. "pending" is kept only for
+# get-primary's informational status output.
 set -eu
 
 CONFIG_DEV=/dev/mmcblk0p1
@@ -96,8 +109,7 @@ case "$1" in
         SLOT="$2"
         STATE="$3"
         printf '%s\n' "$STATE" > "$STATE_DIR/state-$SLOT"
-        if [ "$STATE" = "good" ] && [ "$(cat "$STATE_DIR/pending" 2>/dev/null)" = "$SLOT" ] \
-            && [ "$(booted_slot)" = "$SLOT" ]; then
+        if [ "$STATE" = "good" ] && [ "$(booted_slot)" = "$SLOT" ] && [ "$SLOT" != "$(primary_slot)" ]; then
             write_autoboot "$SLOT" "$(other_of "$SLOT")"
             rm -f "$STATE_DIR/pending"
         elif [ "$STATE" = "bad" ] && [ "$(cat "$STATE_DIR/pending" 2>/dev/null)" = "$SLOT" ]; then
