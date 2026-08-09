@@ -18,7 +18,7 @@ set -eu
 
 CONFIG_DEV=/dev/mmcblk0p1
 MNT=/run/openmower/autoboot
-STATE_DIR=/data/rauc
+STATE_DIR=/data/.openmower-os/rauc
 
 part_of() { [ "$1" = "A" ] && echo 2 || echo 3; }
 other_of() { [ "$1" = "A" ] && echo B || echo A; }

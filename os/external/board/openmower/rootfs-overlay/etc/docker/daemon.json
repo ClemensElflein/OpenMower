@@ -1,4 +1,4 @@
 {
-  "data-root": "/data/docker",
+  "data-root": "/data/.openmower-os/docker",
   "log-driver": "journald"
 }

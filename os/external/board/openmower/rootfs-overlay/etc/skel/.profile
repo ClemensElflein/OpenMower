@@ -4,8 +4,8 @@
 # SSH, even though /bin/bash is correctly the shell.
 #
 # Lives in /etc/skel, not directly at /root/.profile -- see .bashrc's own
-# comment for why (seeded onto persistent /data/root once, not baked
-# directly into the read-only /root symlink target).
+# comment for why (seeded onto persistent /data/.openmower-os/root once,
+# not baked directly into the read-only rootfs).
 if [ -n "$BASH_VERSION" ] && [ -f "$HOME/.bashrc" ]; then
     . "$HOME/.bashrc"
 fi

@@ -3,11 +3,11 @@
 # over SSH. Buildroot's bash package ships plain upstream bash, no Debian
 # skel to inherit this from, hence writing it out here instead.
 #
-# Lives in /etc/skel (not directly at /root/.bashrc): /root is a symlink
-# onto /data/root (see post-build.sh) so root's home persists across
-# reboots/updates, and this file is only the seed a tmpfiles.d "C" line
-# copies onto /data/root/.bashrc the first time -- never overwriting an
-# already-persisted copy, so on-device edits survive.
+# Lives in /etc/skel (not directly at /root/.bashrc): root's $HOME points
+# at /data/.openmower-os/root (see post-build.sh) so root's home persists
+# across reboots/updates, and this file is only the seed a tmpfiles.d "C"
+# line copies onto /data/.openmower-os/root/.bashrc the first time -- never
+# overwriting an already-persisted copy, so on-device edits survive.
 
 case $- in
     *i*) ;;
