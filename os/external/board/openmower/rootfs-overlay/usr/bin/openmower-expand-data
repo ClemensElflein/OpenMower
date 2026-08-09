@@ -28,37 +28,44 @@ PART_SIZE="$(cat "/sys/class/block/mmcblk0p${PART_NUM}/size")"
 PART_END="$((PART_START + PART_SIZE))"
 
 # Within one 4M alignment unit (8192 512B sectors, matching genimage.cfg's
-# own align=4M) of the disk end -- already fully grown, or the underlying
-# media is at/below the build-time floor already (e.g. a device flashed
-# with dd onto media no bigger than the built image itself). Either way,
-# nothing to do.
-if [ $(( DISK_SECTORS - PART_END )) -lt 8192 ]; then
-    exit 0
+# own align=4M) of the disk end -- partition table already fully grown, or
+# the underlying media is at/below the build-time floor already (e.g. a
+# device flashed with dd onto media no bigger than the built image
+# itself). Either way, nothing left to grow the partition table for.
+if [ $(( DISK_SECTORS - PART_END )) -ge 8192 ]; then
+    echo "openmower-expand-data: growing $PART_DEV to fill $DISK ($(( (DISK_SECTORS - PART_END) / 2048 ))MiB available) ..."
+
+    # ", +" is sfdisk's own idiom for "extend this partition to consume all
+    # remaining space" -- rewrites only the given partition's table entry,
+    # --no-reread defers telling the kernel (data is mounted; a full
+    # re-read would fail/be refused while any of its partitions are busy).
+    #
+    # TWO steps, not one -- confirmed the hard way (real device stuck at
+    # the build-time floor size despite this "succeeding" with no error
+    # every boot): a logical partition's own "+" growth is capped at its
+    # PARENT extended partition's existing end boundary -- sfdisk does NOT
+    # auto-grow the container to make room, it just silently caps p7 at
+    # whatever p4 already was (which is why this looked like a no-op
+    # success, not a failure). Grow the extended container first, then the
+    # logical partition within it can actually use the new space.
+    echo ", +" | sfdisk -N "$EXT_PART_NUM" --no-reread "$DISK"
+    echo ", +" | sfdisk -N "$PART_NUM" --no-reread "$DISK"
+
+    # partx -u updates the kernel's view of PART_DEV's size in place --
+    # unlike blockdev --rereadpt/BLKRRPART, this works while the partition
+    # is actively mounted, which it always is here (this runs late enough
+    # in boot that /data is already up).
+    partx -u "$PART_DEV"
 fi
 
-echo "openmower-expand-data: growing $PART_DEV to fill $DISK ($(( (DISK_SECTORS - PART_END) / 2048 ))MiB available) ..."
-
-# ", +" is sfdisk's own idiom for "extend this partition to consume all
-# remaining space" -- rewrites only the given partition's table entry,
-# --no-reread defers telling the kernel (data is mounted; a full re-read
-# would fail/be refused while any of its partitions are busy).
-#
-# TWO steps, not one -- confirmed the hard way (real device stuck at the
-# build-time floor size despite this "succeeding" with no error every
-# boot): a logical partition's own "+" growth is capped at its PARENT
-# extended partition's existing end boundary -- sfdisk does NOT auto-grow
-# the container to make room, it just silently caps p7 at whatever p4
-# already was (which is why this looked like a no-op success, not a
-# failure). Grow the extended container first, then the logical partition
-# within it can actually use the new space.
-echo ", +" | sfdisk -N "$EXT_PART_NUM" --no-reread "$DISK"
-echo ", +" | sfdisk -N "$PART_NUM" --no-reread "$DISK"
-
-# partx -u updates the kernel's view of PART_DEV's size in place -- unlike
-# blockdev --rereadpt/BLKRRPART, this works while the partition is actively
-# mounted, which it always is here (this runs late enough in boot that
-# /data is already up).
-partx -u "$PART_DEV"
-
-# online resize -- ext4 supports growing a mounted filesystem.
+# Always attempt the filesystem resize, even on a boot that skipped the
+# partition-table growth above -- resize2fs no-ops in an instant if the
+# filesystem already fills the partition, so this costs nothing on the
+# common case, but self-heals the case where the partition table WAS
+# grown (an on-disk, persistent change) on some earlier boot and then
+# power was lost before resize2fs itself finished (interrupted, but safe
+# to resume from scratch -- unlike the partition-table rewrite above,
+# there's no state here to get stuck on: the next run just retries the
+# whole grow instead of exiting early on the "already grown" partition
+# check above).
 resize2fs "$PART_DEV"

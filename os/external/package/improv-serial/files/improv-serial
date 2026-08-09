@@ -252,7 +252,13 @@ class ImprovDaemon:
                 ssid_len = args[0]
                 ssid = args[1 : 1 + ssid_len]
                 pass_len = args[1 + ssid_len]
-                password = args[2 + ssid_len : 2 + ssid_len + pass_len].decode()
+                password_start = 2 + ssid_len
+                # Slicing silently truncates instead of raising if pass_len
+                # overruns args, so the length has to be checked explicitly
+                # -- this also rejects trailing bytes past the password.
+                if len(args) != password_start + pass_len:
+                    raise ValueError("bad arg length")
+                password = args[password_start : password_start + pass_len].decode()
                 if not ssid:
                     raise ValueError("empty ssid")
             except (IndexError, ValueError, UnicodeDecodeError):
@@ -260,10 +266,28 @@ class ImprovDaemon:
                 return
             self.provision(ssid, password)
         elif cmd == CMD_GET_CURRENT_STATE:
+            if arglen:
+                self.send_error(ERR_INVALID_RPC)
+                return
             self.send_state(self.state)
+            if self.state == STATE_PROVISIONED:
+                # Spec: a current-state request while already provisioned
+                # also gets the same RPC result a successful provisioning
+                # would have sent, so a client reconnecting later can still
+                # learn the redirect URL.
+                self.send_result(
+                    CMD_WIFI_SETTINGS,
+                    [f"http://{socket.gethostname()}.local/"],
+                )
         elif cmd == CMD_GET_DEVICE_INFO:
+            if arglen:
+                self.send_error(ERR_INVALID_RPC)
+                return
             self.send_device_info(cmd)
         elif cmd == CMD_GET_WIFI_NETWORKS:
+            if arglen:
+                self.send_error(ERR_INVALID_RPC)
+                return
             self.send_wifi_networks(cmd)
         else:
             self.send_error(ERR_UNKNOWN_CMD)
