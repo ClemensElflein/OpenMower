@@ -5,16 +5,19 @@
 # change a setting (antenna, UART, fan, ...), edit /data/boot/usercfg.txt
 # instead (see its own comments); anything set there overrides this file.
 #
-# kernel=/device_tree=/start_file=/fixup_file= are set EXPLICITLY per board
-# below, not left unset for firmware auto-detect -- auto-detect (by SoC,
-# omitting these entirely) is real, documented Raspberry Pi firmware
-# behavior, but depends on the specific pinned firmware blob version
-# actually supporting it (buildroot/package/rpi-firmware.mk's own pin,
-# not something this project controls) -- confirmed the hard way on real
-# CM4 hardware that assuming it silently doesn't work is not safe. Model
-# filter sections ([cm4]/[pi4]/[cm5]) are the same long-standing,
-# well-proven mechanism already used in usercfg.txt.default for antenna/fan
-# -- applies to any directive, not just dtparam/dtoverlay.
+# kernel=/device_tree= (CM4/pi4 also start_file=/fixup_file=) are set
+# EXPLICITLY per board below, not left unset for firmware auto-detect --
+# auto-detect (by SoC, omitting these entirely) is real, documented
+# Raspberry Pi firmware behavior, but depends on the specific pinned
+# firmware blob version actually supporting it (buildroot/package/
+# rpi-firmware.mk's own pin, not something this project controls) --
+# confirmed the hard way on real CM4 hardware that assuming it silently
+# doesn't work is not safe. CM5 has no separate boot-stage firmware
+# variant (start_file=/fixup_file=) to pin in this firmware blob version,
+# so its block only sets kernel=/device_tree=. Model filter sections
+# ([cm4]/[pi4]/[cm5]) are the same long-standing, well-proven mechanism
+# already used in usercfg.txt.default for antenna/fan -- applies to any
+# directive, not just dtparam/dtoverlay.
 #
 # CM4/[pi4] values are exactly what this image shipped before CM5 support
 # (byte-for-byte, just moved under a filter instead of being unconditional)
