@@ -267,8 +267,24 @@ jobs:
       # caches below: content-hash key means an exact-hit run has nothing
       # changed to save (no-op), and a changed defconfig/package produces a
       # brand new key rather than needing the old one cleared first.
+      #
+      # if: success() -- NOT always(), unlike the dl/ccache cache above.
+      # output/build|host holds Buildroot's per-package .stamp_patched/
+      # .stamp_configured/.stamp_built state machine, not just reusable raw
+      # inputs. A failed or cancel-in-progress-killed Build step can leave a
+      # package mid-recipe: Make deletes the stamp file on recipe
+      # failure/signal, but files a patch step already touched (e.g.
+      # e2fsprogs' ltmain.sh) stay modified on disk. Caching that under this
+      # content-hash key (no delete-first step, no restore-keys fallback, and
+      # actions/cache/save silently no-ops on an existing key) would poison
+      # every future run for this exact (buildroot rev, defconfig) pair with
+      # a "Reversed (or previously applied) patch" failure that can't self-heal
+      # until the hash itself changes. The genuinely expensive/reusable work
+      # (downloads, compiled objects) is already covered by the always-saved
+      # os-build-dl cache above, so skipping this save on failure costs
+      # nothing but a slower next attempt.
       - name: Save Buildroot output cache
-        if: always()
+        if: success()
         uses: actions/cache/save@v4
         with:
           path: |
@@ -282,8 +298,16 @@ jobs:
       # exact-hit run (nothing kernel-related changed) has nothing new to
       # save, so it shouldn't upload ~6GB of unchanged kernel build output
       # just to re-produce the cache entry that's already there.
+      #
+      # if: success() -- same reasoning as the main "Save Buildroot output
+      # cache" step above: these hold per-package .stamp_patched/
+      # .stamp_configured/.stamp_built state too, and the exact-key restore
+      # (no restore-keys fallback helps once the exact key itself exists)
+      # means a failed/cancelled run's half-patched tree would otherwise
+      # poison this key permanently for the same (buildroot rev, kernel
+      # defconfig) pair.
       - name: Save CM4 kernel cache
-        if: always()
+        if: success()
         uses: actions/cache/save@v4
         with:
           path: |
@@ -292,7 +316,7 @@ jobs:
           key: os-kernel-cm4-${{ steps.buildroot-rev.outputs.sha }}-${{ hashFiles('os/external/configs/openmower_kernel-cm4_defconfig', 'os/external/board/openmower-kernel/kernel-fragment-common.config', 'os/external/board/openmower-kernel/kernel-fragment-cm4.config') }}
 
       - name: Save CM5 kernel cache
-        if: always()
+        if: success()
         uses: actions/cache/save@v4
         with:
           path: |
