@@ -134,21 +134,38 @@ jobs:
       # pressure the way there was when this cache lived alongside
       # open_mower_ros' docker layer cache.
       #
-      # dl/ccache/openmower-cli ONLY here -- downloaded tarballs and
-      # compiled-object cache are safe to reuse no matter what the defconfig
-      # says, so a rolling key that's never invalidated is exactly right for
-      # these. output/build|host moved to their own content-hash-keyed cache
-      # below: they hold Buildroot's per-package .stamp_configured/
-      # .stamp_built, which Buildroot only invalidates on a package's own
-      # source changing, NOT on some OTHER package's Kconfig `select` newly
-      # pulling in a suboption it didn't have before (e.g. wavemon selecting
-      # BR2_PACKAGE_LIBNL_TOOLS onto an already-built libnl). Restoring an
-      # output/build from before that kind of defconfig change re-stages the
-      # old build untouched instead of reconfiguring -- silent wrong-bits,
-      # not a cache miss. Keeping it on the same rolling key as this cache
-      # meant every defconfig change needed the delete-step below to
-      # actually take effect before the NEXT run could recover; splitting it
-      # out means the key itself changes and there's nothing to invalidate.
+      # dl/ccache/openmower-cli/output-build.hash ONLY here -- downloaded
+      # tarballs and compiled-object cache are safe to reuse no matter what
+      # the defconfig says, so a rolling key that's never invalidated is
+      # exactly right for these. output/build|host moved to their own
+      # content-hash-keyed cache below: they hold Buildroot's per-package
+      # .stamp_configured/.stamp_built, which Buildroot only invalidates on
+      # a package's own source changing, NOT on some OTHER package's
+      # Kconfig `select` newly pulling in a suboption it didn't have before
+      # (e.g. wavemon selecting BR2_PACKAGE_LIBNL_TOOLS onto an
+      # already-built libnl). Restoring an output/build from before that
+      # kind of defconfig change re-stages the old build untouched instead
+      # of reconfiguring -- silent wrong-bits, not a cache miss. Keeping it
+      # on the same rolling key as this cache meant every defconfig change
+      # needed the delete-step below to actually take effect before the
+      # NEXT run could recover; splitting it out means the key itself
+      # changes and there's nothing to invalidate.
+      #
+      # .cache/output-build.hash (build.sh's own marker for this same
+      # cross-package-select blind spot, see build.sh) MUST live in this
+      # always-restored/-saved cache, not just on the runner's disk: it's
+      # the only thing that tells build.sh "the output/build cache you just
+      # restored above already matches these config inputs, leave its
+      # .stamp_configured/.stamp_built alone". Missing from here, every CI
+      # run starts without it, build.sh treats that as "config changed" on
+      # every single run, and force-wipes .stamp_configured/.stamp_built
+      # for every package in the just-restored (perfectly valid)
+      # output/build tree -- including autoreconf-based packages like
+      # e2fsprogs, whose source is already libtool-patched from that prior
+      # build. Forcing them back through configure hits the buildroot
+      # LIBTOOL_PATCH_HOOK re-applying its patch onto already-patched
+      # content ("Reversed (or previously applied) patch detected!"),
+      # deterministically, on every run.
       #
       # Explicit restore, not the combined actions/cache@v4 (restore + an
       # automatic post-job save): the automatic post-save is unreliable
@@ -162,6 +179,7 @@ jobs:
             os/.cache/dl
             os/.cache/ccache
             os/.cache/openmower-cli
+            os/.cache/output-build.hash
           key: os-build-dl
 
       # Content-hash key, no restore-keys fallback -- unlike the kernel
@@ -263,6 +281,7 @@ jobs:
             os/.cache/dl
             os/.cache/ccache
             os/.cache/openmower-cli
+            os/.cache/output-build.hash
           key: os-build-dl
 
       # No delete-first step needed here, same reasoning as the kernel
