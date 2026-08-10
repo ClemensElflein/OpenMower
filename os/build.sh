@@ -184,10 +184,24 @@ git -C "$HERE" submodule update --init --recursive
 # Buildroot's own incremental logic for those, per the comment above it).
 # Mirrors the content-hash-keyed CI cache split (os-build-output): hash the
 # defconfigs + external/ Kconfig inputs + the pinned Buildroot commit, and
-# only when that changed since the last local build, wipe every package's
-# configure/build stamps so make is forced back through configure with the
+# only when that changed since the last local build, force every package
+# back through its full extract/patch/configure/build cycle with the
 # current .config. Main build only -- the migration/kernel satellites don't
 # have this class of cross-package select dependency.
+#
+# Removes each package's WHOLE directory, not just the .stamp_configured/
+# .stamp_built files: an earlier version of this only deleted those two
+# stamps, which broke any Autotools package with AUTORECONF=YES (e.g.
+# e2fsprogs). For those, Buildroot's own pkg-autotools.mk puts
+# LIBTOOL_PATCH_HOOK on PRE_CONFIGURE_HOOKS instead of POST_PATCH_HOOKS, so
+# it's gated by .stamp_configured, not .stamp_patched -- deleting only
+# .stamp_configured left the already-libtool-patched source on disk and
+# reran the (non-idempotent, no -N/-t) `patch -i .../ltmain.sh` against it
+# on the forced reconfigure, which is exactly the "Reversed (or previously
+# applied) patch detected!" failure this was hitting on every single run
+# where the hash actually changed. Re-extracting from .cache/dl (still
+# warm) is cheap; ccache still makes the recompiles fast, so the only real
+# cost of doing this instead is redoing configure/autoreconf.
 if [ "$OUTPUT_DIR" = "/work/os/output" ]; then
     BUILDROOT_REV="$(git -C "$HERE/buildroot" rev-parse HEAD 2>/dev/null || echo unknown)"
     CONFIG_INPUT_FILES="$(find "$HERE/external/configs/openmower_defconfig" "$HERE/external/configs/openmower_dev_defconfig" "$HERE/external/Config.in" "$HERE/external/package" -type f 2>/dev/null | sort)"
@@ -195,10 +209,8 @@ if [ "$OUTPUT_DIR" = "/work/os/output" ]; then
     CONFIG_HASH_FILE="$HERE/.cache/output-build.hash"
     if [ ! -f "$CONFIG_HASH_FILE" ] || [ "$(cat "$CONFIG_HASH_FILE")" != "$CONFIG_HASH" ]; then
         if [ -d "$HOST_OUTPUT_DIR/build" ]; then
-            echo ">> Buildroot config inputs changed, forcing full package reconfigure"
-            find "$HOST_OUTPUT_DIR/build" -maxdepth 2 \
-                \( -name '.stamp_configured' -o -name '.stamp_built' \) \
-                -delete
+            echo ">> Buildroot config inputs changed, forcing full package re-extract/reconfigure"
+            find "$HOST_OUTPUT_DIR/build" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
         fi
         echo -n "$CONFIG_HASH" > "$CONFIG_HASH_FILE"
     fi
