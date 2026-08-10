@@ -77,10 +77,12 @@ jobs:
             echo "is_release=$([ '${{ github.event.client_payload.is_release }}' = 'true' ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
             echo "tag_name=${{ github.event.client_payload.tag_name }}" >> "$GITHUB_OUTPUT"
             echo "build_sdcard=$([ '${{ github.event.client_payload.is_release }}' = 'true' ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+            echo "source_repo=${{ github.event.client_payload.source_repo }}" >> "$GITHUB_OUTPUT"
           else
             echo "event=manual" >> "$GITHUB_OUTPUT"
             echo "ref=${{ github.event.inputs.ref }}" >> "$GITHUB_OUTPUT"
             echo "sha=" >> "$GITHUB_OUTPUT"
+            echo "source_repo=" >> "$GITHUB_OUTPUT"
             echo "image=${{ github.event.inputs.image }}" >> "$GITHUB_OUTPUT"
             echo "is_release=${{ github.event.inputs.is_release }}" >> "$GITHUB_OUTPUT"
             echo "tag_name=${{ github.event.inputs.tag_name }}" >> "$GITHUB_OUTPUT"
@@ -369,6 +371,7 @@ jobs:
           IS_RELEASE: ${{ steps.in.outputs.is_release }}
           TAG_NAME: ${{ steps.in.outputs.tag_name }}
           REPO: ${{ github.repository }}
+          SOURCE_REPO: ${{ steps.in.outputs.source_repo }}
           RUN_ID: ${{ github.run_id }}
         run: |
           if [ -z "$TOKEN" ]; then
@@ -378,11 +381,11 @@ jobs:
           PAYLOAD=$(jq -n \
             --arg event "$EVENT" --arg ref "$REF" --arg sha "$SHA" \
             --arg version "$VERSION" --argjson is_release "$IS_RELEASE" \
-            --arg tag_name "$TAG_NAME" --arg repo "$REPO" \
+            --arg tag_name "$TAG_NAME" --arg repo "$REPO" --arg source_repo "$SOURCE_REPO" \
             --argjson run_id "$RUN_ID" --arg artifact_name "openmower-os-raucb" \
             '{event: $event, ref: $ref, sha: $sha, version: $version,
               is_release: $is_release, tag_name: $tag_name, repo: $repo,
-              run_id: $run_id, artifact_name: $artifact_name}')
+              source_repo: $source_repo, run_id: $run_id, artifact_name: $artifact_name}')
           MAX_ATTEMPTS=10
           ATTEMPT=1
           DELAY=1
