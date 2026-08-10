@@ -173,6 +173,37 @@ fi
 # docker-build an incomplete open_mower_ros tree.
 git -C "$HERE" submodule update --init --recursive
 
+# Buildroot's own incremental build only tracks a package's own SOURCE
+# changing -- not some OTHER package's Kconfig `select` newly pulling in a
+# suboption it didn't have before (e.g. wavemon selecting
+# BR2_PACKAGE_LIBNL_TOOLS onto an already-built libnl). .stamp_configured
+# survives untouched and the old build gets silently re-staged instead of
+# reconfigured: same bug class as the target/staging wipe above, one stage
+# earlier, which is exactly why wipe_output_dir deliberately leaves
+# .stamp_configured/.stamp_built alone (that's the whole point of trusting
+# Buildroot's own incremental logic for those, per the comment above it).
+# Mirrors the content-hash-keyed CI cache split (os-build-output): hash the
+# defconfigs + external/ Kconfig inputs + the pinned Buildroot commit, and
+# only when that changed since the last local build, wipe every package's
+# configure/build stamps so make is forced back through configure with the
+# current .config. Main build only -- the migration/kernel satellites don't
+# have this class of cross-package select dependency.
+if [ "$OUTPUT_DIR" = "/work/os/output" ]; then
+    BUILDROOT_REV="$(git -C "$HERE/buildroot" rev-parse HEAD 2>/dev/null || echo unknown)"
+    CONFIG_INPUT_FILES="$(find "$HERE/external/configs/openmower_defconfig" "$HERE/external/configs/openmower_dev_defconfig" "$HERE/external/Config.in" "$HERE/external/package" -type f 2>/dev/null | sort)"
+    CONFIG_HASH="$( { printf '%s\n' "$BUILDROOT_REV"; sha256sum $CONFIG_INPUT_FILES; } | sha256sum | cut -d' ' -f1)"
+    CONFIG_HASH_FILE="$HERE/.cache/output-build.hash"
+    if [ ! -f "$CONFIG_HASH_FILE" ] || [ "$(cat "$CONFIG_HASH_FILE")" != "$CONFIG_HASH" ]; then
+        if [ -d "$HOST_OUTPUT_DIR/build" ]; then
+            echo ">> Buildroot config inputs changed, forcing full package reconfigure"
+            find "$HOST_OUTPUT_DIR/build" -maxdepth 2 \
+                \( -name '.stamp_configured' -o -name '.stamp_built' \) \
+                -delete
+        fi
+        echo -n "$CONFIG_HASH" > "$CONFIG_HASH_FILE"
+    fi
+fi
+
 if [ ! -f "$HERE/keys/dev-cert.pem" ]; then
     echo ">> No RAUC dev keys found, generating (keys/)"
     "$HERE/keys-gen-dev.sh"

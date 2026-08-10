@@ -132,24 +132,55 @@ jobs:
       # pressure the way there was when this cache lived alongside
       # open_mower_ros' docker layer cache.
       #
+      # dl/ccache/openmower-cli ONLY here -- downloaded tarballs and
+      # compiled-object cache are safe to reuse no matter what the defconfig
+      # says, so a rolling key that's never invalidated is exactly right for
+      # these. output/build|host moved to their own content-hash-keyed cache
+      # below: they hold Buildroot's per-package .stamp_configured/
+      # .stamp_built, which Buildroot only invalidates on a package's own
+      # source changing, NOT on some OTHER package's Kconfig `select` newly
+      # pulling in a suboption it didn't have before (e.g. wavemon selecting
+      # BR2_PACKAGE_LIBNL_TOOLS onto an already-built libnl). Restoring an
+      # output/build from before that kind of defconfig change re-stages the
+      # old build untouched instead of reconfiguring -- silent wrong-bits,
+      # not a cache miss. Keeping it on the same rolling key as this cache
+      # meant every defconfig change needed the delete-step below to
+      # actually take effect before the NEXT run could recover; splitting it
+      # out means the key itself changes and there's nothing to invalidate.
+      #
       # Explicit restore, not the combined actions/cache@v4 (restore + an
       # automatic post-job save): the automatic post-save is unreliable
       # exactly when this job gets cancelled by a concurrency-group
       # cancel-in-progress. Explicit save steps gated on if: always() below
       # don't have that problem.
-      - name: Restore Buildroot cache
+      - name: Restore Buildroot dl/ccache cache
         uses: actions/cache/restore@v4
         with:
           path: |
             os/.cache/dl
             os/.cache/ccache
             os/.cache/openmower-cli
+          key: os-build-dl
+
+      # Content-hash key, no restore-keys fallback -- unlike the kernel
+      # caches below (where a prefix-matched near-miss is still a useful
+      # warm start because Buildroot's kernel package correctly re-runs
+      # olddefconfig + incremental kbuild on a .config diff), a stale
+      # output/build|host for a GENERIC package is exactly the silent
+      # re-staged-instead-of-reconfigured bug this split exists to avoid --
+      # a prefix fallback here would hand back the very cache entry the
+      # hash changed to get away from. Exact hash miss => empty dirs =>
+      # full fresh package build, same as a first-ever run.
+      - name: Restore Buildroot output cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
             os/output/build
             os/output/host
-          key: os-build
+          key: os-build-output-${{ steps.buildroot-rev.outputs.sha }}-${{ hashFiles('os/external/configs/openmower_defconfig', 'os/external/configs/openmower_dev_defconfig', 'os/external/Config.in', 'os/external/package/**') }}
 
-      # Content-hash keys (not the single rolling "os-build" key above): the
-      # kernel defconfigs/fragments -- and the pinned Buildroot commit,
+      # Content-hash keys (not the single rolling "os-build-dl" key above):
+      # the kernel defconfigs/fragments -- and the pinned Buildroot commit,
       # which also gates the toolchain/patches/linux.mk logic actually used
       # to build them -- change rarely, so let actions/cache's own "never
       # overwrites an existing key" behavior do the staleness check for us
@@ -161,7 +192,7 @@ jobs:
       # cache for the same Buildroot commit if the exact defconfig/fragment
       # hash doesn't match (e.g. a fragment tweak) -- still a useful warm
       # start (extracted kernel source, prior .stamp_* files) even on a
-      # miss, on top of the ccache hits the "os-build" cache's
+      # miss, on top of the ccache hits the "os-build-dl" cache's
       # os/.cache/ccache already gives any changed kernel objects
       # individually.
       - name: Restore CM4 kernel cache
@@ -211,18 +242,18 @@ jobs:
 
       # if: always() so this still runs when Build fails or the job gets
       # cancelled mid-Build -- a failed/cancelled build has still done most
-      # of the slow work (downloads, ccache, output/build|host), which is
-      # exactly what a following debugging run wants restored.
+      # of the slow work (downloads, ccache), which is exactly what a
+      # following debugging run wants restored.
       # Delete-then-save because actions/cache/save silently no-ops on an
       # existing key -- must clear it first so the save below actually lands.
-      - name: Delete stale Buildroot cache entry
+      - name: Delete stale Buildroot dl/ccache cache entry
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh cache delete os-build --repo "${{ github.repository }}" || true
+          gh cache delete os-build-dl --repo "${{ github.repository }}" || true
 
-      - name: Save Buildroot cache
+      - name: Save Buildroot dl/ccache cache
         if: always()
         uses: actions/cache/save@v4
         with:
@@ -230,12 +261,23 @@ jobs:
             os/.cache/dl
             os/.cache/ccache
             os/.cache/openmower-cli
+          key: os-build-dl
+
+      # No delete-first step needed here, same reasoning as the kernel
+      # caches below: content-hash key means an exact-hit run has nothing
+      # changed to save (no-op), and a changed defconfig/package produces a
+      # brand new key rather than needing the old one cleared first.
+      - name: Save Buildroot output cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
             os/output/build
             os/output/host
-          key: os-build
+          key: os-build-output-${{ steps.buildroot-rev.outputs.sha }}-${{ hashFiles('os/external/configs/openmower_defconfig', 'os/external/configs/openmower_dev_defconfig', 'os/external/Config.in', 'os/external/package/**') }}
 
       # No delete-first step needed for either of these two, unlike the
-      # rolling "os-build" key above -- actions/cache/save already silently
+      # rolling "os-build-dl" key above -- actions/cache/save already silently
       # no-ops on an existing key, and that's exactly what we want here: an
       # exact-hit run (nothing kernel-related changed) has nothing new to
       # save, so it shouldn't upload ~6GB of unchanged kernel build output
