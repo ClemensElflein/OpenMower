@@ -192,6 +192,7 @@ jobs:
       # hash changed to get away from. Exact hash miss => empty dirs =>
       # full fresh package build, same as a first-ever run.
       - name: Restore Buildroot output cache
+        id: restore-output
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -216,6 +217,7 @@ jobs:
       # os/.cache/ccache already gives any changed kernel objects
       # individually.
       - name: Restore CM4 kernel cache
+        id: restore-cm4
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -226,6 +228,7 @@ jobs:
             os-kernel-cm4-${{ steps.buildroot-rev.outputs.sha }}-
 
       - name: Restore CM5 kernel cache
+        id: restore-cm5
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -286,8 +289,16 @@ jobs:
 
       # No delete-first step needed here, same reasoning as the kernel
       # caches below: content-hash key means an exact-hit run has nothing
-      # changed to save (no-op), and a changed defconfig/package produces a
-      # brand new key rather than needing the old one cleared first.
+      # changed to save, and a changed defconfig/package produces a brand
+      # new key rather than needing the old one cleared first.
+      #
+      # cache-hit != 'true' -- an exact-hit restore means this key is
+      # already saved, so attempting the save again would just have
+      # actions/cache/save@v4 fail to reserve the (already-taken) key and
+      # emit a spurious "Cache save failed." warning annotation for a
+      # completely expected no-op (the save-only action warns on cacheId
+      # == -1 unconditionally, it doesn't distinguish "key already exists"
+      # from a real failure). Skip the attempt entirely instead.
       #
       # if: success() -- NOT always(), unlike the dl/ccache cache above.
       # output/build|host holds Buildroot's per-package .stamp_patched/
@@ -305,7 +316,7 @@ jobs:
       # os-build-dl cache above, so skipping this save on failure costs
       # nothing but a slower next attempt.
       - name: Save Buildroot output cache
-        if: success()
+        if: success() && steps.restore-output.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -314,21 +325,27 @@ jobs:
           key: os-build-output-${{ steps.buildroot-rev.outputs.sha }}-${{ hashFiles('os/external/configs/openmower_defconfig', 'os/external/configs/openmower_dev_defconfig', 'os/external/Config.in', 'os/external/package/**') }}
 
       # No delete-first step needed for either of these two, unlike the
-      # rolling "os-build-dl" key above -- actions/cache/save already silently
-      # no-ops on an existing key, and that's exactly what we want here: an
-      # exact-hit run (nothing kernel-related changed) has nothing new to
-      # save, so it shouldn't upload ~6GB of unchanged kernel build output
-      # just to re-produce the cache entry that's already there.
+      # rolling "os-build-dl" key above -- an exact-hit run (nothing
+      # kernel-related changed) has nothing new to save, so it shouldn't
+      # upload ~6GB of unchanged kernel build output just to re-produce the
+      # cache entry that's already there.
+      #
+      # cache-hit != 'true' -- same reasoning as the Buildroot output cache
+      # above: on an exact hit the key is already saved, so skip the
+      # attempt rather than let actions/cache/save@v4 fail to reserve it
+      # and emit a spurious "Cache save failed." warning for an expected
+      # no-op. Note cache-hit is only 'true' on an exact primary-key match,
+      # not a restore-keys prefix fallback -- a fallback-restored near-miss
+      # still has genuinely new content (this key itself was never saved),
+      # so it correctly falls through and saves.
       #
       # if: success() -- same reasoning as the main "Save Buildroot output
       # cache" step above: these hold per-package .stamp_patched/
-      # .stamp_configured/.stamp_built state too, and the exact-key restore
-      # (no restore-keys fallback helps once the exact key itself exists)
-      # means a failed/cancelled run's half-patched tree would otherwise
-      # poison this key permanently for the same (buildroot rev, kernel
-      # defconfig) pair.
+      # .stamp_configured/.stamp_built state too, and a failed/cancelled
+      # run's half-patched tree would otherwise poison this key permanently
+      # for the same (buildroot rev, kernel defconfig) pair.
       - name: Save CM4 kernel cache
-        if: success()
+        if: success() && steps.restore-cm4.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -337,7 +354,7 @@ jobs:
           key: os-kernel-cm4-${{ steps.buildroot-rev.outputs.sha }}-${{ hashFiles('os/external/configs/openmower_kernel-cm4_defconfig', 'os/external/board/openmower-kernel/kernel-fragment-common.config', 'os/external/board/openmower-kernel/kernel-fragment-cm4.config') }}
 
       - name: Save CM5 kernel cache
-        if: success()
+        if: success() && steps.restore-cm5.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
