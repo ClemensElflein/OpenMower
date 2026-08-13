@@ -33,8 +33,20 @@ CONFIG_DEV=/dev/mmcblk0p1
 MNT=/run/openmower/autoboot
 STATE_DIR=/data/.openmower-os/rauc
 
-part_of() { [ "$1" = "A" ] && echo 2 || echo 3; }
-other_of() { [ "$1" = "A" ] && echo B || echo A; }
+part_of() {
+    case "$1" in
+        A) echo 2 ;;
+        B) echo 3 ;;
+        *) echo "tryboot-backend: invalid slot '$1'" >&2; exit 1 ;;
+    esac
+}
+other_of() {
+    case "$1" in
+        A) echo B ;;
+        B) echo A ;;
+        *) echo "tryboot-backend: invalid slot '$1'" >&2; exit 1 ;;
+    esac
+}
 
 booted_slot() {
     sed -n 's/.*rauc\.slot=\([AB]\).*/\1/p' /proc/cmdline
@@ -45,8 +57,35 @@ mount_cfg() {
     mountpoint -q "$MNT" || mount -t vfat "$CONFIG_DEV" "$MNT"
 }
 
+# rauc-mark-good.timer fires unconditionally every boot, independent of
+# whatever else might be calling into this same script (an OTA's
+# set-primary) around the same time -- both go through mount_cfg()'s
+# non-atomic mount-check and write_autoboot()'s fixed-name temp file on the
+# same FAT partition. mkdir is atomic even on vfat, so it doubles as a
+# cheap cross-process lock; a build-time symlink to flock isn't guaranteed
+# present.
+LOCK_DIR=/run/openmower/autoboot.lock
+
+acquire_lock() {
+    mkdir -p /run/openmower
+    n=0
+    while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+        n=$((n + 1))
+        if [ "$n" -ge 10 ]; then
+            echo "tryboot-backend: timed out waiting for the autoboot lock" >&2
+            exit 1
+        fi
+        sleep 1
+    done
+}
+
+release_lock() {
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+
 cleanup() {
     mountpoint -q "$MNT" 2>/dev/null && umount "$MNT" || true
+    release_lock
 }
 trap cleanup EXIT
 
@@ -79,6 +118,7 @@ primary_slot() {
 }
 
 mkdir -p "$STATE_DIR"
+acquire_lock
 
 case "$1" in
     get-primary)
