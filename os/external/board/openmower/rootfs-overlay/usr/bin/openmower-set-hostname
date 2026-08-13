@@ -13,4 +13,20 @@ if [ ! -s "$HOSTNAME_FILE" ]; then
     echo "openmower" > "$HOSTNAME_FILE"
 fi
 
-hostname "$(cat "$HOSTNAME_FILE")"
+# Validate before handing it to `hostname` -- a bad hand-edit (empty,
+# too long, leading/trailing hyphen, anything outside [A-Za-z0-9-]) would
+# otherwise make `hostname` fail and, under set -eu, fail this oneshot on
+# every subsequent boot until fixed manually. Fall back instead of failing.
+NEW_HOSTNAME="$(head -n1 "$HOSTNAME_FILE" | tr -d '[:space:]')"
+case "$NEW_HOSTNAME" in
+    "" | -* | *- | *[!A-Za-z0-9-]*)
+        VALID=0 ;;
+    *)
+        VALID=1 ;;
+esac
+if [ "$VALID" != 1 ] || [ "${#NEW_HOSTNAME}" -gt 63 ]; then
+    echo "openmower-set-hostname: '$NEW_HOSTNAME' in $HOSTNAME_FILE is not a valid hostname, falling back to 'openmower'" >&2
+    NEW_HOSTNAME="openmower"
+fi
+
+hostname "$NEW_HOSTNAME"
