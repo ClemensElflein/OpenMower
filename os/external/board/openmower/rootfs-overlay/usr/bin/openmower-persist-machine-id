@@ -38,12 +38,21 @@ fi
 # than trusting its recorded fields, so once our bind-mount is up it matches
 # that stale early entry's device (now indistinguishable from /data's) for
 # completely unrelated queries like `df /data` -- confirmed against busybox's
-# own source. No-ops harmlessly on this script's second invocation (from
-# openmower-etc-overlay.service, re-asserting after the /etc overlay mount
-# shadows this one): nothing else is stacked here at that point.
-if mountpoint -q /etc/machine-id; then
-    umount /etc/machine-id
-fi
+# own source.
+#
+# `mountpoint -q` itself turns out to have the opposite problem: on this
+# script's second invocation (from openmower-etc-overlay.service, after the
+# /etc overlay mount has shadowed the original bind-mount) it still reports
+# /etc/machine-id as mounted -- apparently a stale /proc/mounts path match,
+# not a live stat -- so the guarded `umount` below ran anyway and failed
+# with "not mounted" (exit 32), and `set -eu` took the whole script down
+# with it, marking openmower-etc-overlay.service failed even though the
+# overlay mount itself had already succeeded. Confirmed on real hardware.
+# Attempting the umount unconditionally and ignoring failure sidesteps the
+# unreliable check entirely: harmless either way; either it's really
+# mounted and this clears it, or it's not and umount's own no-op error is
+# swallowed.
+umount /etc/machine-id 2>/dev/null || true
 
 # Make the persistent ID the one exposed to services started after this unit,
 # including systemd-networkd.
