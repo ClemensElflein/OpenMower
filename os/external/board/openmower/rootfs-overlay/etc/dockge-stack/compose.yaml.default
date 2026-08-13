@@ -1,13 +1,12 @@
-# Upstream compose.yaml (github.com/louislam/dockge, master branch, as
-# fetched for this port -- see README if bumping the pinned `image:` tag).
-# DOCKGE_ENABLE_CONSOLE=false added on top: ttyd (see /etc/webterminal-stack)
-# already covers in-browser console access.
+# Upstream compose.yaml (github.com/louislam/dockge, master) with
+# DOCKGE_ENABLE_CONSOLE=false added -- ttyd (see /etc/webterminal-stack)
+# already covers in-browser console access. See README before bumping the
+# pinned image tag.
 #
-# /opt/stacks and /opt/dockge are symlinks into /data (see post-build.sh) --
-# host path == container path is required below (Dockge's own comment).
-# data/ (Dockge's SQLite DB) is pre-seeded with a fixed fleet-wide DB (auth
-# disabled, one jwtSecret, same on every device) -- see
-# rootfs-overlay/etc/tmpfiles.d/docker-stacks.conf and README's
+# /opt/stacks and /opt/dockge are symlinks into /data (see post-build.sh);
+# host path must equal container path below (Dockge's own requirement).
+# data/ (Dockge's SQLite DB) ships pre-seeded fleet-wide (auth disabled,
+# one shared jwtSecret) -- see tmpfiles.d/docker-stacks.conf and README's
 # "Known trade-offs".
 services:
   dockge:
