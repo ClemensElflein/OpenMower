@@ -11,7 +11,6 @@ Name=br0
 # for the internal CM4<->xCore link (172.16.78.0/24) -- unchanged from
 # before, just now reachable from usb0 too.
 DHCP=yes
-MulticastDNS=yes
 Address=172.16.78.1/24
 
 [DHCPv4]
