@@ -1,10 +1,19 @@
 [Unit]
 Description=Mark current RAUC slot as good
 Documentation=https://rauc.readthedocs.io
-Requires=rauc.service
+# Wants=, not Requires=: a transient rauc.service start failure (unrelated
+# to whether this boot's slot is actually good) shouldn't skip this unit
+# outright -- that would silently roll back to the other slot on the next
+# plain reboot even though nothing was wrong with the new one. Let it try
+# and retry instead (Restart= below).
+Wants=rauc.service
 After=rauc.service
 RequiresMountsFor=/data
+StartLimitIntervalSec=120s
+StartLimitBurst=5
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/rauc status mark-good
+Restart=on-failure
+RestartSec=10s
