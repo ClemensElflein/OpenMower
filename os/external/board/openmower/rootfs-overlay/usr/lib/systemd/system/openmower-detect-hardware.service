@@ -1,10 +1,15 @@
 [Unit]
 Description=Detect which board (CM4/CM5) this image is running on
-# Writes into /etc/openocd/ -- needs the writable /etc overlay mounted first,
-# same ordering requirement openmower-etc-overlay.service's own post-build.sh
-# comment already documents getting bitten by once (for /etc/shadow).
+# Writes into /etc/openocd/ -- wants the writable /etc overlay mounted
+# first, same ordering requirement openmower-etc-overlay.service's own
+# post-build.sh comment already documents getting bitten by once (for
+# /etc/shadow). Wants=, not Requires=: the script writes the more
+# important /run/openmower/hardware (read by other services, no /etc
+# needed) before it ever touches /etc, so a failed overlay mount shouldn't
+# take that down too -- it'll just fail on the openocd symlink step,
+# visibly, instead of the whole unit silently never running at all.
 After=openmower-etc-overlay.service
-Requires=openmower-etc-overlay.service
+Wants=openmower-etc-overlay.service
 Before=multi-user.target
 
 [Service]
