@@ -1,8 +1,8 @@
 # Host-side convenience wrapper. Real work happens in the container (build.sh).
 
-.PHONY: image image-dev image-migration shell menuconfig menuconfig-dev \
+.PHONY: image image-migration shell menuconfig \
 	menuconfig-migration menuconfig-kernel-cm4 menuconfig-kernel-cm5 \
-	linux-menuconfig savedefconfig savedefconfig-dev savedefconfig-migration \
+	linux-menuconfig savedefconfig savedefconfig-migration \
 	savedefconfig-kernel-cm4 savedefconfig-kernel-cm5 clean distclean
 
 # Unified CM4+CM5 image -- also builds the two kernel-only satellites
@@ -10,11 +10,6 @@
 # way, see build.sh and os/README.md.
 image:
 	./build.sh image
-
-# Dev variant: gdbserver + host gdb + openssh, see external/configs/openmower_dev_defconfig.
-# Shares the same output/ dir as prod; switch back with `make image`.
-image-dev:
-	DEFCONFIG=openmower_dev_defconfig ./build.sh image
 
 # Migration installer, see external/configs/openmower_cm4_migration_defconfig
 # and scripts/migrate-to-openmower.sh. Needs a prior `make image` (pulls the
@@ -28,9 +23,6 @@ shell:
 
 menuconfig:
 	./build.sh menuconfig
-
-menuconfig-dev:
-	DEFCONFIG=openmower_dev_defconfig ./build.sh menuconfig
 
 menuconfig-migration:
 	./build.sh menuconfig-migration
@@ -49,10 +41,6 @@ linux-menuconfig:
 # Write the current .config back to external/configs/openmower_defconfig
 savedefconfig:
 	./build.sh savedefconfig BR2_DEFCONFIG=/work/os/external/configs/openmower_defconfig
-
-# Write the current .config back to external/configs/openmower_dev_defconfig
-savedefconfig-dev:
-	./build.sh savedefconfig BR2_DEFCONFIG=/work/os/external/configs/openmower_dev_defconfig
 
 # Write the current .config back to external/configs/openmower_cm4_migration_defconfig
 savedefconfig-migration:

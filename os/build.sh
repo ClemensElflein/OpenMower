@@ -21,8 +21,8 @@ IMAGE_TAG=openmower-buildroot
 DEFCONFIG="${DEFCONFIG:-openmower_defconfig}"
 SUBCOMMAND="${1:-image}"
 
-# The main build (openmower_defconfig/openmower_dev_defconfig) has no
-# kernel of its own (BR2_LINUX_KERNEL=n) -- one unified image needs both
+# The main build (openmower_defconfig) has no kernel of its own
+# (BR2_LINUX_KERNEL=n) -- one unified image needs both
 # CM4/bcm2711 and CM5/bcm2712 kernels, and Buildroot only ever builds one
 # kernel per output tree, so each comes from its own tiny satellite build
 # instead, in its own output dir, merged into the main rootfs by
@@ -81,7 +81,7 @@ detect_branch() {
 OPENMOWER_GIT_BRANCH="$(detect_branch)"
 
 # The migration initramfs gets its OWN output dir (output-migration), not
-# output/. It shares no packages with the prod/dev rootfs (systemd vs.
+# output/. It shares no packages with the main rootfs (systemd vs.
 # no-init, squashfs vs. cpio, ...), and Buildroot has no mechanism to prune
 # a package's installed files from target/ when a defconfig switch disables
 # it -- sharing output/ with prod produced a rootfs.cpio with the *entire*
@@ -169,7 +169,7 @@ git -C "$HERE" submodule update --init --recursive
 # the still-warm .cache/dl is cheap; ccache keeps the recompiles fast.
 if [ "$OUTPUT_DIR" = "/work/os/output" ]; then
     BUILDROOT_REV="$(git -C "$HERE/buildroot" rev-parse HEAD 2>/dev/null || echo unknown)"
-    CONFIG_INPUT_FILES="$(find "$HERE/external/configs/openmower_defconfig" "$HERE/external/configs/openmower_dev_defconfig" "$HERE/external/Config.in" "$HERE/external/package" -type f 2>/dev/null | sort)"
+    CONFIG_INPUT_FILES="$(find "$HERE/external/configs/openmower_defconfig" "$HERE/external/Config.in" "$HERE/external/package" -type f 2>/dev/null | sort)"
     CONFIG_HASH="$( { printf '%s\n' "$BUILDROOT_REV"; sha256sum $CONFIG_INPUT_FILES; } | sha256sum | cut -d' ' -f1)"
     CONFIG_HASH_FILE="$HERE/.cache/output-build.hash"
     if [ ! -f "$CONFIG_HASH_FILE" ] || [ "$(cat "$CONFIG_HASH_FILE")" != "$CONFIG_HASH" ]; then
@@ -385,10 +385,9 @@ case "$SUBCOMMAND" in
         # wholesale-regenerates output/.config FROM that checked-in file. A
         # menuconfig change that's only ever been saved to output/.config
         # (not back to here) is silently gone the next time you build.
-        # DEFCONFIG=openmower_dev_defconfig ./build.sh savedefconfig to
-        # target the dev variant instead of the default; the -kernel-cm4/
-        # -kernel-cm5 suffixes target those satellite builds instead (their
-        # own OUTPUT_DIR/DEFCONFIG resolved above, same as menuconfig-*).
+        # The -kernel-cm4/-kernel-cm5 suffixes target those satellite builds
+        # instead (their own OUTPUT_DIR/DEFCONFIG resolved above, same as
+        # menuconfig-*).
         exec docker run "${DOCKER_ARGS[@]}" "$IMAGE_TAG" "${BR_MAKE[@]}" \
             savedefconfig BR2_DEFCONFIG=/work/os/external/configs/$DEFCONFIG
         ;;
