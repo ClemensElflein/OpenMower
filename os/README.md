@@ -346,9 +346,8 @@ see that file's own comment and the risk list below. Independent of the
 USB gadget path entirely, which is the point: it's what you reach for when
 ttyGS0/dwc2 itself is what's misbehaving.
 
-Login over SSH/`openmower-shell`:
-`root` / `openmower` (**development image only** — production must switch
-to key-only auth).
+Login over SSH/`openmower-shell`: `root` / `openmower`, the same on every
+device — change it (`passwd`) if you want something else.
 `passwd` persists across reboots and RAUC A/B updates: `openmower-etc-overlay.service`
 overlays the whole of `/etc` with a writable layer on `/data` at boot (`mkdir
 -p`/`mount -t overlay`, `/data/.openmower-os/etc-overlay/{upper,work}`), so `passwd`
@@ -625,7 +624,6 @@ docker/           build container (Buildroot toolchain only)
 buildroot/        Buildroot submodule (2026.02 LTS)
 external/         BR2_EXTERNAL tree: defconfigs, board files, own packages
   configs/openmower_defconfig            main build (rootfs/userland, no kernel)
-  configs/openmower_dev_defconfig        same, + CLion remote-debug tooling
   configs/openmower_kernel-cm4_defconfig kernel-only satellite, CM4/bcm2711
   configs/openmower_kernel-cm5_defconfig kernel-only satellite, CM5/bcm2712
   configs/openmower_cm4_migration_defconfig  CM4-only migration installer, see "Migrating..."
