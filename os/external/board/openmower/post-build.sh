@@ -214,28 +214,15 @@ ln -s /data/.openmower-os/dropbear "$TARGET_DIR/etc/dropbear"
 # Root's password persistence lives entirely at runtime (see
 # openmower-persist-etc / openmower-etc-overlay.service), NOT here or in
 # post-fakeroot.sh -- a build-time symlink over /etc/shadow looks tempting
-# (same shape as dropbear's host keys above) but is actually unsafe: without
-# BR2_PER_PACKAGE_DIRECTORIES (not enabled here), /etc/shadow is written
-# exactly ONCE, by skeleton-init-common's own install step, into the shared
-# $(TARGET_DIR) that Buildroot reuses incrementally across builds -- nothing
-# ever recreates it. A symlink placed here (or in post-fakeroot.sh, or via
-# the rootfs overlay -- tried all three, confirmed against a real build)
-# breaks EVERY future rebuild permanently: Buildroot's own root-password
-# baking (BR2_TARGET_GENERIC_ROOT_PASSWD, skeleton-init-common's
-# SET_ROOT_PASSWD hook, part of TARGET_FINALIZE_HOOKS) runs at the very
-# start of target-finalize, before any of our own hooks get a chance to
-# fix it back, and fails with "shadow: No such file or directory" forever
-# after.
-#
-# A single-file bind-mount at boot (tried second, also reverted) doesn't
-# work either, for a completely different reason: `passwd` doesn't write
-# /etc/shadow directly, it creates /etc/shadow+ next to it and renames it
-# into place -- confirmed on real hardware ("can't create '/etc/shadow+':
-# Read-only file system"). Bind-mounting one file doesn't make its
-# ENCLOSING directory (/etc, on read-only squashfs) able to hold a new
-# entry. openmower-persist-etc overlays the whole of /etc instead --
-# verified against a real kernel (privileged container) before shipping
-# it, not just reasoned about.
+# (same shape as dropbear's host keys above) but breaks EVERY future
+# rebuild permanently: without BR2_PER_PACKAGE_DIRECTORIES, /etc/shadow is
+# written exactly once by skeleton-init-common into the shared
+# $(TARGET_DIR) Buildroot reuses incrementally, and Buildroot's own
+# root-password baking (SET_ROOT_PASSWD, part of TARGET_FINALIZE_HOOKS)
+# runs before any of our hooks get a chance to fix a symlink back --
+# confirmed against a real build ("shadow: No such file or directory"
+# forever after). See openmower-persist-etc for why a plain boot-time
+# bind-mount doesn't work either, and the actual fix.
 
 # Same reasoning for the auxiliary Docker stack (Mosquitto, OpenMowerApp,
 # Dockge, ttyd): /opt/stacks and /opt/dockge are the paths Dockge's own
