@@ -57,8 +57,22 @@ mount -t configfs none /sys/kernel/config 2>/dev/null || true
 modprobe libcomposite
 
 if [ -d "$GADGET" ]; then
-	# Already assembled (e.g. service restarted) -- nothing to do.
-	exit 0
+	if [ -s "$GADGET/UDC" ]; then
+		# Fully assembled and already bound to a UDC (e.g. service
+		# restarted) -- nothing to do.
+		exit 0
+	fi
+	# Directory exists but was never bound -- a previous run was killed
+	# mid-setup (TimeoutStartSec=10s on the unit). ConfigFS gadgets can't
+	# be built incrementally on top of a half-linked tree, so tear down
+	# whatever's there and rebuild from scratch rather than silently
+	# short-circuiting on a gadget that was never actually usable.
+	rm -f "$GADGET"/configs/c.1/acm.usb0 "$GADGET"/configs/c.1/acm.usb1 "$GADGET"/configs/c.1/ncm.usb0
+	rmdir "$GADGET"/configs/c.1/strings/0x409 2>/dev/null || true
+	rmdir "$GADGET"/configs/c.1 2>/dev/null || true
+	rmdir "$GADGET"/functions/acm.usb0 "$GADGET"/functions/acm.usb1 "$GADGET"/functions/ncm.usb0 2>/dev/null || true
+	rmdir "$GADGET"/strings/0x409 2>/dev/null || true
+	rmdir "$GADGET" 2>/dev/null || true
 fi
 
 mkdir -p "$GADGET"
