@@ -105,46 +105,26 @@ fi
 mkdir -p "$HERE/.cache/dl" "$HERE/.cache/ccache" "$HERE/output" "$HERE/output-migration" \
     "$KERNEL_CM4_HOST_OUTPUT_DIR" "$KERNEL_CM5_HOST_OUTPUT_DIR"
 
-# Every image/image-migration build forces a fresh target/ + staging/ --
-# Buildroot's own incremental build never deletes a target-dir file whose
-# source (rootfs-overlay entry, or a line removed from some package's
-# INSTALL_TARGET_CMDS) disappeared; it only adds/updates. A stale unit file
-# left behind that way, with no matching system-preset line, silently falls
-# through to that preset's own default and ships live regardless -- that's
-# how a .service deleted from this repo weeks earlier was still running,
-# and boot-blocking, on a real device.
+# Every image/image-migration build forces a fresh target/+staging/+images/:
+# Buildroot's incremental build never removes a target-dir file whose
+# source (an overlay entry, an INSTALL_TARGET_CMDS line) disappeared, so a
+# unit deleted from this repo can silently keep shipping and running on a
+# real device. Not a full `rm -rf $(O)` -- that re-runs configure on every
+# package every time. Instead: wipe target/staging/images and delete each
+# package's *_installed stamps (unconditionally, no staleness detection to
+# get wrong); Make's own dependency graph then reinstalls everything into
+# the empty target/, while .stamp_configured/.stamp_built survive so
+# unchanged packages still skip straight past extract/build. images/ is a
+# third install stage some packages (e.g. rpi-firmware) use besides
+# target/staging, and needs wiping too or Buildroot considers them already
+# installed while their actual output is gone.
 #
-# This is NOT a full `rm -rf $(O)` (that was the first fix -- correct, but
-# needlessly paid for re-running configure on every one of ~80 packages
-# every time, since Buildroot's own compiled-output stamps live in the
-# same tree it was wiping). Instead: wipe only target/ and staging/, and
-# delete every package's .stamp_target_installed/.stamp_staging_installed
-# -- unconditionally, no "did this package change" logic, so there's no
-# detector here that can be wrong the way an actual staleness-detector
-# could be. Make's own dependency graph then reinstalls EVERY package
-# (compiled or not) into the now-empty target/, which is what actually
-# guarantees no stale file survives -- while leaving .stamp_built alone
-# means a package whose source didn't change skips straight past
-# extract/patch/configure/build entirely, using Buildroot's own mature
-# incremental logic for that part, unchanged and untouched by us.
-#
-# The one gap that logic doesn't cover on its own: SITE_METHOD=local packages
-# (openmower-ros, improv-ble), where Buildroot doesn't auto-detect the local
-# source tree changing underneath an already-built .stamp_built --
-# scripts/rebuild-changed-local-packages.sh (below) exists specifically for
-# that.
+# The one gap this doesn't cover: SITE_METHOD=local packages (openmower-ros,
+# improv-ble), where Buildroot doesn't auto-detect the local source tree
+# changing under an already-built .stamp_built -- see
+# scripts/rebuild-changed-local-packages.sh below.
 HOST_OUTPUT_DIR="$HERE${OUTPUT_DIR#/work/os}"
 
-# Found by testing, not by inspection: a package can also install straight
-# into images/ (.stamp_images_installed, pkg-generic.mk's
-# TARGET_INSTALL_IMAGES -- e.g. rpi-firmware) as a THIRD install stage
-# distinct from target/staging. Missing it here didn't corrupt anything
-# silently -- Buildroot considered rpi-firmware already "installed" (stamp
-# present) while its actual output sat in the images/ dir this script had
-# just deleted, so post-image.sh failed loudly and immediately on the
-# missing files. Loud-and-immediate is exactly the failure mode this whole
-# approach depends on staying in -- but still worth getting right rather
-# than relying on it.
 wipe_output_dir() {
     local dir="$1"
     rm -rf "$dir/target" "$dir/staging" "$dir/images"
@@ -173,35 +153,20 @@ fi
 # docker-build an incomplete open_mower_ros tree.
 git -C "$HERE" submodule update --init --recursive
 
-# Buildroot's own incremental build only tracks a package's own SOURCE
-# changing -- not some OTHER package's Kconfig `select` newly pulling in a
-# suboption it didn't have before (e.g. wavemon selecting
-# BR2_PACKAGE_LIBNL_TOOLS onto an already-built libnl). .stamp_configured
-# survives untouched and the old build gets silently re-staged instead of
-# reconfigured: same bug class as the target/staging wipe above, one stage
-# earlier, which is exactly why wipe_output_dir deliberately leaves
-# .stamp_configured/.stamp_built alone (that's the whole point of trusting
-# Buildroot's own incremental logic for those, per the comment above it).
-# Mirrors the content-hash-keyed CI cache split (os-build-output): hash the
-# defconfigs + external/ Kconfig inputs + the pinned Buildroot commit, and
-# only when that changed since the last local build, force every package
-# back through its full extract/patch/configure/build cycle with the
-# current .config. Main build only -- the migration/kernel satellites don't
-# have this class of cross-package select dependency.
-#
-# Removes each package's WHOLE directory, not just the .stamp_configured/
-# .stamp_built files: an earlier version of this only deleted those two
-# stamps, which broke any Autotools package with AUTORECONF=YES (e.g.
-# e2fsprogs). For those, Buildroot's own pkg-autotools.mk puts
-# LIBTOOL_PATCH_HOOK on PRE_CONFIGURE_HOOKS instead of POST_PATCH_HOOKS, so
-# it's gated by .stamp_configured, not .stamp_patched -- deleting only
-# .stamp_configured left the already-libtool-patched source on disk and
-# reran the (non-idempotent, no -N/-t) `patch -i .../ltmain.sh` against it
-# on the forced reconfigure, which is exactly the "Reversed (or previously
-# applied) patch detected!" failure this was hitting on every single run
-# where the hash actually changed. Re-extracting from .cache/dl (still
-# warm) is cheap; ccache still makes the recompiles fast, so the only real
-# cost of doing this instead is redoing configure/autoreconf.
+# Buildroot's incremental build only tracks a package's own source
+# changing, not another package's Kconfig `select` newly pulling in a
+# suboption on an already-built package (e.g. wavemon selecting
+# BR2_PACKAGE_LIBNL_TOOLS onto an already-built libnl) -- .stamp_configured
+# survives untouched and the stale build gets silently re-staged instead
+# of reconfigured. Main build only (the migration/kernel satellites don't
+# have this class of cross-package dependency): hash the defconfigs +
+# external/ Kconfig inputs + the pinned Buildroot commit, and when that
+# changed since the last local build, remove every package's whole build/
+# directory (not just its .stamp_configured/.stamp_built -- deleting only
+# those stamps left an already-libtool-patched AUTORECONF=YES package's
+# source on disk and reran a non-idempotent patch against it, producing
+# "Reversed (or previously applied) patch detected!"). Re-extracting from
+# the still-warm .cache/dl is cheap; ccache keeps the recompiles fast.
 if [ "$OUTPUT_DIR" = "/work/os/output" ]; then
     BUILDROOT_REV="$(git -C "$HERE/buildroot" rev-parse HEAD 2>/dev/null || echo unknown)"
     CONFIG_INPUT_FILES="$(find "$HERE/external/configs/openmower_defconfig" "$HERE/external/configs/openmower_dev_defconfig" "$HERE/external/Config.in" "$HERE/external/package" -type f 2>/dev/null | sort)"
@@ -222,42 +187,22 @@ if [ ! -f "$HERE/keys/dev-cert.pem" ]; then
 fi
 
 # --- Vendor the open_mower_ros ROS Noetic install tree (arm64) --------------
-# Produced on the HOST (not nested inside the toolchain container below —
-# no docker-in-docker). The buildroot package external/package/openmower-ros
+# Produced on the HOST (no docker-in-docker) -- external/package/openmower-ros
 # vendors the resulting tree wholesale into the target rootfs; see its
-# Config.in help text for the runtime design (systemd RootDirectory=
-# isolation, no container runtime on-device).
+# Config.in help text for the runtime design.
 #
-# Three sources, picked by OMR_SOURCE:
-#   ghcr        (default) — pull the prebuilt multi-arch image CI already
-#                            publishes, just extract it. No arm64 emulation
-#                            needed (no code runs, just image layers).
-#   local-image            — OMR_IMAGE is already sitting in the local
-#                             docker daemon, no pull. What CI uses: the
-#                             open_mower_ros "Build" workflow already builds
-#                             the real arm64 image from this exact PR/commit
-#                             (native arm64 runner, no emulation there
-#                             either) and exports it as an artifact; this OS
-#                             build just docker-loads and vendors that,
-#                             instead of pulling an unrelated ghcr tag that
-#                             may not even reflect this change yet.
-#   local                  — cross-build docker/Dockerfile locally via
-#                             docker buildx --platform linux/arm64
-#                             (emulated, slow) — use this to test
-#                             open_mower_ros changes on your own machine
-#                             before they're pushed/built in CI.
-# Override the image with OMR_IMAGE, e.g. a specific sha/PR/version tag.
+# Three sources, picked by OMR_SOURCE (override the image with OMR_IMAGE):
+#   ghcr        (default) -- pull the prebuilt multi-arch image CI publishes.
+#   local-image            -- OMR_IMAGE already in the local docker daemon
+#                              (what CI uses -- already built from this
+#                              exact commit, no pull needed).
+#   local                  -- cross-build docker/Dockerfile locally
+#                              (emulated, slow) -- test open_mower_ros
+#                              changes before they're pushed/built in CI.
 #
-# Either way this is gated behind a content-hash key so a normal
-# ./build.sh doesn't pay for a re-pull/rebuild every time — only when the
-# resolved image (ghcr) or this repo's HEAD (local) changed.
-#
-# Skipped entirely for the migration and kernel-satellite build variants:
-# the migration initramfs is a tiny busybox image with no openmower-ros
-# package in it, and the kernel-cm4/kernel-cm5 satellites build no rootfs
-# at all (BR2_LINUX_KERNEL=y and nothing else) -- pulling multi-GB of
-# ROS/Ubuntu for either would be pure waste. Only the main build (output/)
-# actually vendors this.
+# Gated behind a content-hash key so a normal ./build.sh doesn't pay for a
+# re-pull/rebuild every time. Skipped for the migration/kernel-satellite
+# variants -- neither builds a rootfs that needs ROS at all.
 if [ "$OUTPUT_DIR" = "/work/os/output" ]; then
     OMR_SOURCE="${OMR_SOURCE:-ghcr}"
     OMR_IMAGE="${OMR_IMAGE:-ghcr.io/clemenselflein/open_mower_ros:edge}"
@@ -323,24 +268,14 @@ if [ "$OUTPUT_DIR" = "/work/os/output" ]; then
     fi
 
     # --- Vendor openmower-cli: always the latest GitHub release ------------
-    # Deliberately not Buildroot's normal pinned-URL + static .hash download
-    # (what this used to be): a moving "latest" target has no fixed bytes to
-    # pin a hash against ahead of time, and BR2_DOWNLOAD_FORCE_CHECK_HASHES=y
-    # (both defconfigs) would refuse an unverified download outright. Same
-    # shape as the open_mower_ros vendoring above instead: resolve here,
-    # stage into .cache/, gate on a content-hash key so a normal ./build.sh
-    # doesn't re-fetch every time -- only when the latest release actually
-    # changed. openmower-cli.mk is SITE_METHOD=local pointed at this cache,
-    # matching openmower-ros.mk/improv-ble.mk, neither of which uses
-    # Buildroot's hash mechanism either.
-    #
-    # Trade-off worth naming: this trades reproducibility (same build.sh
-    # invocation can fetch different bytes on different days) and a human
-    # review gate (bumping a pinned tag was an explicit, reviewable diff) for
-    # always being current. Integrity-wise it's not actually a downgrade --
-    # the old pinned .hash was itself just whatever `sha256sum` produced from
-    # the same kind of plain HTTPS download, not an independently signed
-    # attestation from upstream.
+    # Not Buildroot's normal pinned-URL + static .hash: a moving "latest"
+    # target has no fixed bytes to pin ahead of time, and
+    # BR2_DOWNLOAD_FORCE_CHECK_HASHES=y would refuse an unverified download
+    # outright. Same shape as the open_mower_ros vendoring above: resolve
+    # here, stage into .cache/, gate on a content-hash key. Trades a human
+    # review gate on version bumps for always being current -- not an
+    # integrity downgrade either way, since the old pinned .hash was itself
+    # just a plain sha256sum of an HTTPS download, not a signed attestation.
     OPENMOWER_CLI_REPO="ClemensElflein/openmower-cli"
     OPENMOWER_CLI_CACHE="$HERE/.cache/openmower-cli"
     OPENMOWER_CLI_KEYFILE="$HERE/.cache/openmower-cli.key"
