@@ -107,6 +107,19 @@ def write_wifi_config(ssid: bytes, password: str) -> None:
     tmp.rename(WIFI_CONF)
 
 
+def board_name() -> str:
+    """Real board model for CMD_GET_DEVICE_INFO, from openmower-detect-hardware's
+    boot-time write to /run/openmower/hardware ("cm4"/"cm5") -- this image is
+    unified and boots on either, so nothing about the model is fixed at build
+    time. Falls back to CM4 (this daemon's historical, pre-unified-image
+    default) if that file is missing or the value is unrecognized."""
+    try:
+        hw = Path("/run/openmower/hardware").read_text().strip()
+    except OSError:
+        hw = ""
+    return {"cm4": "RaspberryPiCM4", "cm5": "RaspberryPiCM5"}.get(hw, "RaspberryPiCM4")
+
+
 def wifi_connected() -> bool:
     status = run(["wpa_cli", "-i", "wlan0", "status"]).stdout
     if "wpa_state=COMPLETED" not in status:
@@ -212,7 +225,7 @@ class ImprovDaemon:
             pass
         self.send_result(
             cmd,
-            ["OpenMower OS", version, "RaspberryPiCM4", socket.gethostname()],
+            ["OpenMower OS", version, board_name(), socket.gethostname()],
         )
 
     def provision(self, ssid: bytes, password: str) -> None:
