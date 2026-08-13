@@ -1,7 +1,7 @@
-# OpenMower config (/etc/openmower/openmower.conf). Ships with safe
-# defaults; put your own values in /data/openmower/openmower.conf instead --
-# it survives OS updates and overrides this file. Don't edit this file
-# directly, changes are lost on the next update.
+# OpenMower configuration. Persists across OS updates -- edit it directly
+# for this device's hardware platform, mower type, and other settings.
+# (Raspberry Pi firmware settings -- antenna, fan, UART -- live separately
+# in /data/boot/usercfg.txt.)
 
 #
 # Specify the hardware platform you are using.
