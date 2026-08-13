@@ -26,29 +26,14 @@
 # insert or removal -- dwc2 just stops presenting the device side
 # electrically while in host mode.
 #
-# Known benign kernel WARNING, deliberately not patched: with ttyGS0 as both
-# a getty target and (via cmdline.txt's console=ttyGS0,115200) the redirected
-# /dev/console, a hangup on ttyGS0 -- either a USB link drop reaching
-# gserial_disconnect()'s tty_hangup(), or (more commonly) systemd's stock
-# serial-getty@.service TTYVHangup=yes firing on every getty respawn -- makes
-# __tty_hangup() (drivers/tty/tty_io.c) call ->close() synchronously for the
-# console-redirected tty, and the getty's real close() then calls ->close()
-# again, unconditionally, when its fd is actually released. u_serial.c's
-# gs_close() (drivers/usb/gadget/function/u_serial.c:691, 6.12.61) sees
-# port->port.count already 0 on the second call and WARN_ON(1)s --
-# "WARNING: ... at drivers/usb/gadget/function/u_serial.c:691 gs_close" in
-# dmesg, kernel tainted W. Traced end-to-end against the actual pinned
-# kernel source; confirmed harmless (the WARN_ON branch is already a safe
-# no-op past the log line -- no data loss, no hung tty, ttyGS0 comes back
-# clean on the next open) and not present in any upstream fix as of 2026-08.
-# A local out-of-tree kernel patch to drop the WARN_ON was written and
-# verified (compiles clean against this exact kernel config/toolchain), but
-# deliberately not carried: this gadget exists purely for emergency shell
-# access, sessions are short and infrequent, so the cosmetic taint isn't
-# worth maintaining a kernel patch across future rpi/linux version bumps.
-# Revisit if serial console flapping becomes routine (e.g. some automation
-# repeatedly opens/closes ttyGS0) or if taint/dmesg-WARN state ever feeds
-# into automated crash/health monitoring.
+# Known benign kernel WARNING, deliberately not patched: a getty respawn
+# or USB link drop on ttyGS0 (also the redirected console) can trigger a
+# double ->close() in u_serial.c's gs_close(), logging a WARN_ON and
+# tainting the kernel -- traced against the pinned kernel source and
+# confirmed harmless (no data loss, tty comes back clean on next open). A
+# verified out-of-tree patch exists but isn't worth carrying across future
+# kernel bumps for a cosmetic taint on an emergency-shell-only console;
+# revisit if serial console flapping ever becomes routine.
 set -eu
 
 GADGET=/sys/kernel/config/usb_gadget/g1
