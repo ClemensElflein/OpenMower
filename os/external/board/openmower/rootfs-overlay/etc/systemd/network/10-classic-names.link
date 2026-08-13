@@ -1,18 +1,9 @@
-# systemd's own default (99-default.link, shipped by the systemd package)
-# uses NamePolicy=... onboard ... , which renames the CM4's onboard
-# ethernet via udev's ID_NET_NAME_ONBOARD heuristic -- observed in practice
-# renaming it away from "eth0" (likely to "end0"), which breaks every
-# eth0-hardcoded config in this tree: 20-ethernet.network's [Match] (and
-# through it, its Bridge=br0 membership -- see 15-br0.netdev/
-# 16-br0.network/dnsmasq.conf, which all key off br0 existing and having
-# eth0 actually join it). Sorts before 99-default.link (10 < 99), so this
-# is the one that actually applies -- keep the kernel's own raw name
-# (eth0, wlan0, ...) instead, matching what the rest of this tree assumes.
-#
-# wlan0 is unaffected either way -- the onboard-index heuristic only
-# applies to platform/PCI-bus devices with a defined slot/index (wired
-# ethernet MACs), not SDIO wifi chips, so it was already coming through
-# as "wlan0" via the kernel's own default naming regardless of this policy.
+# systemd's own 99-default.link renames the onboard ethernet via udev's
+# ID_NET_NAME_ONBOARD heuristic (observed: eth0 -> end0), breaking every
+# eth0-hardcoded file in this tree. Sorts before it (10 < 99) to win
+# instead: keep the kernel's own raw name. wlan0 is unaffected either way
+# -- the onboard-index heuristic only targets platform/PCI-bus devices,
+# not the SDIO wifi chip.
 
 [Match]
 OriginalName=*

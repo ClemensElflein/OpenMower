@@ -2,11 +2,6 @@
 Name=eth0
 
 [Network]
-# eth0 is a br0 member port now (see 15-br0.netdev/16-br0.network), joined
-# with the USB0 gadget's usb0 ethernet function (21-usb-ethernet.network)
-# so USB- and eth0-attached hosts share one plain L2 broadcast domain --
-# no NAT/routing. A bridge member carries no IP config of its own; DHCP/
-# Address/MulticastDNS all moved to br0 (same values as before, just
-# relocated -- see that file's own comment for why, and for the CM4<->xCore
-# 172.16.78.0/24 link this used to carry directly on eth0).
+# eth0 is a br0 member port -- see 16-br0.network for the actual L3
+# config, which lives there since a bridge member carries none of its own.
 Bridge=br0
