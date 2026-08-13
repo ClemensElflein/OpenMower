@@ -11,6 +11,15 @@ MACHINE_ID=/data/.openmower-os/machine-id
 # possible -- so .openmower-os may not exist yet when this runs.
 mkdir -p "$(dirname "$MACHINE_ID")"
 
+# One-time migration for devices already in the field: this used to live
+# at the top level of /data (pre-.openmower-os move). Reuse that identity
+# instead of silently generating a new one on the first update to a build
+# with this change -- a real device's machine-id (DHCP lease/ARP/neighbor
+# state keys off it) shouldn't change just because its storage path moved.
+if [ ! -s "$MACHINE_ID" ] && [ -s /data/machine-id ]; then
+    mv /data/machine-id "$MACHINE_ID"
+fi
+
 if [ ! -s "$MACHINE_ID" ]; then
     # PID 1 has already created a valid transient ID for this first boot.
     # Persist that exact value so all later DHCP clients use the same identity.
