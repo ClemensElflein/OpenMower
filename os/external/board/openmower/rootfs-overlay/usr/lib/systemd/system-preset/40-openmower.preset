@@ -37,16 +37,10 @@ enable dockge.service
 # nothing to enable for that separately.
 enable openmower-usb-gadget-init.service
 enable improv-serial.service
-# `enable` here does NOT actually enable it on its own: `systemctl
-# preset-all --root=...` (what Buildroot runs at image build time) works
-# by enumerating unit files already on disk, and a template instance like
-# serial-getty@ttyGS0.service has no such file -- only the bare
-# serial-getty@.service template does -- so this line silently no-ops at
-# build time. Confirmed on real hardware: fresh image, unit shows up
-# "disabled" despite this. The actual enablement is the baked symlink at
-# etc/systemd/system/getty.target.wants/serial-getty@ttyGS0.service in
-# this same rootfs overlay (the same reason wpa_supplicant@wlan0 below
-# uses udev SYSTEMD_WANTS instead of a preset enable). Left here anyway as
-# a no-cost second attempt in case a future `systemctl preset-all` (e.g. a
-# factory-reset flow) gets re-run against an already-installed system.
+# `enable` alone doesn't work for a template instance -- preset-all only
+# sees unit files already on disk, and serial-getty@ttyGS0.service has
+# none (only the bare template). Real enablement is the baked symlink at
+# getty.target.wants/serial-getty@ttyGS0.service; this line is a harmless
+# no-cost second attempt in case preset-all is ever re-run later (e.g. a
+# factory-reset flow).
 enable serial-getty@ttyGS0.service
