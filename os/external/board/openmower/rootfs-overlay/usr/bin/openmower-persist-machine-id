@@ -3,7 +3,13 @@
 # are squashfs images and cannot hold a machine-id themselves.
 set -eu
 
-MACHINE_ID=/data/machine-id
+MACHINE_ID=/data/.openmower-os/machine-id
+
+# Own mkdir -p, not the shared tmpfiles.d dir declaration: this unit has
+# DefaultDependencies=no and only orders after data.mount (not
+# systemd-tmpfiles-setup.service), specifically to run as early as
+# possible -- so .openmower-os may not exist yet when this runs.
+mkdir -p "$(dirname "$MACHINE_ID")"
 
 if [ ! -s "$MACHINE_ID" ]; then
     # PID 1 has already created a valid transient ID for this first boot.

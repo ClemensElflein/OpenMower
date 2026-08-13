@@ -47,7 +47,7 @@ mount -t overlay overlay \
 # mounted on a path underneath it -- namely openmower-machine-id.service's
 # bind-mount of /etc/machine-id, which runs earlier in boot (sysinit.target)
 # and is now covered up by this later mount. Re-assert it: idempotent
-# (it only (re)writes /data/machine-id the first time it's ever run, see
+# (it only (re)writes /data/.openmower-os/machine-id the first time it's ever run, see
 # that script), and cheap enough not to matter that it also reruns after
 # an ordinary reboot where nothing actually changed.
 /usr/bin/openmower-persist-machine-id
