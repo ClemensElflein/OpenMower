@@ -38,6 +38,11 @@ set -eu
 modprobe overlay
 
 mkdir -p /data/.openmower-os/etc-overlay/upper /data/.openmower-os/etc-overlay/work /run/etc-lower
+# Root-only: these are overlayfs's own internal backing storage (workdir
+# especially -- touching it directly, outside the mount, can corrupt the
+# live /etc overlay), not something meant to be browsed. Not part of the
+# merged /etc view itself, so this has no effect on /etc's own permissions.
+chmod 0700 /data/.openmower-os/etc-overlay /data/.openmower-os/etc-overlay/upper /data/.openmower-os/etc-overlay/work
 mount --bind /etc /run/etc-lower
 mount -t overlay overlay \
     -o lowerdir=/run/etc-lower,upperdir=/data/.openmower-os/etc-overlay/upper,workdir=/data/.openmower-os/etc-overlay/work \
