@@ -230,7 +230,8 @@ On v2 hardware (`HARDWARE_PLATFORM=2`, the documented default), the LL
 board/xCore talks to `open_mower_ros` over IP, not serial — the compute
 module's onboard ethernet is wired to the carrier board's internal switch
 (bridging the xCore link and the external RJ45 jack on the same physical `eth0`).
-`eth0` gets a static `172.16.78.1/24` address (`rootfs-overlay/etc/systemd/network/20-ethernet.network`,
+`eth0` is bridged into `br0` (`rootfs-overlay/etc/systemd/network/20-ethernet.network`),
+which carries the static `172.16.78.1/24` address (`16-br0.network`,
 coexists with whatever DHCP hands out if also plugged into a home network)
 and `dnsmasq.service` serves DHCP to the xCore on that subnet
 (`172.16.78.150-200`, see `/etc/dnsmasq.conf`) — DNS itself stays with
