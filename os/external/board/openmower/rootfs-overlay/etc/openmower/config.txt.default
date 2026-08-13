@@ -2,8 +2,10 @@
 # CM5 (BCM2712), headless.
 #
 # Don't edit this file -- it's overwritten wholesale on every OS update. To
-# change a setting (antenna, UART, fan, ...), edit /data/boot/usercfg.txt
-# instead (see its own comments); anything set there overrides this file.
+# change a user-tunable setting (antenna, fan, ...), edit
+# /data/boot/usercfg.txt instead (see its own comments); anything set
+# there overrides this file. UART allocation is NOT user-tunable -- fixed
+# hardware topology, baked in below (see its own comment ahead of [cm4]).
 #
 # kernel=/device_tree= (CM4/pi4 also start_file=/fixup_file=) are set
 # EXPLICITLY per board below, not left unset for firmware auto-detect --
@@ -23,21 +25,60 @@
 # (byte-for-byte, just moved under a filter instead of being unconditional)
 # -- known-good on real hardware, not re-derived. CM5 is untested on real
 # hardware -- best-effort explicit pin, may need revisiting.
+#
+# UART allocation also differs per board and lives here rather than
+# usercfg.txt.default: it's fixed hardware topology (which UARTs exist,
+# what GPIO14/15 is used for), not a user preference -- and usercfg.txt's
+# `include` comes last (later directives win), so anything set there would
+# silently override whatever's decided here anyway. CM4/CM5 dedicate
+# GPIO14/15 as their one and only UART, permanently wired up as the boot/
+# debug console (cmdline= below) -- no other serial device needs to be
+# visible to Linux on those boards at all. [pi4] keeps the original
+# four-extra-UART layout (LL board/xESC/GPS comms on uart2-5, GPIO14/15 as
+# a plain general-purpose UART, no console on it) unchanged.
 [cm4]
 kernel=kernel8.img
 device_tree=bcm2711-rpi-cm4.dtb
 start_file=start4.elf
 fixup_file=fixup4.dat
+# enable_uart=1 fixes the mini-UART's clock (otherwise it tracks the
+# scaling ARM core frequency and the baud rate drifts) -- needed for a
+# usable console. cmdline= points at a variant of cmdline-{a,b}.txt with
+# console=ttyS0,115200 appended (see post-image.sh) so kernel/dmesg boot
+# output and a login getty (systemd-getty-generator, auto-spawned for any
+# console= tty, no separate unit needed) land on GPIO14 (TX)/GPIO15 (RX)
+# from the very first boot -- independent of USB0 (ttyGS0) being attached
+# at all, which is the whole point: it's what you reach for when the
+# ttyGS0/dwc2 gadget path itself is what's misbehaving.
+enable_uart=1
+cmdline=cmdline-cm4.txt
 
 [pi4]
 kernel=kernel8.img
 device_tree=bcm2711-rpi-4-b.dtb
 start_file=start4.elf
 fixup_file=fixup4.dat
+# Plain general-purpose UART wired to real mower hardware here, not a
+# debug console -- no console= on this port (cmdline-{a,b}.txt carries
+# none), no getty. enable_uart=1 still needed for the same clock-drift fix
+# as [cm4]'s comment above.
+enable_uart=1
+dtoverlay=uart2
+dtoverlay=uart3
+dtoverlay=uart4
+dtoverlay=uart5
 
 [cm5]
 kernel=kernel_2712.img
 device_tree=bcm2712-rpi-cm5-cm4io.dtb
+# Same reasoning as [cm4] above. Console tty name NOT verified on real
+# hardware: CM5/BCM2712 routes GPIO UARTs through the RP1 southbridge
+# rather than the SoC directly, so the kernel device likely isn't ttyS0 --
+# best-effort guess is ttyAMA10 (RP1's UART0, common on Pi5), but confirm
+# via `dmesg`/`ls /sys/class/tty` over HDMI (tty1, unaffected either way)
+# on first real CM5 boot and fix this cmdline file if wrong.
+enable_uart=1
+cmdline=cmdline-cm5.txt
 
 [all]
 arm_64bit=1

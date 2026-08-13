@@ -1,6 +1,15 @@
 # OpenMower OS: local Raspberry Pi firmware config overrides (antenna
-# selection, UART, fan, etc.). Lives on /data, so unlike config.txt it
-# survives OS updates -- edit it here.
+# selection, fan, etc.). Lives on /data, so unlike config.txt it survives
+# OS updates -- edit it here.
+#
+# UART setup is NOT here -- it's fixed hardware topology (which UARTs
+# exist and what GPIO14/15 is used for differs per board), not a user
+# preference, so it's baked directly into config.txt.default instead
+# (see that file's own [cm4]/[pi4]/[cm5] sections). Deliberate: this file
+# ships verbatim as the live, user-editable /data/boot/usercfg.txt, and
+# because config.txt's `include usercfg.txt` comes last (later directives
+# win), anything set here would silently override that per-board
+# restriction the moment a user (or a stale copy of this file) touched it.
 #
 # Edit this file, then reboot for a change to take effect.
 #
@@ -8,25 +17,6 @@
 ## https://www.raspberrypi.com/documentation/computers/config_txt.html
 ## For device filters (the [all]/[pi4]/[cm4]/[cm5] sections below) see
 ## https://www.raspberrypi.com/documentation/computers/config_txt.html#model-filters
-
-[all]
-## Enable Hardware UART for Serial Communication -- GPIO14/15 as a
-## general-purpose UART (mini-UART, serial0/ttyS0) -- a real device is wired
-## to it on the mower, not a debug terminal, so no console= on this port
-## (cmdline-{a,b}.txt) and no getty. enable_uart=1 is still needed to fix the
-## mini-UART's clock (otherwise it tracks the scaling ARM core frequency and
-## the baud rate drifts).
-#
-# dtoverlay=disable-bt (moving the better PL011 UART onto these pins
-# instead) is deliberately NOT set: improv-ble needs Bluetooth for BLE
-# wifi provisioning, and uart2-5 below already give four more independent
-# hardware UARTs for LL board/xESC/GPS comms, so keeping PL011 on
-# Bluetooth isn't a capacity problem worth trading BLE provisioning away for.
-enable_uart=1
-dtoverlay=uart2
-dtoverlay=uart3
-dtoverlay=uart4
-dtoverlay=uart5
 
 [pi4]
 ## Enable DRM VC4 V3D driver on top of the dispmanx display stack

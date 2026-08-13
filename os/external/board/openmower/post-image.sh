@@ -6,10 +6,6 @@ BOARD_DIR="$(cd "$(dirname "$0")" && pwd)"
 OS_DIR="$(cd "$BOARD_DIR/../../.." && pwd)"
 
 OPENMOWER_VERSION="${OPENMOWER_VERSION:-$(date -u +%Y%m%d%H%M%S)}"
-# Set via BR2_ROOTFS_POST_IMAGE_SCRIPT_ARGS in openmower_dev_defconfig
-# only ("$1" is BINARIES_DIR, unused positionally below -- we read it from
-# the env var Buildroot also exports).
-OPENMOWER_VARIANT="${2:-prod}"
 
 # --- Stage both boards' kernels/DTBs -----------------------------------------
 # No kernel built in this tree (see post-build.sh) -- both come from the
@@ -29,7 +25,7 @@ install -m 0644 "$KERNEL_CM4_DIR/images/Image" "$BINARIES_DIR/rpi-firmware/kerne
 install -m 0644 "$KERNEL_CM5_DIR/images/Image" "$BINARIES_DIR/rpi-firmware/kernel_2712.img"
 cp -f "$KERNEL_CM4_DIR/images/"*.dtb "$KERNEL_CM5_DIR/images/"*.dtb "$BINARIES_DIR/rpi-firmware/"
 
-# --- Build boot filesystem images (differ only in cmdline.txt) ---------------
+# --- Build boot filesystem images (differ only in cmdline*.txt) --------------
 # Contents: Pi firmware (incl. our config.txt), both kernels, both boards'
 # DTBs -- everything now lives under rpi-firmware/ (post-build.sh purged the
 # stale top-level DTBs rpi-firmware's own INSTALL_DTBS produced; this build
@@ -37,32 +33,34 @@ cp -f "$KERNEL_CM4_DIR/images/"*.dtb "$KERNEL_CM5_DIR/images/"*.dtb "$BINARIES_D
 # Image/*.dtb to glob the way a combined single-kernel build would have).
 BOOT_FILES=("$BINARIES_DIR"/rpi-firmware/*)
 
-# Dev image only: show a console on the default UART hardware pins (GPIO14/
-# 15, the mini-UART -- ttyS0/serial0, already clocked correctly via config.
-# txt's enable_uart=1) in addition to the USB gadget one. Resolved into
-# BINARIES_DIR rather than editing cmdline-{a,b}.txt in place: those are
-# shared with prod, where those same pins carry real mower hardware
-# traffic (LL board or similar), not a debug terminal -- see config.txt's
-# own enable_uart=1 comment for that reasoning.
-CMDLINE_A="$BOARD_DIR/cmdline-a.txt"
-CMDLINE_B="$BOARD_DIR/cmdline-b.txt"
-if [ "$OPENMOWER_VARIANT" = "dev" ]; then
-    CMDLINE_A="$BINARIES_DIR/cmdline-a.txt"
-    CMDLINE_B="$BINARIES_DIR/cmdline-b.txt"
-    sed 's/$/ console=ttyS0,115200/' "$BOARD_DIR/cmdline-a.txt" >"$CMDLINE_A"
-    sed 's/$/ console=ttyS0,115200/' "$BOARD_DIR/cmdline-b.txt" >"$CMDLINE_B"
-fi
+# Per-board cmdline variants, on top of the per-slot ones already in the
+# repo (cmdline-{a,b}.txt, differing only in root=/rauc.slot=): config.txt.
+# default's [cm4]/[pi4]/[cm5] sections pick which file each board actually
+# boots with (cmdline=cmdline-cm4.txt / cmdline-cm5.txt; [pi4] gets no
+# override, so it keeps using the plain ::/cmdline.txt below, unchanged).
+# CM4/CM5 add console=ttyS0,115200 (CM5's exact tty name unverified on real
+# hardware -- see config.txt.default's own [cm5] comment) for the
+# boot/debug console -- see that file for the full reasoning. Resolved
+# here into BINARIES_DIR rather than editing cmdline-{a,b}.txt in place:
+# those stay the plain pi4/default variant.
+for SLOT_SUFFIX in a b; do
+    BASE="$BOARD_DIR/cmdline-$SLOT_SUFFIX.txt"
+    sed 's/$/ console=ttyS0,115200/' "$BASE" >"$BINARIES_DIR/cmdline-$SLOT_SUFFIX-cm4.txt"
+    sed 's/$/ console=ttyAMA10,115200/' "$BASE" >"$BINARIES_DIR/cmdline-$SLOT_SUFFIX-cm5.txt"
+done
 
 make_boot_vfat() {
-    local out="$1" cmdline="$2"
+    local out="$1" slot_suffix="$2" label="$3"
     rm -f "$out"
     # Bumped from 128M: this partition now carries TWO kernels + both
     # boards' DTBs instead of one (see the kernel-cm4/kernel-cm5 staging
     # above). Starting budget, not measured yet -- re-tune (`mdir -i
     # boot-a.vfat -/` or similar) after the first real build.
-    mkfs.vfat -C -n "$3" "$out" $((192 * 1024))   # size in 1K blocks
+    mkfs.vfat -C -n "$label" "$out" $((192 * 1024))   # size in 1K blocks
     mcopy -i "$out" -s -Q "${BOOT_FILES[@]}" ::/
-    mcopy -i "$out" -o -Q "$cmdline" ::/cmdline.txt
+    mcopy -i "$out" -o -Q "$BOARD_DIR/cmdline-$slot_suffix.txt" ::/cmdline.txt
+    mcopy -i "$out" -o -Q "$BINARIES_DIR/cmdline-$slot_suffix-cm4.txt" ::/cmdline-cm4.txt
+    mcopy -i "$out" -o -Q "$BINARIES_DIR/cmdline-$slot_suffix-cm5.txt" ::/cmdline-cm5.txt
     # config.txt's `include usercfg.txt` tolerates a missing target, but bake
     # the shipped default in anyway rather than lean on that -- real content
     # gets synced on top of this from /data on first boot (see
@@ -70,8 +68,8 @@ make_boot_vfat() {
     mcopy -i "$out" -o -Q "$TARGET_DIR/etc/openmower/usercfg.txt.default" ::/usercfg.txt
 }
 
-make_boot_vfat "$BINARIES_DIR/boot-a.vfat" "$CMDLINE_A" BOOT-A
-make_boot_vfat "$BINARIES_DIR/boot-b.vfat" "$CMDLINE_B" BOOT-B
+make_boot_vfat "$BINARIES_DIR/boot-a.vfat" a BOOT-A
+make_boot_vfat "$BINARIES_DIR/boot-b.vfat" b BOOT-B
 
 cp -f "$BOARD_DIR/autoboot.txt" "$BINARIES_DIR/autoboot.txt"
 

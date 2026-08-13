@@ -53,9 +53,6 @@ BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_OPENMOWER_PATH)/board/openmower/rootfs-overla
 BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_OPENMOWER_PATH)/board/openmower/post-build.sh"
 BR2_ROOTFS_POST_FAKEROOT_SCRIPT="$(BR2_EXTERNAL_OPENMOWER_PATH)/board/openmower/post-fakeroot.sh"
 BR2_ROOTFS_POST_IMAGE_SCRIPT="$(BR2_EXTERNAL_OPENMOWER_PATH)/board/openmower/post-image.sh"
-# Tells the (shared) post-image.sh to add console=ttyS0,115200 (the default
-# UART header pins) to cmdline.txt -- see that script's own comment.
-BR2_ROOTFS_POST_IMAGE_SCRIPT_ARGS="dev"
 
 # No kernel built in this tree -- see openmower_defconfig's header comment
 # and its matching comment on this same option for why INSTALL_DTBS=y is
