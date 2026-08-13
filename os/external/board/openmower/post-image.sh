@@ -76,8 +76,8 @@ cp -f "$BOARD_DIR/autoboot.txt" "$BINARIES_DIR/autoboot.txt"
 # --- Assemble the disk image -------------------------------------------------
 # Skippable (OPENMOWER_BUILD_SDCARD=0): the RAUC bundle below needs only
 # boot-a.vfat + rootfs.squashfs, both already built above/by Buildroot
-# itself -- genimage additionally allocates+writes rootfs-b (3584M),
-# data.ext4 (4096M) and config.vfat, ~8GB of pure image-assembly work
+# itself -- genimage additionally allocates+writes rootfs-b (3072M),
+# data.ext4 (64M) and config.vfat, ~8GB of pure image-assembly work
 # nothing in the bundle depends on. CI skips it for ordinary PR/branch
 # builds (bundle-only is enough to validate the build); tagged releases
 # still get the full flashable sdcard.img, default on for everyone else
@@ -97,8 +97,8 @@ if [ "${OPENMOWER_BUILD_SDCARD:-1}" = "1" ]; then
 
     # Release asset scripts/migrate-to-openmower.sh downloads directly over
     # HTTPS (a GitHub Releases upload, see that script's own header -- no
-    # manifest, no update server of our own). gzipped: sdcard.img's 4096M
-    # data partition is freshly formatted and empty (see genimage.cfg), so
+    # manifest, no update server of our own). gzipped: sdcard.img's data
+    # partition is freshly formatted and empty (see genimage.cfg), so
     # it's mostly sparse zero bytes on disk -- gzip shrinks the image back
     # down to roughly its real unique content instead of shipping the full
     # nominal size. Sidecar is a bare hex digest (not `sha256sum` output
