@@ -1,7 +1,7 @@
 [Unit]
 Description=Overlay /etc with a writable layer on the data partition
 RequiresMountsFor=/data
-After=data.mount openmower-machine-id.service
+After=openmower-machine-id.service
 Before=multi-user.target
 
 [Service]

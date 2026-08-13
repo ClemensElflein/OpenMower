@@ -1,7 +1,6 @@
 [Unit]
 Description=Grow the data partition to fill the real disk
 RequiresMountsFor=/data
-After=data.mount
 # Not load-bearing (the script is idempotent/safe to run after either),
 # just lets the very first boot's docker pulls / OTA staging see the full
 # grown size immediately instead of only after a reboot.

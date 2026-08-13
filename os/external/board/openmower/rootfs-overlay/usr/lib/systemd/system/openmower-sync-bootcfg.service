@@ -1,7 +1,6 @@
 [Unit]
 Description=Sync boot-config overrides (usercfg.txt) onto the active boot partition
 RequiresMountsFor=/data
-After=data.mount
 
 [Service]
 Type=oneshot

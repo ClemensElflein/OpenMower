@@ -2,7 +2,6 @@
 Description=Persist the system machine ID on the data partition
 DefaultDependencies=no
 RequiresMountsFor=/data
-After=data.mount
 Before=network-pre.target systemd-networkd.service
 
 [Service]
