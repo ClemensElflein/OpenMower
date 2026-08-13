@@ -31,7 +31,6 @@ BR2_CCACHE_DIR="/work/os/.cache/ccache"
 # source (~175s, not ccache-eligible) on every clean build.
 BR2_PACKAGE_HOST_GO_BIN=y
 BR2_DOWNLOAD_FORCE_CHECK_HASHES=y
-BR2_ROOTFS_DEVICE_TABLE="system/device_table.txt $(BR2_EXTERNAL_OPENMOWER_PATH)/board/openmower/device_table.txt"
 
 # Host cross-gdb: point CLion's toolchain/debugger setting at
 # output/host/bin/aarch64-*-gdb, paired with gdbserver on the target.
