@@ -1,0 +1,13 @@
+[Unit]
+Description=Persist systemd-timesyncd's clock-floor state on the data partition
+DefaultDependencies=no
+RequiresMountsFor=/data /var
+Before=systemd-timesyncd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/openmower-persist-timesync
+
+[Install]
+WantedBy=sysinit.target

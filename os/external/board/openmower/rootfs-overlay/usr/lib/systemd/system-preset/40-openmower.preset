@@ -13,6 +13,7 @@ enable openmower-detect-hardware.service
 enable openmower-expand-data.service
 enable improv-ble.service
 enable openmower-machine-id.service
+enable openmower-timesync-persist.service
 enable openmower-hostname.service
 enable openmower-sync-bootcfg.service
 enable openmower-sync-bootcfg.path

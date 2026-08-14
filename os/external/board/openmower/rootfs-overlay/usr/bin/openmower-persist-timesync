@@ -1,0 +1,22 @@
+#!/bin/sh
+# Give systemd-timesyncd a real clock floor across reboots on this
+# RTC-less board. timesyncd records the last time it successfully synced
+# as this state file's own mtime, and on the next boot uses that mtime as
+# a floor for the initial clock -- see systemd-timesyncd.service(8),
+# "System Time Synchronized" -- specifically meant for hardware without a
+# battery-backed RTC. /var is tmpfs on this image (wiped every boot, see
+# /etc/fstab), which throws that mechanism away completely: every single
+# boot starts the clock from scratch, with no memory of the last time
+# this board actually knew the correct time -- confirmed on real hardware
+# (clock ~5 months behind after a boot with no prior sync history).
+# Bind-mounting the state dir onto /data restores the intended behavior,
+# same pattern as openmower-persist-machine-id.
+set -eu
+
+TIMESYNC_DIR=/data/.openmower-os/timesync
+
+mkdir -p "$TIMESYNC_DIR"
+chown systemd-timesync:systemd-timesync "$TIMESYNC_DIR"
+
+mkdir -p /var/lib/systemd/timesync
+mount --bind "$TIMESYNC_DIR" /var/lib/systemd/timesync
