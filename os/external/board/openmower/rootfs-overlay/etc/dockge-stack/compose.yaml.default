@@ -28,3 +28,10 @@ services:
       # Tell Dockge where is your stacks directory
       - DOCKGE_STACKS_DIR=/opt/stacks
       - DOCKGE_ENABLE_CONSOLE=false
+    labels:
+      openmower.ui: "true"
+      openmower.ui.name: "Dockge"
+      openmower.ui.port: "5001"
+      openmower.ui.icon: "Dashboard"
+      openmower.ui.description: "Container manager"
+      openmower.ui.priority: "10"

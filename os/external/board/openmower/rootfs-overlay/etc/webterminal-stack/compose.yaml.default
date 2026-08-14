@@ -11,6 +11,13 @@ services:
       sh -c 'ttyd --client-option disableReconnect=true --client-option
       disableLeaveConfirmation=true --writable --port ${TTYD_PORT} \
         -W nsenter -t 1 -a su -'
+    labels:
+      openmower.ui: "true"
+      openmower.ui.name: "WebTerminal"
+      openmower.ui.port: "${TTYD_PORT}"
+      openmower.ui.icon: "Terminal"
+      openmower.ui.description: "Root shell on the host"
+      openmower.ui.priority: "20"
 # Dockge-specific extras shown in the UI
 x-dockge:
   urls:

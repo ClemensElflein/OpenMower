@@ -1,0 +1,22 @@
+[Unit]
+Description=OpenMower Entrypoint (landing page)
+Documentation=https://github.com/xtech/web-openmower-entrypoint
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+RequiresMountsFor=/data
+StartLimitIntervalSec=10min
+StartLimitBurst=10
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/stacks/entrypoint
+RemainAfterExit=yes
+TimeoutStartSec=5min
+ExecStartPre=/bin/sh -c 'H="$(hostname -f 2>/dev/null || hostname)"; EF="/opt/stacks/entrypoint/.env"; if grep -qE "^[[:space:]]*HOSTNAME[[:space:]]*=" "$EF"; then sed -i -E "s|^[[:space:]]*HOSTNAME[[:space:]]*=.*|HOSTNAME=$H|g" "$EF"; else echo "HOSTNAME=$H" >> "$EF"; fi'
+ExecStart=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=multi-user.target

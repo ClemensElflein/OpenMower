@@ -1,0 +1,21 @@
+# Landing page for the OpenMower project, served on port 80 -- the default
+# page when you open the mower's IP/hostname in a browser. Auto-detects the
+# other stacks' web UIs via the Docker socket, reading each container's
+# openmower.ui.* labels (see openmower-stack/dockge-stack/webterminal-stack
+# compose.yaml.default) and links to them; see
+# github.com/xtech/web-openmower-entrypoint.
+services:
+  entrypoint:
+    image: ghcr.io/xtech/web-openmower-entrypoint:latest
+    container_name: entrypoint
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config.yaml:/config/config.yaml:ro
+
+# Dockge-specific extras shown in the UI
+x-dockge:
+  urls:
+    - http://${HOSTNAME}

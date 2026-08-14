@@ -13,7 +13,7 @@ rollback, self-updating over the network, wifi-provisionable over BLE.
 - **OTA:** RAUC signed bundles, pulled from a static HTTPS server
 - **Provisioning:** Improv Wi-Fi over BLE
 - **ROS stack:** vendored, run via `systemd-nspawn` (no image-store copy, no docker/podman for this part) — see [Running open_mower_ros](#running-open_mower_ros) below. Not started automatically; start explicitly (`systemctl start openmower.service`, eventually `openmower-cli`) once the mower is actually configured.
-- **Auxiliary stack:** Mosquitto, OpenMowerApp, Dockge, ttyd — Docker Compose, scoped to just these small third-party images — see [Manage the auxiliary stack](#manage-the-auxiliary-stack) below. Mosquitto+OpenMowerApp are not started automatically either (Dockge and ttyd are).
+- **Auxiliary stack:** Mosquitto, OpenMowerApp, Dockge, ttyd, entrypoint — Docker Compose, scoped to just these small third-party images — see [Manage the auxiliary stack](#manage-the-auxiliary-stack) below. Mosquitto+OpenMowerApp are not started automatically; Dockge, ttyd and entrypoint are.
 
 ## Unified CM4+CM5 image
 
@@ -274,13 +274,13 @@ nested submodules (`xbot_driver_gps`, `xbot_framework`, `services`,
 
 Docker + Compose run a small stack of third-party images alongside
 open_mower_ros: Mosquitto (MQTT broker), OpenMowerApp (web dashboard),
-Dockge (container-manager GUI), ttyd (web terminal). ROS itself is not
-part of this stack (see above).
+Dockge (container-manager GUI), ttyd (web terminal), entrypoint (landing
+page). ROS itself is not part of this stack (see above).
 
-Only Dockge and ttyd start automatically. Mosquitto+OpenMowerApp do not —
-same reasoning as `openmower.service` not auto-starting (see above):
-nothing should come alive just because the device booted. Bring it up
-explicitly once configured:
+Only Dockge, ttyd and entrypoint start automatically. Mosquitto+OpenMowerApp
+do not — same reasoning as `openmower.service` not auto-starting (see
+above): nothing should come alive just because the device booted. Bring it
+up explicitly once configured:
 
 ```sh
 docker compose -f /opt/stacks/openmower/compose.yaml up -d
@@ -291,6 +291,15 @@ Compose-stack integration is wired up to this repo's layout — not yet.)
 Docker's own `restart: unless-stopped` then keeps it up across reboots
 once started, no systemd unit involved.
 
+- **entrypoint** (landing page): `http://<hostname>/` — port 80, the
+  default page when you open the mower's IP/hostname in a browser. Inspects
+  the Docker socket (read-only) each request to list running containers'
+  web UIs, via `openmower.ui.*` labels — OpenMowerApp, Dockge and
+  WebTerminal above are already tagged in their `compose.yaml.default` —
+  plus configurable quick links and openmower.de news. Config:
+  `/data/stacks/entrypoint/config.yaml` — see
+  [xtech/web-openmower-entrypoint](https://github.com/xtech/web-openmower-entrypoint)
+  for its format/label reference.
 - **Dockge** (container GUI): `http://<hostname>:5001` — manages
   `/opt/stacks/*` (a symlink to `/data/stacks`, so edits persist across
   updates), including starting/stopping the openmower stack above via its
@@ -680,3 +689,8 @@ keys/             dev signing keys (gitignored, auto-generated)
   device's Dockge and gets hold of it can forge a valid session against
   any other. Keep these off untrusted networks. See "Manage the auxiliary
   stack".
+- entrypoint (port 80, unauthenticated by design — it's the landing page)
+  holds a read-only Docker socket mount, so anyone who can reach it can
+  enumerate every container/image on the device (names, images, labels) —
+  no control, `:ro`, but still information disclosure on an untrusted
+  network. Same exposure class as the rest of this list.

@@ -1,0 +1,20 @@
+# Upstream default config.yaml (github.com/xtech/web-openmower-entrypoint,
+# main), unmodified. Edit via Dockge or by hand -- persists across updates
+# (see docker-stacks.conf's "C" line for this file).
+site:
+  title: "OpenMower"
+
+links:
+  - name: "Documentation"
+    url: "https://openmower.de/docs"
+    icon: "MenuBook"
+  - name: "GitHub"
+    url: "https://github.com/ClemensElflein/OpenMower"
+    icon: "GitHub"
+  - name: "Community"
+    url: "https://github.com/ClemensElflein/OpenMower/discussions"
+    icon: "Forum"
+
+announcements:
+  rss_url: "https://openmower.de/latest/updates/index.xml"
+  max_items: 5

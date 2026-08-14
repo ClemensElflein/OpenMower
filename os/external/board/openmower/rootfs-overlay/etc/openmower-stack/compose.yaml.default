@@ -31,6 +31,13 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    labels:
+      openmower.ui: "true"
+      openmower.ui.name: "OpenMowerApp"
+      openmower.ui.port: "8080"
+      openmower.ui.icon: "Grass"
+      openmower.ui.description: "The main OpenMower interface"
+      openmower.ui.priority: "0"
 
 # Dockge-specific extras shown in the UI
 x-dockge:

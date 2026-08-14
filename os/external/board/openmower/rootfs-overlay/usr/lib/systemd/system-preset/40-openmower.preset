@@ -30,6 +30,7 @@ enable dnsmasq.service
 enable docker.service
 enable webterminal.service
 enable dockge.service
+enable entrypoint.service
 
 # USB0 composite gadget (console + Improv WiFi + ethernet) -- see
 # board/openmower/rootfs-overlay's openmower-usb-gadget-init. Host vs.
