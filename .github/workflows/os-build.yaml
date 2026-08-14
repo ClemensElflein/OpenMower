@@ -5,7 +5,16 @@ name: OS Build
 # repo never needs to check out or build open_mower_ros itself, just pull
 # the image by reference. workflow_dispatch is kept as a manual entry point
 # for testing without needing a real dispatch from that repo.
+#
+# push (main, os/** only): an os/-only fix has no new open_mower_ros image to
+# pair with, so build against `edge` -- open_mower_ros's own always-current
+# main-branch tag (see that repo's build-image.yaml "Docker meta (Default)"
+# step, `type=edge,branch=main`), same image a same-day repository_dispatch
+# from that repo would have resolved to anyway.
 on:
+  push:
+    branches: [main]
+    paths: ['os/**']
   workflow_dispatch:
     inputs:
       image:
@@ -38,18 +47,22 @@ run-name: >-
     github.event.client_payload.event == 'PR' && format('PR {0}', github.event.client_payload.ref) ||
     github.event.client_payload.event == 'BRANCH' && format('branch {0}', github.event.client_payload.ref) ||
     github.event.client_payload.event == 'TAG' && format('tag {0}', github.event.client_payload.ref) ||
+    github.event_name == 'push' && format('os push {0}', github.ref_name) ||
     github.event.inputs.ref || 'manual'
   }}
-  @ ${{ github.event.client_payload.sha || 'manual' }}
+  @ ${{ github.event.client_payload.sha || (github.event_name == 'push' && github.sha) || 'manual' }}
 
 # Keyed on event type + ref (PR number / branch / tag name), not sha: two
 # builds for the same PR/branch/tag supersede each other (new push cancels
 # the stale in-progress build for it), while different PRs, a PR and a
 # branch, etc. get distinct groups and run fully in parallel. Manual
 # dispatch has no client_payload at all, so it falls back to the image ref
-# instead, same as before.
+# instead, same as before. Push (no client_payload either) gets its own
+# explicit branch rather than falling through to 'manual' -- github.ref_name
+# is also set on a manual dispatch run, and reusing that fallback there
+# would regroup concurrent manual runs by branch instead of by image.
 concurrency:
-  group: os-build-${{ github.event.client_payload.event || 'manual' }}-${{ github.event.client_payload.ref || github.event.inputs.image }}
+  group: os-build-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.event || github.event_name == 'push' && 'push' || 'manual' }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.ref || github.event_name == 'push' && github.ref_name || github.event.inputs.image }}
   cancel-in-progress: true
 
 permissions:
@@ -78,6 +91,24 @@ jobs:
             echo "tag_name=${{ github.event.client_payload.tag_name }}" >> "$GITHUB_OUTPUT"
             echo "build_sdcard=$([ '${{ github.event.client_payload.is_release }}' = 'true' ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
             echo "source_repo=${{ github.event.client_payload.source_repo }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            # api.openmower.de only knows PR/BRANCH/TAG (see open_mower_ros's
+            # own "Trigger OS build" step) -- BRANCH is correct here, not a
+            # fourth mode: this build IS the latest build for this branch,
+            # same bucket `update-os --from-branch`/VERSION=edge already
+            # queries, whichever side (open_mower_ros or this repo) produced
+            # it more recently.
+            echo "event=BRANCH" >> "$GITHUB_OUTPUT"
+            echo "ref=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            # No new open_mower_ros image to pair an os/-only push with --
+            # build against its always-current main-branch tag instead (see
+            # the `on:` block comment above).
+            echo "image=ghcr.io/clemenselflein/open_mower_ros:edge" >> "$GITHUB_OUTPUT"
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+            echo "tag_name=" >> "$GITHUB_OUTPUT"
+            echo "build_sdcard=0" >> "$GITHUB_OUTPUT"
+            echo "source_repo=${{ github.repository }}" >> "$GITHUB_OUTPUT"
           else
             echo "event=manual" >> "$GITHUB_OUTPUT"
             echo "ref=${{ github.event.inputs.ref }}" >> "$GITHUB_OUTPUT"
