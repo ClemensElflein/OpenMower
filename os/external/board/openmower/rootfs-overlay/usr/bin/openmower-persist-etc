@@ -25,6 +25,21 @@
 # critical path at all (see the .service file) so a future stall here
 # can't take rauc-mark-good down with it.
 #
+# "Private" isn't just naming -- it has to be made private explicitly.
+# /etc starts out in the root filesystem's shared peer group, so the bare
+# --bind above makes /run/etc-lower a peer of /etc, not an independent
+# copy. Mounting the overlay onto /etc a few lines down then propagates
+# that exact same mount onto every peer in the group -- including
+# /run/etc-lower itself, making the overlay's own lowerdir recursively be
+# itself. Confirmed on real hardware (mountinfo showed both /etc and
+# /run/etc-lower as the same overlay, same shared:N peer group): overlayfs
+# permission checks silently break under that self-reference, denying
+# non-root reads of files that `ls`/`stat` still (wrongly) report as
+# world-readable -- every non-root service (systemd-resolved included)
+# lost access to all of /etc. --make-private breaks /run/etc-lower out of
+# the peer group before the overlay mount happens, so that propagation
+# never fires.
+#
 # No manual seeding needed: overlayfs's own copy-up handles "first write
 # to a lower-only file populates upperdir with that file's original
 # content and permissions" automatically.
@@ -38,12 +53,20 @@ set -eu
 modprobe overlay
 
 mkdir -p /data/.openmower-os/etc-overlay/upper /data/.openmower-os/etc-overlay/work /run/etc-lower
-# Root-only: these are overlayfs's own internal backing storage (workdir
-# especially -- touching it directly, outside the mount, can corrupt the
-# live /etc overlay), not something meant to be browsed. Not part of the
-# merged /etc view itself, so this has no effect on /etc's own permissions.
-chmod 0700 /data/.openmower-os/etc-overlay /data/.openmower-os/etc-overlay/upper /data/.openmower-os/etc-overlay/work
+# Root-only: /data/.openmower-os/etc-overlay itself and workdir are
+# overlayfs's own internal backing storage (workdir especially -- touching
+# it directly, outside the mount, can corrupt the live /etc overlay), not
+# something meant to be browsed. upper is deliberately NOT included here
+# (confirmed on real hardware) -- overlayfs presents the merged /etc
+# mountpoint's own permissions as upperdir's, so chmod 0700 on upper
+# doesn't stay "internal-only", it becomes /etc itself being 0700,
+# locking every non-root process out of the whole directory tree. Set
+# explicitly rather than trusting mkdir's umask-dependent default, since
+# this mode is exactly what /etc itself will present.
+chmod 0700 /data/.openmower-os/etc-overlay /data/.openmower-os/etc-overlay/work
+chmod 0755 /data/.openmower-os/etc-overlay/upper
 mount --bind /etc /run/etc-lower
+mount --make-private /run/etc-lower
 mount -t overlay overlay \
     -o lowerdir=/run/etc-lower,upperdir=/data/.openmower-os/etc-overlay/upper,workdir=/data/.openmower-os/etc-overlay/work \
     /etc
