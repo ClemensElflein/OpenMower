@@ -680,3 +680,5 @@ keys/             dev signing keys (gitignored, auto-generated)
   device's Dockge and gets hold of it can forge a valid session against
   any other. Keep these off untrusted networks. See "Manage the auxiliary
   stack".
+<!-- dummy edit: verify os/** push trigger (os-build.yaml) fires a build -->
+
