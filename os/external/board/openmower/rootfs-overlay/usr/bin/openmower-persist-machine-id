@@ -4,6 +4,7 @@
 set -eu
 
 MACHINE_ID=/data/.openmower-os/machine-id
+SERIAL_FILE=/proc/device-tree/serial-number
 
 # Own mkdir -p, not the shared tmpfiles.d dir declaration: this unit has
 # DefaultDependencies=no and only orders after data.mount (not
@@ -11,18 +12,28 @@ MACHINE_ID=/data/.openmower-os/machine-id
 # possible -- so .openmower-os may not exist yet when this runs.
 mkdir -p "$(dirname "$MACHINE_ID")"
 
-# One-time migration for devices already in the field: this used to live
-# at the top level of /data (pre-.openmower-os move). Reuse that identity
-# instead of silently generating a new one on the first update to a build
-# with this change -- a real device's machine-id (DHCP lease/ARP/neighbor
-# state keys off it) shouldn't change just because its storage path moved.
-if [ ! -s "$MACHINE_ID" ] && [ -s /data/machine-id ]; then
-    mv /data/machine-id "$MACHINE_ID"
-fi
-
-if [ ! -s "$MACHINE_ID" ]; then
-    # PID 1 has already created a valid transient ID for this first boot.
-    # Persist that exact value so all later DHCP clients use the same identity.
+if [ -s "$SERIAL_FILE" ]; then
+    # Derived from the SoC's own OTP-programmed board serial (same value
+    # /proc/cpuinfo's "Serial" field shows) instead of a randomly
+    # generated ID that only ever lived on /data -- so a full reinstall
+    # (including /data being wiped/reformatted) reproduces the exact same
+    # machine-id on the same physical board, rather than a fresh random
+    # one. Needed so the update-check server's per-device history (and
+    # DHCP/ARP neighbor state, which already keyed off machine-id before
+    # this) stays tied to "this board" across a reinstall, not just
+    # across reboots. sha256 over the raw file to get systemd's required
+    # 32-lowercase-hex-char format out of the serial's own bytes,
+    # whatever they are -- no assumptions about its length or content.
+    DERIVED_ID="$(sha256sum "$SERIAL_FILE" | cut -c1-32)"
+    if [ "$(cat "$MACHINE_ID" 2>/dev/null)" != "$DERIVED_ID" ]; then
+        printf '%s\n' "$DERIVED_ID" > "$MACHINE_ID"
+        chmod 0444 "$MACHINE_ID"
+    fi
+elif [ ! -s "$MACHINE_ID" ]; then
+    # No device-tree serial (non-RPi board, or firmware didn't expose it)
+    # and nothing persisted yet -- fall back to whatever PID1 already
+    # generated for this boot rather than failing outright. Not
+    # reinstall-stable, but better than no machine-id at all.
     cat /etc/machine-id > "$MACHINE_ID"
     chmod 0444 "$MACHINE_ID"
 fi
