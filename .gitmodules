@@ -13,9 +13,6 @@
 [submodule "firmware/xesc_firmware"]
 	path = firmware/xesc_firmware
 	url = https://github.com/ClemensElflein/xesc_firmware
-[submodule "hardware/hw-openmower-universal"]
-	path = hardware/hw-openmower-universal
-	url = https://github.com/xtech/hw-openmower-universal
 [submodule "hardware/hw-openmower-yardforce"]
 	path = hardware/hw-openmower-yardforce
 	url = https://github.com/xtech/hw-openmower-yardforce
@@ -25,3 +22,15 @@
 [submodule "os/buildroot"]
 	path = os/buildroot
 	url = https://gitlab.com/buildroot.org/buildroot.git
+[submodule "hardware/universal-hardware/hw-module-xesc"]
+	path = hardware/universal-hardware/hw-module-xesc
+	url = https://github.com/xtech/hw-module-xesc
+[submodule "hardware/universal-hardware/hw-module-charger"]
+	path = hardware/universal-hardware/hw-module-charger
+	url = https://github.com/xtech/hw-module-charger
+[submodule "hardware/universal-hardware/hw-module-logic"]
+	path = hardware/universal-hardware/hw-module-logic
+	url = https://github.com/xtech/hw-module-logic
+[submodule "hardware/universal-hardware/hw-module-gps"]
+	path = hardware/universal-hardware/hw-module-gps
+	url = https://github.com/xtech/hw-module-gps
